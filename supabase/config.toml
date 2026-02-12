@@ -1,1 +1,4 @@
 project_id = "ouicfgyizlfgwqpzotat"
+
+[functions.fetch-players]
+verify_jwt = false
