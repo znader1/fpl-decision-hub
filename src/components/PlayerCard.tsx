@@ -1,4 +1,4 @@
-import { Card } from "@/components/ui/card";
+import { JerseyIcon } from "./JerseyIcon";
 
 interface Player {
   id: number;
@@ -6,6 +6,9 @@ interface Player {
   team: string;
   price: number;
   points: number;
+  number?: number;
+  isCaptain?: boolean;
+  isViceCaptain?: boolean;
 }
 
 interface PlayerCardProps {
@@ -14,20 +17,27 @@ interface PlayerCardProps {
 
 export const PlayerCard = ({ player }: PlayerCardProps) => {
   return (
-    <Card 
-      className="w-32 p-3 bg-card/95 backdrop-blur-sm border-2 border-border hover:border-primary hover:shadow-lg transition-all cursor-pointer group"
-    >
-      <div className="text-center space-y-1">
-        <div className="h-12 w-12 mx-auto rounded-full bg-muted flex items-center justify-center mb-2 group-hover:bg-primary/10 transition-colors">
-          <span className="text-lg font-bold text-foreground">{player.name.slice(0, 2)}</span>
-        </div>
-        <h3 className="font-bold text-sm text-foreground truncate">{player.name}</h3>
-        <p className="text-xs text-muted-foreground font-medium">{player.team}</p>
-        <div className="flex justify-between text-xs pt-2 border-t border-border">
-          <span className="text-muted-foreground">£{player.price}m</span>
-          <span className="font-semibold text-primary">{player.points}pts</span>
+    <div className="flex flex-col items-center gap-1 group cursor-pointer">
+      <div className="relative transition-transform group-hover:scale-110">
+        <JerseyIcon
+          team={player.team}
+          number={player.number}
+          size="md"
+          isCaptain={player.isCaptain}
+        />
+        {player.isViceCaptain && (
+          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-muted-foreground flex items-center justify-center text-[8px] font-bold text-background border border-background">
+            V
+          </div>
+        )}
+      </div>
+      <div className="bg-card/95 backdrop-blur-sm rounded-md px-2 py-1 text-center shadow-sm border border-border min-w-[80px]">
+        <p className="text-xs font-bold text-foreground truncate">{player.name}</p>
+        <div className="flex justify-center gap-2 text-[10px]">
+          <span className="text-muted-foreground">{player.team}</span>
+          <span className="font-semibold text-primary">{player.points}</span>
         </div>
       </div>
-    </Card>
+    </div>
   );
 };
