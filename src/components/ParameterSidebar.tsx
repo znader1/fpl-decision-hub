@@ -1,9 +1,29 @@
-import { Sliders, TrendingUp, Calendar, DollarSign } from "lucide-react";
+import { useState } from "react";
+import { Sliders, TrendingUp, Calendar, DollarSign, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 export const ParameterSidebar = () => {
+  const [loading, setLoading] = useState(false);
+
+  const fetchPlayers = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-players");
+      if (error) throw error;
+      console.log("Players data:", data);
+      toast({ title: "Success", description: `Fetched ${Array.isArray(data) ? data.length : 0} players from backend` });
+    } catch (err: any) {
+      console.error("Fetch error:", err);
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <aside className="w-80 bg-card border-r border-border p-6 overflow-y-auto">
       <div className="space-y-6">
@@ -71,6 +91,16 @@ export const ParameterSidebar = () => {
 
         <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
           Apply Filters
+        </Button>
+
+        <Button
+          onClick={fetchPlayers}
+          disabled={loading}
+          variant="outline"
+          className="w-full flex items-center gap-2"
+        >
+          <Zap className="h-4 w-4" />
+          {loading ? "Fetching..." : "Fetch Players from API"}
         </Button>
       </div>
     </aside>
