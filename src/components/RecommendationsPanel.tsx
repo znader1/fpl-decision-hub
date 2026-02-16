@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TransferPlanner } from "./TransferPlanner";
 import { JerseyIcon } from "./JerseyIcon";
+import type { FplTeamRecommendation } from "@/lib/fplAssistantApi";
 
 const recommendations = [
   {
@@ -23,7 +24,23 @@ const recommendations = [
   },
 ];
 
-export const RecommendationsPanel = () => {
+interface RecommendationsPanelProps {
+  recommendation?: FplTeamRecommendation;
+  isRecommending?: boolean;
+  horizonGws?: number;
+}
+
+const findName = (rec: FplTeamRecommendation, playerId: number) => {
+  const inStart = rec.starting_xi.find((p) => p.player_id === playerId)?.web_name;
+  if (inStart) return inStart;
+  return rec.bench.find((p) => p.player_id === playerId)?.web_name;
+};
+
+export const RecommendationsPanel = ({
+  recommendation,
+  isRecommending = false,
+  horizonGws,
+}: RecommendationsPanelProps) => {
   return (
     <aside className="w-96 bg-card border-l border-border p-6 overflow-y-auto">
       <div className="space-y-6">
@@ -32,8 +49,52 @@ export const RecommendationsPanel = () => {
             <Lightbulb className="h-5 w-5 text-primary" />
             Insights
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">AI-powered insights for GW 25</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {recommendation ? `Recommendation for GW ${recommendation.event_id}` : "Compute a recommendation to see insights"}
+          </p>
         </div>
+
+        <Card className="p-4 space-y-3">
+          <h3 className="font-semibold text-sm text-foreground">Recommendation Summary</h3>
+          {isRecommending && <p className="text-sm text-muted-foreground">Computing…</p>}
+          {!recommendation && !isRecommending && (
+            <p className="text-sm text-muted-foreground">
+              Click <span className="font-semibold text-foreground">Recommend Squad</span> to generate an optimized team and insights.
+            </p>
+          )}
+          {recommendation && (
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Projected points</p>
+                <p className="font-semibold text-primary">
+                  {Math.round(recommendation.projected_points_with_captain * 100) / 100}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Formation</p>
+                <p className="font-semibold text-foreground">{recommendation.formation.join("-")}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Captain</p>
+                <p className="font-semibold text-foreground">
+                  {findName(recommendation, recommendation.captain_player_id) ?? recommendation.captain_player_id}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Vice</p>
+                <p className="font-semibold text-foreground">
+                  {findName(recommendation, recommendation.vice_player_id) ?? recommendation.vice_player_id}
+                </p>
+              </div>
+              {typeof horizonGws === "number" && (
+                <div className="col-span-2">
+                  <p className="text-xs text-muted-foreground">Horizon</p>
+                  <p className="font-semibold text-foreground">{horizonGws} GWs</p>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
 
         <TransferPlanner />
 

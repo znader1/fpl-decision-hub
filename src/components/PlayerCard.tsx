@@ -1,10 +1,10 @@
 import { JerseyIcon } from "./JerseyIcon";
 
-interface Player {
+export interface Player {
   id: number;
   name: string;
   team: string;
-  price: number;
+  price?: number;
   points: number;
   number?: number;
   isCaptain?: boolean;
@@ -14,6 +14,12 @@ interface Player {
 interface PlayerCardProps {
   player: Player;
 }
+
+const formatPoints = (points: number) => {
+  if (!Number.isFinite(points)) return "—";
+  if (Number.isInteger(points)) return points.toString();
+  return points.toFixed(2).replace(/\.?0+$/, "");
+};
 
 export const PlayerCard = ({ player }: PlayerCardProps) => {
   return (
@@ -35,7 +41,7 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
         <p className="text-xs font-bold text-foreground truncate">{player.name}</p>
         <div className="flex justify-center gap-2 text-[10px]">
           <span className="text-muted-foreground">{player.team}</span>
-          <span className="font-semibold text-primary">{player.points}</span>
+          <span className="font-semibold text-primary">{formatPoints(player.points)}</span>
         </div>
       </div>
     </div>

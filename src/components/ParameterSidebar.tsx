@@ -1,28 +1,48 @@
-import { useState } from "react";
-import { Sliders, TrendingUp, Calendar, DollarSign, Zap } from "lucide-react";
+import { Sliders, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-export const ParameterSidebar = () => {
-  const [loading, setLoading] = useState(false);
+interface ParameterSidebarProps {
+  entryId: number;
+  onEntryIdChange: (entryId: number) => void;
+  horizonGws: number;
+  onHorizonGwsChange: (horizonGws: number) => void;
+  transferStrategy: string;
+  onTransferStrategyChange: (strategy: string) => void;
+  canRecommend: boolean;
+  isRecommending: boolean;
+  onRecommend: () => void;
+  recommendErrorMessage?: string;
+  pitchMode: "squad" | "recommendation";
+  onPitchModeChange: (mode: "squad" | "recommendation") => void;
+  hasRecommendation: boolean;
+}
 
-  const fetchPlayers = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("fetch-players");
-      if (error) throw error;
-      console.log("Players data:", data);
-      toast({ title: "Success", description: `Fetched ${Array.isArray(data) ? data.length : 0} players from backend` });
-    } catch (err: any) {
-      console.error("Fetch error:", err);
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
+export const ParameterSidebar = ({
+  entryId,
+  onEntryIdChange,
+  horizonGws,
+  onHorizonGwsChange,
+  transferStrategy,
+  onTransferStrategyChange,
+  canRecommend,
+  isRecommending,
+  onRecommend,
+  recommendErrorMessage,
+  pitchMode,
+  onPitchModeChange,
+  hasRecommendation,
+}: ParameterSidebarProps) => {
+  const recommendDisabled = !canRecommend || !Number.isFinite(entryId) || entryId <= 0 || isRecommending;
 
   return (
     <aside className="w-80 bg-card border-r border-border p-6 overflow-y-auto">
@@ -35,73 +55,107 @@ export const ParameterSidebar = () => {
         </div>
 
         <Card className="p-4 space-y-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-primary" />
-                Budget Range
-              </label>
-              <span className="text-sm text-muted-foreground">£4.5 - £13.0</span>
-            </div>
-            <Slider defaultValue={[45, 130]} max={150} min={40} step={5} />
-          </div>
+          <h3 className="text-sm font-semibold text-foreground">Team</h3>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                Form Rating
-              </label>
-              <span className="text-sm text-muted-foreground">5+</span>
-            </div>
-            <Slider defaultValue={[5]} max={10} min={0} step={1} />
+            <Label htmlFor="entry-id" className="text-xs text-muted-foreground">
+              Entry ID
+            </Label>
+            <Input
+              id="entry-id"
+              type="number"
+              min={1}
+              inputMode="numeric"
+              placeholder="e.g. 588004"
+              value={entryId ? String(entryId) : ""}
+              onChange={(e) => onEntryIdChange(Number(e.target.value))}
+            />
           </div>
         </Card>
 
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-primary" />
-            Fixture Difficulty
-          </h3>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" className="justify-start">
-              Easy (1-2)
-            </Button>
-            <Button variant="outline" size="sm" className="justify-start">
-              Medium (3)
-            </Button>
-            <Button variant="outline" size="sm" className="justify-start">
-              Hard (4-5)
-            </Button>
-            <Button variant="outline" size="sm" className="justify-start">
-              All
-            </Button>
+        <Card className="p-4 space-y-4">
+          <h3 className="text-sm font-semibold text-foreground">Recommendation</h3>
+
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Horizon (GWs)</Label>
+            <Select value={String(horizonGws)} onValueChange={(v) => onHorizonGwsChange(Number(v))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5, 6].map((gw) => (
+                  <SelectItem key={gw} value={String(gw)}>
+                    {gw}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </div>
 
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Positions</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm">GK</Button>
-            <Button variant="outline" size="sm">DEF</Button>
-            <Button variant="outline" size="sm">MID</Button>
-            <Button variant="outline" size="sm">FWD</Button>
+          <div className="space-y-2">
+            <Label htmlFor="strategy" className="text-xs text-muted-foreground">
+              Transfer strategy (optional)
+            </Label>
+            <Input
+              id="strategy"
+              placeholder="e.g. balanced"
+              value={transferStrategy}
+              onChange={(e) => onTransferStrategyChange(e.target.value)}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Only sent if your recommendation URL template contains <span className="font-mono">{`{strategy}`}</span>.
+            </p>
           </div>
-        </div>
 
-        <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-          Apply Filters
-        </Button>
+          <Button
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={onRecommend}
+            disabled={recommendDisabled}
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            {isRecommending ? "Computing..." : "Recommend Squad"}
+          </Button>
+          {recommendErrorMessage && (
+            <p className="text-xs text-destructive break-words">{recommendErrorMessage}</p>
+          )}
 
-        <Button
-          onClick={fetchPlayers}
-          disabled={loading}
-          variant="outline"
-          className="w-full flex items-center gap-2"
-        >
-          <Zap className="h-4 w-4" />
-          {loading ? "Fetching..." : "Fetch Players from API"}
-        </Button>
+          {hasRecommendation && (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={pitchMode === "squad" ? "default" : "outline"}
+                size="sm"
+                onClick={() => onPitchModeChange("squad")}
+              >
+                Squad
+              </Button>
+              <Button
+                variant={pitchMode === "recommendation" ? "default" : "outline"}
+                size="sm"
+                onClick={() => onPitchModeChange("recommendation")}
+              >
+                Recommended
+              </Button>
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-4 space-y-2">
+          <h3 className="text-sm font-semibold text-foreground">Notes</h3>
+          <p className="text-xs text-muted-foreground">
+            Pitch loads your current squad from <span className="font-mono">VITE_FPL_SQUAD_URL</span>, then switches to
+            the recommendation response after you click Recommend.
+          </p>
+        </Card>
+
+        {/* Existing filter UI can be reconnected to backend later. */}
+        <Card className="p-4 space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">Filters (placeholder)</span>
+              <span className="text-sm text-muted-foreground">Coming soon</span>
+            </div>
+          </div>
+        </Card>
       </div>
     </aside>
   );
