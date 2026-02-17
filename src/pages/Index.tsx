@@ -55,11 +55,24 @@ const getInitialStrategy = () => {
   return localStorage.getItem("fpl_transfer_strategy") ?? "";
 };
 
+const getInitialIncludeTransfers = () => {
+  const fromQuery = new URLSearchParams(window.location.search).get("include_transfers");
+  if (fromQuery === "true") return true;
+  if (fromQuery === "false") return false;
+
+  const fromStorage = localStorage.getItem("fpl_include_transfers");
+  if (fromStorage === "true") return true;
+  if (fromStorage === "false") return false;
+
+  return true;
+};
+
 const Index = () => {
   const [entryId, setEntryId] = useState(getInitialEntryId);
   const [currentGW, setCurrentGW] = useState(getInitialGw);
   const [horizonGws, setHorizonGws] = useState(getInitialHorizon);
   const [transferStrategy, setTransferStrategy] = useState(getInitialStrategy);
+  const [includeTransfers, setIncludeTransfers] = useState(getInitialIncludeTransfers);
   const [pitchMode, setPitchMode] = useState<PitchMode>("squad");
 
   const squadTemplate = getSquadUrlTemplate();
@@ -81,8 +94,9 @@ const Index = () => {
       eventId: currentGW,
       horizonGws,
       strategy: transferStrategy,
+      includeTransfers,
     });
-  }, [recommendationTemplate, entryId, currentGW, horizonGws, transferStrategy]);
+  }, [recommendationTemplate, entryId, currentGW, horizonGws, transferStrategy, includeTransfers]);
 
   const squadQuery = useQuery<FplSquad>({
     queryKey: ["squad", entryId, currentGW],
@@ -94,7 +108,13 @@ const Index = () => {
 
   const recommendationMutation = useMutation<FplTeamRecommendation, unknown, void>({
     mutationFn: async () =>
-      fetchTeamRecommendation({ entryId, eventId: currentGW, horizonGws, strategy: transferStrategy }),
+      fetchTeamRecommendation({
+        entryId,
+        eventId: currentGW,
+        horizonGws,
+        strategy: transferStrategy,
+        includeTransfers,
+      }),
     onSuccess: () => setPitchMode("recommendation"),
   });
   const resetRecommendation = recommendationMutation.reset;
@@ -105,15 +125,16 @@ const Index = () => {
       localStorage.setItem("fpl_selected_gw", String(currentGW));
       localStorage.setItem("fpl_horizon_gws", String(horizonGws));
       localStorage.setItem("fpl_transfer_strategy", transferStrategy);
+      localStorage.setItem("fpl_include_transfers", String(includeTransfers));
     } catch {
       // ignore
     }
-  }, [entryId, currentGW, horizonGws, transferStrategy]);
+  }, [entryId, currentGW, horizonGws, transferStrategy, includeTransfers]);
 
   useEffect(() => {
     resetRecommendation();
     setPitchMode("squad");
-  }, [horizonGws, transferStrategy, resetRecommendation]);
+  }, [horizonGws, transferStrategy, includeTransfers, resetRecommendation]);
 
   const activeTeam = useMemo(() => {
     if (pitchMode === "recommendation" && recommendationMutation.data) return recommendationMutation.data;
@@ -168,6 +189,8 @@ const Index = () => {
         onHorizonGwsChange={setHorizonGws}
         transferStrategy={transferStrategy}
         onTransferStrategyChange={setTransferStrategy}
+        includeTransfers={includeTransfers}
+        onIncludeTransfersChange={setIncludeTransfers}
         canRecommend={canRecommend}
         isRecommending={recommendationMutation.isPending}
         onRecommend={() => recommendationMutation.mutate()}

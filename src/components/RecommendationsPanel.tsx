@@ -96,7 +96,7 @@ export const RecommendationsPanel = ({
           )}
         </Card>
 
-        <TransferPlanner />
+        <TransferPlanner transfers={recommendation?.transfers} isLoading={isRecommending} />
 
         <div className="space-y-3">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">

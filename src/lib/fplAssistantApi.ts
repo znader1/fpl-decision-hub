@@ -23,6 +23,25 @@ export interface FplTeamRecommendationBenchPlayer extends FplTeamRecommendationP
   bench_order: number;
 }
 
+export interface FplTransferPlayer {
+  id: number;
+  name: string;
+  team: string;
+  price: number;
+}
+
+export interface FplTransferMove {
+  sell: FplTransferPlayer;
+  buy: FplTransferPlayer;
+  score_gain?: number;
+}
+
+export interface FplTransfersRecommendation {
+  note?: string;
+  moves: FplTransferMove[];
+  remaining_itb?: number;
+}
+
 export interface FplSquad {
   entry_id: number;
   event_id: number;
@@ -41,6 +60,7 @@ export interface FplTeamRecommendation extends FplSquad {
   captain_player_id: number;
   vice_player_id: number;
   projected_points_with_captain: number;
+  transfers?: FplTransfersRecommendation;
   starting_xi: FplTeamRecommendationPlayer[];
   bench: FplTeamRecommendationBenchPlayer[];
 }
@@ -53,6 +73,27 @@ export const SAMPLE_TEAM_RECOMMENDATION: FplTeamRecommendation = {
   captain_player_id: 449,
   vice_player_id: 237,
   projected_points_with_captain: 57.931999999999995,
+  transfers: {
+    note: "Sample transfer suggestion (replace with backend output).",
+    moves: [
+      {
+        sell: {
+          id: 253,
+          name: "Henderson",
+          team: "CRY",
+          price: 5,
+        },
+        buy: {
+          id: 32,
+          name: "Martinez",
+          team: "AVL",
+          price: 5,
+        },
+        score_gain: 5.1,
+      },
+    ],
+    remaining_itb: 0.5,
+  },
   starting_xi: [
     {
       player_id: 5,
@@ -384,6 +425,7 @@ export interface TeamRecommendationParams {
   eventId: number;
   horizonGws: number;
   strategy?: string;
+  includeTransfers?: boolean;
 }
 
 export interface SquadParams {
@@ -412,6 +454,7 @@ export const interpolateTeamRecommendationUrl = (template: string, params: TeamR
     event_id: params.eventId,
     horizon_gws: params.horizonGws,
     strategy: params.strategy,
+    include_transfers: params.includeTransfers,
   });
 };
 

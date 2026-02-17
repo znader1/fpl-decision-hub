@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -18,6 +19,8 @@ interface ParameterSidebarProps {
   onHorizonGwsChange: (horizonGws: number) => void;
   transferStrategy: string;
   onTransferStrategyChange: (strategy: string) => void;
+  includeTransfers: boolean;
+  onIncludeTransfersChange: (includeTransfers: boolean) => void;
   canRecommend: boolean;
   isRecommending: boolean;
   onRecommend: () => void;
@@ -34,6 +37,8 @@ export const ParameterSidebar = ({
   onHorizonGwsChange,
   transferStrategy,
   onTransferStrategyChange,
+  includeTransfers,
+  onIncludeTransfersChange,
   canRecommend,
   isRecommending,
   onRecommend,
@@ -104,6 +109,23 @@ export const ParameterSidebar = ({
             />
             <p className="text-[11px] text-muted-foreground">
               Only sent if your recommendation URL template contains <span className="font-mono">{`{strategy}`}</span>.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="include-transfers" className="text-xs text-muted-foreground">
+                Include transfer suggestions
+              </Label>
+              <Switch
+                id="include-transfers"
+                checked={includeTransfers}
+                onCheckedChange={onIncludeTransfersChange}
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Only sent if your recommendation URL template contains{" "}
+              <span className="font-mono">{`{include_transfers}`}</span>.
             </p>
           </div>
 
