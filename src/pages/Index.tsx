@@ -252,6 +252,7 @@ const Index = () => {
         fixturesRequestUrl={fixturesRequestUrl}
       />
       <RecommendationsPanel
+        squad={squadQuery.data}
         recommendation={recommendationMutation.data}
         isRecommending={recommendationMutation.isPending}
         horizonGws={horizonGws}

@@ -50,7 +50,7 @@ export const ParameterSidebar = ({
   const recommendDisabled = !canRecommend || !Number.isFinite(entryId) || entryId <= 0 || isRecommending;
 
   return (
-    <aside className="w-80 bg-card border-r border-border p-6 overflow-y-auto">
+    <aside className="w-80 shrink-0 bg-card border-r border-border p-6 overflow-y-auto">
       <div className="space-y-6">
         <div>
           <h2 className="text-xl font-bold text-foreground flex items-center gap-2 mb-4">

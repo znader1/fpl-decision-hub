@@ -59,6 +59,17 @@ const parseNextFixturesLabel = (label?: string): Player["fixture"] | undefined =
 const getCaptainIds = (team: PitchTeam) => {
   const captainFromId = typeof team.captain_player_id === "number" ? team.captain_player_id : undefined;
   const viceFromId = typeof team.vice_player_id === "number" ? team.vice_player_id : undefined;
+
+  if ("horizon_gws" in team) {
+    const all = [...team.starting_xi, ...team.bench];
+    const captainSuggested = all.find((p) => p.is_captain_suggested)?.player_id;
+    const viceSuggested = all.find((p) => p.is_vice_suggested)?.player_id;
+    return {
+      captainId: captainSuggested ?? captainFromId,
+      viceId: viceSuggested ?? viceFromId,
+    };
+  }
+
   const captainFromFlags = team.starting_xi.find((p) => p.is_captain)?.player_id;
   const viceFromFlags = team.starting_xi.find((p) => p.is_vice_captain)?.player_id;
   return {
@@ -78,14 +89,8 @@ const toPitchPlayer = (
   team: player.team_short,
   points: player.xpts,
   fixture,
-  isCaptain:
-    (typeof captainId === "number" && player.player_id === captainId) ||
-    player.is_captain ||
-    Boolean(player.is_captain_suggested),
-  isViceCaptain:
-    (typeof viceId === "number" && player.player_id === viceId) ||
-    player.is_vice_captain ||
-    Boolean(player.is_vice_suggested),
+  isCaptain: typeof captainId === "number" && player.player_id === captainId,
+  isViceCaptain: typeof viceId === "number" && player.player_id === viceId,
 });
 
 const toBenchPlayer = (
@@ -126,6 +131,7 @@ export const PitchVisualization = ({
     }
   }, []);
 
+  const recommendationTeam = "horizon_gws" in team ? team : undefined;
   const { captainId, viceId } = useMemo(() => getCaptainIds(team), [team]);
 
   const gwPoints = useMemo(() => {
@@ -167,8 +173,26 @@ export const PitchVisualization = ({
   };
 
   return (
-    <div className="flex-1 p-6 overflow-y-auto">
+    <div className="flex-1 min-w-0 p-6 overflow-y-auto">
       <div className="max-w-5xl mx-auto">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">
+              {recommendationTeam ? "Recommended Squad" : "Current Squad"}
+            </h2>
+            {recommendationTeam && (
+              <p className="text-xs text-muted-foreground">
+                Optimized for GW {recommendationTeam.event_id} · Horizon {recommendationTeam.horizon_gws} GWs
+              </p>
+            )}
+          </div>
+          {recommendationTeam && (
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
+              Recommended
+            </span>
+          )}
+        </div>
+
         {!errorMessage && noticeMessage && (
           <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
             <p>{noticeMessage}</p>

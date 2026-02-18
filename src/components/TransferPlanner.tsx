@@ -65,7 +65,7 @@ export const TransferPlanner = ({ transfers, isLoading = false }: TransferPlanne
                 <div className="flex-1 flex items-center gap-2 min-w-0">
                   <JerseyIcon team={move.sell.team} size="sm" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-destructive truncate">{move.sell.name}</p>
+                    <p className="text-sm font-medium text-destructive leading-tight break-words">{move.sell.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {move.sell.team} · {formatMoney(move.sell.price)}
                     </p>
@@ -78,7 +78,7 @@ export const TransferPlanner = ({ transfers, isLoading = false }: TransferPlanne
                 <div className="flex-1 flex items-center gap-2 min-w-0">
                   <JerseyIcon team={move.buy.team} size="sm" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-primary truncate">{move.buy.name}</p>
+                    <p className="text-sm font-medium text-primary leading-tight break-words">{move.buy.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {move.buy.team} · {formatMoney(move.buy.price)}
                     </p>
