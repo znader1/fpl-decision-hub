@@ -3,6 +3,7 @@ import { PlayerCard, type Player } from "./PlayerCard";
 import { GameweekNav } from "./GameweekNav";
 import type {
   FplSquad,
+  FplTeamFixture,
   FplTeamRecommendation,
   FplTeamRecommendationBenchPlayer,
   FplTeamRecommendationPlayer,
@@ -16,9 +17,12 @@ interface PitchVisualizationProps {
   onRequestedGwChange: (gw: number) => void;
   gwSelectable: boolean;
   isLoading?: boolean;
+  noticeMessage?: string;
   errorMessage?: string;
   requestUrl?: string;
   sourceLabel?: string;
+  fixturesByTeam?: Record<string, FplTeamFixture[]>;
+  fixturesRequestUrl?: string;
 }
 
 const getRowGapClass = (count: number) => {
@@ -31,6 +35,26 @@ const getRowGapClass = (count: number) => {
 };
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
+
+const parseNextFixturesLabel = (label?: string): Player["fixture"] | undefined => {
+  if (typeof label !== "string") return undefined;
+  const trimmed = label.trim();
+  if (!trimmed) return undefined;
+
+  const difficultyMatch = trimmed.match(/\(D([1-5])\)/i);
+  const difficulty = difficultyMatch ? Number(difficultyMatch[1]) : undefined;
+
+  const isHome = trimmed.startsWith("H-") ? true : trimmed.startsWith("A-") ? false : undefined;
+  const opponentMatch = trimmed.match(/^[HA]-([A-Z]{2,4})/);
+  const opponent = opponentMatch?.[1] ?? "";
+
+  return {
+    label: trimmed,
+    opponent,
+    isHome,
+    difficulty,
+  };
+};
 
 const getCaptainIds = (team: PitchTeam) => {
   const captainFromId = typeof team.captain_player_id === "number" ? team.captain_player_id : undefined;
@@ -46,12 +70,14 @@ const getCaptainIds = (team: PitchTeam) => {
 const toPitchPlayer = (
   player: FplTeamRecommendationPlayer,
   captainId?: number,
-  viceId?: number
+  viceId?: number,
+  fixture?: Player["fixture"]
 ): Player => ({
   id: player.player_id,
   name: player.web_name,
   team: player.team_short,
   points: player.xpts,
+  fixture,
   isCaptain:
     (typeof captainId === "number" && player.player_id === captainId) ||
     player.is_captain ||
@@ -65,9 +91,10 @@ const toPitchPlayer = (
 const toBenchPlayer = (
   player: FplTeamRecommendationBenchPlayer,
   captainId?: number,
-  viceId?: number
+  viceId?: number,
+  fixture?: Player["fixture"]
 ): Player => ({
-  ...toPitchPlayer(player, captainId, viceId),
+  ...toPitchPlayer(player, captainId, viceId, fixture),
   number: player.bench_order,
 });
 
@@ -84,9 +111,12 @@ export const PitchVisualization = ({
   onRequestedGwChange,
   gwSelectable,
   isLoading = false,
+  noticeMessage,
   errorMessage,
   requestUrl,
   sourceLabel = "Squad",
+  fixturesByTeam,
+  fixturesRequestUrl,
 }: PitchVisualizationProps) => {
   const pageOrigin = useMemo(() => {
     try {
@@ -117,12 +147,37 @@ export const PitchVisualization = ({
     return [...team.bench].sort((a, b) => a.bench_order - b.bench_order);
   }, [team.bench]);
 
+  const getFixtureForTeam = (teamShort: string): Player["fixture"] | undefined => {
+    const fixtures = fixturesByTeam?.[teamShort];
+    if (!fixtures || fixtures.length === 0) return undefined;
+    const primary = fixtures[0];
+    const extraCount = fixtures.length - 1;
+    return {
+      opponent: primary.opponent_short,
+      isHome: primary.is_home,
+      difficulty: primary.difficulty,
+      extraCount: extraCount > 0 ? extraCount : undefined,
+    };
+  };
+
+  const getFixtureForPlayer = (player: FplTeamRecommendationPlayer): Player["fixture"] | undefined => {
+    const fromLabel = parseNextFixturesLabel(player.next_fixtures);
+    if (fromLabel) return fromLabel;
+    return getFixtureForTeam(player.team_short);
+  };
+
   return (
     <div className="flex-1 p-6 overflow-y-auto">
       <div className="max-w-5xl mx-auto">
+        {!errorMessage && noticeMessage && (
+          <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+            <p>{noticeMessage}</p>
+          </div>
+        )}
+
         {errorMessage && (
           <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            <p>Failed to load from backend. Showing sample data instead.</p>
+            <p>Failed to load from backend. Showing last loaded data instead.</p>
             <p className="mt-1 text-xs text-destructive/90">{errorMessage}</p>
             {requestUrl && <p className="mt-1 text-xs text-destructive/80 break-all">{requestUrl}</p>}
           </div>
@@ -165,6 +220,11 @@ export const PitchVisualization = ({
               <span className="font-semibold text-foreground">Request:</span> {requestUrl}
             </div>
           )}
+          {fixturesRequestUrl && (
+            <div className="mt-1 break-all">
+              <span className="font-semibold text-foreground">Fixtures:</span> {fixturesRequestUrl}
+            </div>
+          )}
         </div>
 
         <div
@@ -200,28 +260,40 @@ export const PitchVisualization = ({
           {/* Goalkeeper */}
           <div className="flex justify-center mb-10 relative z-10">
             {goalkeeper.map((player) => (
-              <PlayerCard key={player.player_id} player={toPitchPlayer(player, captainId, viceId)} />
+              <PlayerCard
+                key={player.player_id}
+                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player))}
+              />
             ))}
           </div>
 
           {/* Defenders */}
           <div className={`flex justify-center ${getRowGapClass(defenders.length)} mb-12 relative z-10`}>
             {defenders.map((player) => (
-              <PlayerCard key={player.player_id} player={toPitchPlayer(player, captainId, viceId)} />
+              <PlayerCard
+                key={player.player_id}
+                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player))}
+              />
             ))}
           </div>
 
           {/* Midfielders */}
           <div className={`flex justify-center ${getRowGapClass(midfielders.length)} mb-12 relative z-10`}>
             {midfielders.map((player) => (
-              <PlayerCard key={player.player_id} player={toPitchPlayer(player, captainId, viceId)} />
+              <PlayerCard
+                key={player.player_id}
+                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player))}
+              />
             ))}
           </div>
 
           {/* Forwards */}
           <div className={`flex justify-center ${getRowGapClass(forwards.length)} relative z-10`}>
             {forwards.map((player) => (
-              <PlayerCard key={player.player_id} player={toPitchPlayer(player, captainId, viceId)} />
+              <PlayerCard
+                key={player.player_id}
+                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player))}
+              />
             ))}
           </div>
         </div>
@@ -234,7 +306,10 @@ export const PitchVisualization = ({
           </div>
           <div className="flex justify-center gap-8">
             {bench.map((player) => (
-              <PlayerCard key={player.player_id} player={toBenchPlayer(player, captainId, viceId)} />
+              <PlayerCard
+                key={player.player_id}
+                player={toBenchPlayer(player, captainId, viceId, getFixtureForPlayer(player))}
+              />
             ))}
           </div>
         </div>
@@ -242,4 +317,3 @@ export const PitchVisualization = ({
     </div>
   );
 };
-
