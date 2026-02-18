@@ -10,6 +10,8 @@ export interface FplTeamRecommendationPlayer {
   is_vice_captain: boolean;
   multiplier: number;
   xpts: number;
+  next_fixtures?: string;
+  fixtures_horizon?: FplFixturesHorizonItem[];
   is_captain_suggested?: boolean;
   is_vice_suggested?: boolean;
   team?: number;
@@ -17,6 +19,14 @@ export interface FplTeamRecommendationPlayer {
   photo?: string;
   badge_url?: string;
   photo_url?: string;
+}
+
+export interface FplFixturesHorizonItem {
+  event_id: number;
+  fixtures: string;
+  fixture_count?: number;
+  diff_avg?: number;
+  xpts?: number;
 }
 
 export interface FplTeamRecommendationBenchPlayer extends FplTeamRecommendationPlayer {
@@ -40,6 +50,13 @@ export interface FplTransfersRecommendation {
   note?: string;
   moves: FplTransferMove[];
   remaining_itb?: number;
+}
+
+export interface FplTeamFixture {
+  team_short: string;
+  opponent_short: string;
+  difficulty?: number;
+  is_home?: boolean;
 }
 
 export interface FplSquad {
@@ -433,6 +450,10 @@ export interface SquadParams {
   eventId: number;
 }
 
+export interface FixturesParams {
+  eventId: number;
+}
+
 type UrlTemplateParamValue = string | number | boolean | undefined | null;
 type UrlTemplateParams = Record<string, UrlTemplateParamValue>;
 
@@ -458,12 +479,18 @@ export const interpolateTeamRecommendationUrl = (template: string, params: TeamR
   });
 };
 
+export const interpolateFixturesUrl = (template: string, params: FixturesParams): string => {
+  return interpolateUrlTemplate(template, { event_id: params.eventId });
+};
+
 const getEnvString = (key: string): string | undefined => {
   const value = (import.meta.env as Record<string, unknown>)[key];
   return typeof value === "string" && value.length > 0 ? value : undefined;
 };
 
 export const getSquadUrlTemplate = (): string | undefined => getEnvString("VITE_FPL_SQUAD_URL");
+
+export const getFixturesUrlTemplate = (): string | undefined => getEnvString("VITE_FPL_FIXTURES_URL");
 
 export const getRecommendationUrlTemplate = (): string | undefined =>
   getEnvString("VITE_FPL_RECOMMENDATION_URL") ?? getEnvString("VITE_FPL_TEAM_RECOMMENDATION_URL");
@@ -487,6 +514,36 @@ const formatNetworkHint = (url: string) => {
   return isMixedContent
     ? "Your page is HTTPS but the API URL is HTTP (mixed-content is blocked). Use HTTPS for the API or run the frontend over HTTP."
     : `If this URL works in a tab but fails in fetch, it's usually CORS. Option A: allow Origin ${origin || "<your-frontend-origin>"} in FastAPI CORSMiddleware. Option B (Vite dev): use relative URLs like /squad and /recommendations with a Vite proxy.`;
+};
+
+type FixtureRecord = Record<string, unknown>;
+
+const isFplTeamFixtureRecord = (value: unknown): value is FixtureRecord => {
+  if (!isRecord(value)) return false;
+  const team = value.team_short ?? value.team;
+  const opponent = value.opponent_short ?? value.opponent;
+  if (typeof team !== "string" || team.length === 0) return false;
+  if (typeof opponent !== "string" || opponent.length === 0) return false;
+
+  const difficulty = value.difficulty ?? value.fdr ?? value.fixture_difficulty;
+  if (difficulty !== undefined && typeof difficulty !== "number") return false;
+
+  const isHome = value.is_home ?? value.isHome ?? value.home;
+  if (isHome !== undefined && typeof isHome !== "boolean") return false;
+
+  return true;
+};
+
+const normalizeTeamFixture = (value: FixtureRecord): FplTeamFixture => {
+  const difficultyRaw = value.difficulty ?? value.fdr ?? value.fixture_difficulty;
+  const isHomeRaw = value.is_home ?? value.isHome ?? value.home;
+
+  return {
+    team_short: String((value.team_short ?? value.team) as string),
+    opponent_short: String((value.opponent_short ?? value.opponent) as string),
+    difficulty: typeof difficultyRaw === "number" ? difficultyRaw : undefined,
+    is_home: typeof isHomeRaw === "boolean" ? isHomeRaw : undefined,
+  };
 };
 
 export const fetchSquad = async (params: SquadParams, signal?: AbortSignal): Promise<FplSquad> => {
@@ -525,6 +582,54 @@ export const fetchSquad = async (params: SquadParams, signal?: AbortSignal): Pro
   }
 
   return data;
+};
+
+export const fetchFixtures = async (params: FixturesParams, signal?: AbortSignal): Promise<FplTeamFixture[]> => {
+  const template = getFixturesUrlTemplate();
+  if (!template) return [];
+
+  const url = interpolateFixturesUrl(template, params);
+  let response: Response;
+  try {
+    response = await fetch(url, { signal });
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    if (typeof err === "object" && err !== null && "name" in err && err.name === "AbortError") throw err;
+
+    const hint = formatNetworkHint(url);
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Network error fetching fixtures. ${hint} (${message})`);
+  }
+
+  if (!response.ok) {
+    let details = "";
+    try {
+      details = await response.text();
+    } catch {
+      details = "";
+    }
+    const trimmed = details.trim();
+    const suffix = trimmed ? `: ${trimmed.slice(0, 300)}` : "";
+    throw new Error(`Failed to fetch fixtures (${response.status})${suffix}`);
+  }
+
+  const raw: unknown = await response.json();
+  const data: unknown = parseJsonMaybe(raw);
+  const fixturesRaw = Array.isArray(data)
+    ? data
+    : isRecord(data) && Array.isArray(data.fixtures)
+      ? data.fixtures
+      : undefined;
+
+  if (!fixturesRaw) {
+    throw new Error("Invalid fixtures response");
+  }
+
+  const fixtures: FplTeamFixture[] = fixturesRaw
+    .filter(isFplTeamFixtureRecord)
+    .map((fixture) => normalizeTeamFixture(fixture));
+
+  return fixtures;
 };
 
 export const fetchTeamRecommendation = async (

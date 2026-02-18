@@ -4,14 +4,18 @@ import { ParameterSidebar } from "@/components/ParameterSidebar";
 import { PitchVisualization } from "@/components/PitchVisualization";
 import { RecommendationsPanel } from "@/components/RecommendationsPanel";
 import {
+  fetchFixtures,
   fetchSquad,
   fetchTeamRecommendation,
   getRecommendationUrlTemplate,
+  getFixturesUrlTemplate,
   getSquadUrlTemplate,
+  interpolateFixturesUrl,
   interpolateSquadUrl,
   interpolateTeamRecommendationUrl,
   SAMPLE_SQUAD,
   type FplSquad,
+  type FplTeamFixture,
   type FplTeamRecommendation,
 } from "@/lib/fplAssistantApi";
 
@@ -27,6 +31,16 @@ const getInitialGw = () => {
   if (Number.isFinite(fromStorage) && fromStorage >= 1 && fromStorage <= 38) return clampGw(fromStorage);
 
   return SAMPLE_SQUAD.event_id;
+};
+
+const getInitialSquadGw = () => {
+  const fromQuery = Number(new URLSearchParams(window.location.search).get("squad_gw"));
+  if (Number.isFinite(fromQuery) && fromQuery >= 1 && fromQuery <= 38) return clampGw(fromQuery);
+
+  const fromStorage = Number(localStorage.getItem("fpl_squad_gw"));
+  if (Number.isFinite(fromStorage) && fromStorage >= 1 && fromStorage <= 38) return clampGw(fromStorage);
+
+  return getInitialGw();
 };
 
 const getInitialEntryId = () => {
@@ -69,48 +83,73 @@ const getInitialIncludeTransfers = () => {
 
 const Index = () => {
   const [entryId, setEntryId] = useState(getInitialEntryId);
-  const [currentGW, setCurrentGW] = useState(getInitialGw);
+  const [selectedGW, setSelectedGW] = useState(getInitialGw);
+  const [squadGW, setSquadGW] = useState(getInitialSquadGw);
   const [horizonGws, setHorizonGws] = useState(getInitialHorizon);
   const [transferStrategy, setTransferStrategy] = useState(getInitialStrategy);
   const [includeTransfers, setIncludeTransfers] = useState(getInitialIncludeTransfers);
   const [pitchMode, setPitchMode] = useState<PitchMode>("squad");
 
   const squadTemplate = getSquadUrlTemplate();
+  const fixturesTemplate = getFixturesUrlTemplate();
   const recommendationTemplate = getRecommendationUrlTemplate();
 
   const canFetchSquad = Boolean(squadTemplate);
+  const canFetchFixtures = Boolean(fixturesTemplate);
   const canRecommend = Boolean(recommendationTemplate);
-  const canChangeGw = Boolean(squadTemplate?.includes("{event_id}"));
+  const canChangeGw = true;
 
   const squadRequestUrl = useMemo(() => {
     if (!squadTemplate) return undefined;
-    return interpolateSquadUrl(squadTemplate, { entryId, eventId: currentGW });
-  }, [squadTemplate, entryId, currentGW]);
+    return interpolateSquadUrl(squadTemplate, { entryId, eventId: squadGW });
+  }, [squadTemplate, entryId, squadGW]);
 
   const recommendationRequestUrl = useMemo(() => {
     if (!recommendationTemplate) return undefined;
     return interpolateTeamRecommendationUrl(recommendationTemplate, {
       entryId,
-      eventId: currentGW,
+      eventId: selectedGW,
       horizonGws,
       strategy: transferStrategy,
       includeTransfers,
     });
-  }, [recommendationTemplate, entryId, currentGW, horizonGws, transferStrategy, includeTransfers]);
+  }, [recommendationTemplate, entryId, selectedGW, horizonGws, transferStrategy, includeTransfers]);
+
+  const fixturesRequestUrl = useMemo(() => {
+    if (!fixturesTemplate) return undefined;
+    return interpolateFixturesUrl(fixturesTemplate, { eventId: selectedGW });
+  }, [fixturesTemplate, selectedGW]);
 
   const squadQuery = useQuery<FplSquad>({
-    queryKey: ["squad", entryId, currentGW],
-    queryFn: ({ signal }) => fetchSquad({ entryId, eventId: currentGW }, signal),
+    queryKey: ["squad", entryId, squadGW],
+    queryFn: ({ signal }) => fetchSquad({ entryId, eventId: squadGW }, signal),
     enabled: canFetchSquad && Number.isFinite(entryId) && entryId > 0,
-    initialData: SAMPLE_SQUAD,
+    placeholderData: (previousData) => previousData ?? SAMPLE_SQUAD,
     retry: false,
   });
+
+  const fixturesQuery = useQuery<FplTeamFixture[]>({
+    queryKey: ["fixtures", selectedGW],
+    queryFn: ({ signal }) => fetchFixtures({ eventId: selectedGW }, signal),
+    enabled: canFetchFixtures && Number.isFinite(selectedGW) && selectedGW >= 1 && selectedGW <= 38,
+    retry: false,
+  });
+
+  const fixturesByTeam = useMemo(() => {
+    const mapping: Record<string, FplTeamFixture[]> = {};
+    for (const fixture of fixturesQuery.data ?? []) {
+      const teamShort = fixture.team_short;
+      if (!mapping[teamShort]) mapping[teamShort] = [];
+      mapping[teamShort].push(fixture);
+    }
+    return mapping;
+  }, [fixturesQuery.data]);
 
   const recommendationMutation = useMutation<FplTeamRecommendation, unknown, void>({
     mutationFn: async () =>
       fetchTeamRecommendation({
         entryId,
-        eventId: currentGW,
+        eventId: selectedGW,
         horizonGws,
         strategy: transferStrategy,
         includeTransfers,
@@ -122,14 +161,15 @@ const Index = () => {
   useEffect(() => {
     try {
       localStorage.setItem("fpl_entry_id", String(entryId));
-      localStorage.setItem("fpl_selected_gw", String(currentGW));
+      localStorage.setItem("fpl_selected_gw", String(selectedGW));
+      localStorage.setItem("fpl_squad_gw", String(squadGW));
       localStorage.setItem("fpl_horizon_gws", String(horizonGws));
       localStorage.setItem("fpl_transfer_strategy", transferStrategy);
       localStorage.setItem("fpl_include_transfers", String(includeTransfers));
     } catch {
       // ignore
     }
-  }, [entryId, currentGW, horizonGws, transferStrategy, includeTransfers]);
+  }, [entryId, selectedGW, squadGW, horizonGws, transferStrategy, includeTransfers]);
 
   useEffect(() => {
     resetRecommendation();
@@ -169,7 +209,7 @@ const Index = () => {
   const sourceLabel = pitchMode === "recommendation" ? "Recommendation" : "Squad";
 
   const setGwAndReset = (gw: number) => {
-    setCurrentGW(gw);
+    setSelectedGW(gw);
     setPitchMode("squad");
     recommendationMutation.reset();
   };
@@ -201,13 +241,15 @@ const Index = () => {
       />
       <PitchVisualization
         team={activeTeam}
-        requestedGw={currentGW}
+        requestedGw={selectedGW}
         onRequestedGwChange={setGwAndReset}
         gwSelectable={canChangeGw}
         isLoading={isLoading}
         errorMessage={activeErrorMessage}
         requestUrl={activeRequestUrl}
         sourceLabel={sourceLabel}
+        fixturesByTeam={fixturesByTeam}
+        fixturesRequestUrl={fixturesRequestUrl}
       />
       <RecommendationsPanel
         recommendation={recommendationMutation.data}
