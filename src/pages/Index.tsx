@@ -159,6 +159,23 @@ const Index = () => {
   const resetRecommendation = recommendationMutation.reset;
 
   useEffect(() => {
+    if (squadQuery.isPlaceholderData) return;
+    if (squadQuery.isFetching || squadQuery.isError) return;
+
+    const returnedGw = squadQuery.data?.event_id;
+    if (!Number.isFinite(returnedGw) || returnedGw < 1 || returnedGw > 38) return;
+    if (returnedGw !== squadGW) {
+      setSquadGW(clampGw(returnedGw));
+    }
+  }, [
+    squadQuery.data?.event_id,
+    squadQuery.isError,
+    squadQuery.isFetching,
+    squadQuery.isPlaceholderData,
+    squadGW,
+  ]);
+
+  useEffect(() => {
     try {
       localStorage.setItem("fpl_entry_id", String(entryId));
       localStorage.setItem("fpl_selected_gw", String(selectedGW));
@@ -180,6 +197,11 @@ const Index = () => {
     if (pitchMode === "recommendation" && recommendationMutation.data) return recommendationMutation.data;
     return squadQuery.data;
   }, [pitchMode, recommendationMutation.data, squadQuery.data]);
+
+  const activeNoticeMessage = useMemo(() => {
+    if (pitchMode === "recommendation") return undefined;
+    return squadQuery.data?.note;
+  }, [pitchMode, squadQuery.data?.note]);
 
   const activeRequestUrl = pitchMode === "recommendation" ? recommendationRequestUrl : squadRequestUrl;
 
@@ -210,12 +232,14 @@ const Index = () => {
 
   const setGwAndReset = (gw: number) => {
     setSelectedGW(gw);
+    setSquadGW(gw);
     setPitchMode("squad");
     recommendationMutation.reset();
   };
 
   const setEntryAndReset = (value: number) => {
     setEntryId(value);
+    setSquadGW(selectedGW);
     setPitchMode("squad");
     recommendationMutation.reset();
   };
@@ -245,6 +269,7 @@ const Index = () => {
         onRequestedGwChange={setGwAndReset}
         gwSelectable={canChangeGw}
         isLoading={isLoading}
+        noticeMessage={activeNoticeMessage}
         errorMessage={activeErrorMessage}
         requestUrl={activeRequestUrl}
         sourceLabel={sourceLabel}
