@@ -489,12 +489,30 @@ const getEnvString = (key: string): string | undefined => {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 };
 
-export const getSquadUrlTemplate = (): string | undefined => getEnvString("VITE_FPL_SQUAD_URL");
+const resolveTemplateWithApiBase = (template: string | undefined): string | undefined => {
+  if (!template) return undefined;
+  if (!template.startsWith("/")) return template;
 
-export const getFixturesUrlTemplate = (): string | undefined => getEnvString("VITE_FPL_FIXTURES_URL");
+  const apiBase = getEnvString("VITE_FPL_API_BASE_URL");
+  if (!apiBase) return template;
+
+  try {
+    return new URL(template, apiBase).toString();
+  } catch {
+    return template;
+  }
+};
+
+export const getSquadUrlTemplate = (): string | undefined =>
+  resolveTemplateWithApiBase(getEnvString("VITE_FPL_SQUAD_URL"));
+
+export const getFixturesUrlTemplate = (): string | undefined =>
+  resolveTemplateWithApiBase(getEnvString("VITE_FPL_FIXTURES_URL"));
 
 export const getRecommendationUrlTemplate = (): string | undefined =>
-  getEnvString("VITE_FPL_RECOMMENDATION_URL") ?? getEnvString("VITE_FPL_TEAM_RECOMMENDATION_URL");
+  resolveTemplateWithApiBase(
+    getEnvString("VITE_FPL_RECOMMENDATION_URL") ?? getEnvString("VITE_FPL_TEAM_RECOMMENDATION_URL")
+  );
 
 // Backwards-compatible name (older code uses this).
 export const getTeamRecommendationUrlTemplate = getRecommendationUrlTemplate;
@@ -514,7 +532,25 @@ const formatNetworkHint = (url: string) => {
   const isMixedContent = protocol === "https:" && url.startsWith("http://");
   return isMixedContent
     ? "Your page is HTTPS but the API URL is HTTP (mixed-content is blocked). Use HTTPS for the API or run the frontend over HTTP."
-    : `If this URL works in a tab but fails in fetch, it's usually CORS. Option A: allow Origin ${origin || "<your-frontend-origin>"} in FastAPI CORSMiddleware. Option B (Vite dev): use relative URLs like /squad and /recommendations with a Vite proxy.`;
+    : `If this URL works in a tab but fails in fetch, it's usually CORS. Option A: allow Origin ${origin || "<your-frontend-origin>"} in FastAPI CORSMiddleware. Option B (Vite dev): use relative URLs like /squad and /recommendations with a Vite proxy. Option C (production): set VITE_FPL_API_BASE_URL and keep relative templates.`;
+};
+
+const parseJsonResponse = async (response: Response, url: string, endpointLabel: string): Promise<unknown> => {
+  const body = await response.text();
+  const parsed = parseJsonMaybe(body);
+  if (typeof parsed !== "string") return parsed;
+
+  const trimmed = parsed.trim();
+  const lower = trimmed.toLowerCase();
+  const looksLikeHtml = lower.startsWith("<!doctype") || lower.startsWith("<html");
+
+  if (looksLikeHtml) {
+    throw new Error(
+      `Expected JSON from ${endpointLabel}, but received HTML. This usually means the request hit the frontend app instead of the backend API. In production set VITE_FPL_API_BASE_URL or use absolute VITE_FPL_*_URL values. URL: ${url}`
+    );
+  }
+
+  throw new Error(`Invalid JSON from ${endpointLabel}: ${trimmed.slice(0, 240)}`);
 };
 
 type FixtureRecord = Record<string, unknown>;
@@ -576,8 +612,7 @@ export const fetchSquad = async (params: SquadParams, signal?: AbortSignal): Pro
     throw new Error(`Failed to fetch squad (${response.status})${suffix}`);
   }
 
-  const raw: unknown = await response.json();
-  const data = parseJsonMaybe(raw);
+  const data = await parseJsonResponse(response, url, "squad endpoint");
   if (!isFplSquad(data)) {
     throw new Error("Invalid squad response");
   }
@@ -614,8 +649,7 @@ export const fetchFixtures = async (params: FixturesParams, signal?: AbortSignal
     throw new Error(`Failed to fetch fixtures (${response.status})${suffix}`);
   }
 
-  const raw: unknown = await response.json();
-  const data: unknown = parseJsonMaybe(raw);
+  const data: unknown = await parseJsonResponse(response, url, "fixtures endpoint");
   const fixturesRaw = Array.isArray(data)
     ? data
     : isRecord(data) && Array.isArray(data.fixtures)
@@ -664,8 +698,7 @@ export const fetchTeamRecommendation = async (
     throw new Error(`Failed to fetch team recommendation (${response.status})${suffix}`);
   }
 
-  const raw: unknown = await response.json();
-  const data: unknown = parseJsonMaybe(raw);
+  const data: unknown = await parseJsonResponse(response, url, "team recommendation endpoint");
 
   if (!isFplTeamRecommendation(data)) {
     throw new Error("Invalid team recommendation response");
