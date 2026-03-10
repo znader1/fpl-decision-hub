@@ -141,11 +141,11 @@ export const RecommendationsPanel = ({
     <aside className="w-[28rem] shrink-0 bg-card border-l border-border p-6 overflow-y-auto">
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-            <Lightbulb className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2 tracking-tight">
+            <Lightbulb className="h-5 w-5 text-accent" />
             Insights
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             {recommendation ? `Recommendation for GW ${recommendation.event_id}` : "Compute a recommendation to see insights"}
           </p>
         </div>
