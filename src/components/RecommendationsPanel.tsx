@@ -43,7 +43,28 @@ const getFirstOutfieldBench = (team: FplSquad) => {
 
 const formatXp = (value?: number) => {
   if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  return (Math.round(value * 100) / 100).toString();
+  return (Math.round(value * 10) / 10).toString();
+};
+
+const getTransferCapacity = (recommendation: FplTeamRecommendation) => {
+  const transfers = recommendation.transfers;
+  if (!transfers) return undefined;
+
+  const plannedMoves = Array.isArray(transfers.moves) ? transfers.moves.length : 0;
+  const movesUsed =
+    typeof transfers.moves_used === "number"
+      ? transfers.moves_used
+      : typeof transfers.transfer_policy?.moves_used === "number"
+        ? transfers.transfer_policy.moves_used
+        : plannedMoves;
+  const maxMoves =
+    typeof transfers.max_moves === "number"
+      ? transfers.max_moves
+      : typeof transfers.transfer_policy?.max_moves === "number"
+        ? transfers.transfer_policy.max_moves
+        : undefined;
+
+  return { movesUsed, maxMoves };
 };
 
 export const RecommendationsPanel = ({
@@ -52,6 +73,11 @@ export const RecommendationsPanel = ({
   isRecommending = false,
   horizonGws,
 }: RecommendationsPanelProps) => {
+  const transferCapacity = useMemo(
+    () => (recommendation ? getTransferCapacity(recommendation) : undefined),
+    [recommendation]
+  );
+
   const quickTips = useMemo(() => {
     if (!recommendation) return [];
 
@@ -137,7 +163,7 @@ export const RecommendationsPanel = ({
               <div>
                 <p className="text-xs text-muted-foreground">Projected points</p>
                 <p className="font-semibold text-primary">
-                  {Math.round(recommendation.projected_points_with_captain * 100) / 100}
+                  {formatXp(recommendation.projected_points_with_captain)}
                 </p>
               </div>
               <div>
@@ -160,6 +186,16 @@ export const RecommendationsPanel = ({
                 <div className="col-span-2">
                   <p className="text-xs text-muted-foreground">Horizon</p>
                   <p className="font-semibold text-foreground">{horizonGws} GWs</p>
+                </div>
+              )}
+              {transferCapacity && (
+                <div className="col-span-2">
+                  <p className="text-xs text-muted-foreground">Transfer plan</p>
+                  <p className="font-semibold text-foreground">
+                    {transferCapacity.movesUsed}
+                    {typeof transferCapacity.maxMoves === "number" ? `/${transferCapacity.maxMoves}` : ""}
+                    {" "}moves
+                  </p>
                 </div>
               )}
             </div>

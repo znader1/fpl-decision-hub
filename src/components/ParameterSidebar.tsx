@@ -161,14 +161,6 @@ export const ParameterSidebar = ({
           )}
         </Card>
 
-        <Card className="p-4 space-y-2">
-          <h3 className="text-sm font-semibold text-foreground">Notes</h3>
-          <p className="text-xs text-muted-foreground">
-            Pitch loads your current squad from <span className="font-mono">VITE_FPL_SQUAD_URL</span>, then switches to
-            the recommendation response after you click Recommend.
-          </p>
-        </Card>
-
         {/* Existing filter UI can be reconnected to backend later. */}
         <Card className="p-4 space-y-4">
           <div className="space-y-2">

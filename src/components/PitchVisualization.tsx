@@ -17,12 +17,8 @@ interface PitchVisualizationProps {
   onRequestedGwChange: (gw: number) => void;
   gwSelectable: boolean;
   isLoading?: boolean;
-  noticeMessage?: string;
   errorMessage?: string;
-  requestUrl?: string;
-  sourceLabel?: string;
   fixturesByTeam?: Record<string, FplTeamFixture[]>;
-  fixturesRequestUrl?: string;
 }
 
 const getRowGapClass = (count: number) => {
@@ -34,7 +30,7 @@ const getRowGapClass = (count: number) => {
   return "gap-6";
 };
 
-const round2 = (value: number) => Math.round(value * 100) / 100;
+const round1 = (value: number) => Math.round(value * 10) / 10;
 
 const parseNextFixturesLabel = (label?: string): Player["fixture"] | undefined => {
   if (typeof label !== "string") return undefined;
@@ -116,27 +112,15 @@ export const PitchVisualization = ({
   onRequestedGwChange,
   gwSelectable,
   isLoading = false,
-  noticeMessage,
   errorMessage,
-  requestUrl,
-  sourceLabel = "Squad",
   fixturesByTeam,
-  fixturesRequestUrl,
 }: PitchVisualizationProps) => {
-  const pageOrigin = useMemo(() => {
-    try {
-      return window.location.origin;
-    } catch {
-      return "";
-    }
-  }, []);
-
   const recommendationTeam = "horizon_gws" in team ? team : undefined;
   const { captainId, viceId } = useMemo(() => getCaptainIds(team), [team]);
 
   const gwPoints = useMemo(() => {
     const points = computeTeamPoints(team);
-    return Number.isFinite(points) ? round2(points) : 0;
+    return Number.isFinite(points) ? round1(points) : 0;
   }, [team]);
 
   const { goalkeeper, defenders, midfielders, forwards } = useMemo(() => {
@@ -193,17 +177,10 @@ export const PitchVisualization = ({
           )}
         </div>
 
-        {!errorMessage && noticeMessage && (
-          <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
-            <p>{noticeMessage}</p>
-          </div>
-        )}
-
         {errorMessage && (
           <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             <p>Failed to load from backend. Showing last loaded data instead.</p>
             <p className="mt-1 text-xs text-destructive/90">{errorMessage}</p>
-            {requestUrl && <p className="mt-1 text-xs text-destructive/80 break-all">{requestUrl}</p>}
           </div>
         )}
 
@@ -217,39 +194,6 @@ export const PitchVisualization = ({
           navEnabled={gwSelectable}
           onSelectGW={(gw) => gwSelectable && onRequestedGwChange(gw)}
         />
-
-        <div className="mb-6 rounded-xl bg-card border border-border px-4 py-3 text-xs text-muted-foreground">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span>
-              <span className="font-semibold text-foreground">Entry ID:</span> {team.entry_id}
-            </span>
-            <span>
-              <span className="font-semibold text-foreground">Requested GW:</span> {requestedGw}
-            </span>
-            <span>
-              <span className="font-semibold text-foreground">Returned Event ID:</span> {team.event_id}
-            </span>
-            <span>
-              <span className="font-semibold text-foreground">Source:</span> {sourceLabel}
-            </span>
-            {pageOrigin && (
-              <span>
-                <span className="font-semibold text-foreground">Origin:</span> {pageOrigin}
-              </span>
-            )}
-            {isLoading && <span className="text-muted-foreground">Updating…</span>}
-          </div>
-          {requestUrl && (
-            <div className="mt-2 break-all">
-              <span className="font-semibold text-foreground">Request:</span> {requestUrl}
-            </div>
-          )}
-          {fixturesRequestUrl && (
-            <div className="mt-1 break-all">
-              <span className="font-semibold text-foreground">Fixtures:</span> {fixturesRequestUrl}
-            </div>
-          )}
-        </div>
 
         <div
           className="relative rounded-2xl overflow-hidden px-4 py-8"
