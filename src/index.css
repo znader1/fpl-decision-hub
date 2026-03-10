@@ -2,39 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-/* FPL Ace Advisor – Design System
+/* FPL Ace Advisor – Premier League inspired design system
    All colors are HSL values.
 */
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 220 25% 12%;
+    --background: 248 20% 96%;
+    --foreground: 248 25% 15%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 25% 12%;
+    --card: 248 15% 99%;
+    --card-foreground: 248 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 12%;
+    --popover-foreground: 248 25% 15%;
 
-    --primary: 160 84% 32%;
+    --primary: 328 80% 48%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 94%;
-    --secondary-foreground: 220 25% 12%;
+    --secondary: 248 15% 92%;
+    --secondary-foreground: 248 25% 15%;
 
-    --muted: 220 14% 94%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 248 12% 92%;
+    --muted-foreground: 248 8% 46%;
 
-    --accent: 38 92% 50%;
-    --accent-foreground: 38 92% 14%;
+    --accent: 172 70% 38%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 90%;
-    --input: 220 13% 88%;
-    --ring: 160 84% 32%;
+    --border: 248 12% 89%;
+    --input: 248 12% 87%;
+    --ring: 328 80% 48%;
 
     --radius: 0.75rem;
 
@@ -45,62 +45,61 @@
 
     --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.06);
     --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.10);
-    --shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.12);
 
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    --sidebar-background: 220 25% 12%;
-    --sidebar-foreground: 220 10% 90%;
-    --sidebar-primary: 160 84% 40%;
+    --sidebar-background: 248 18% 94%;
+    --sidebar-foreground: 248 25% 15%;
+    --sidebar-primary: 328 80% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 18%;
-    --sidebar-accent-foreground: 220 10% 90%;
-    --sidebar-border: 220 20% 20%;
-    --sidebar-ring: 160 84% 32%;
+    --sidebar-accent: 248 15% 90%;
+    --sidebar-accent-foreground: 248 25% 15%;
+    --sidebar-border: 248 12% 86%;
+    --sidebar-ring: 328 80% 48%;
   }
 
   .dark {
-    --background: 220 20% 7%;
-    --foreground: 220 10% 92%;
+    --background: 248 20% 8%;
+    --foreground: 248 10% 92%;
 
-    --card: 220 20% 10%;
-    --card-foreground: 220 10% 92%;
+    --card: 248 18% 11%;
+    --card-foreground: 248 10% 92%;
 
-    --popover: 220 20% 10%;
-    --popover-foreground: 220 10% 92%;
+    --popover: 248 18% 11%;
+    --popover-foreground: 248 10% 92%;
 
-    --primary: 160 72% 42%;
+    --primary: 328 75% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 15% 15%;
-    --secondary-foreground: 220 10% 92%;
+    --secondary: 248 15% 15%;
+    --secondary-foreground: 248 10% 92%;
 
-    --muted: 220 15% 15%;
-    --muted-foreground: 220 8% 60%;
+    --muted: 248 15% 15%;
+    --muted-foreground: 248 8% 58%;
 
-    --accent: 38 85% 50%;
-    --accent-foreground: 38 85% 12%;
+    --accent: 172 65% 42%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 18%;
-    --input: 220 15% 18%;
-    --ring: 160 72% 42%;
+    --border: 248 15% 18%;
+    --input: 248 15% 18%;
+    --ring: 328 75% 55%;
 
     --pitch: 152 40% 25%;
     --pitch-dark: 152 44% 18%;
     --pitch-lines: 152 10% 45%;
-    --player-card: 220 15% 12%;
+    --player-card: 248 15% 13%;
 
-    --sidebar-background: 220 25% 6%;
-    --sidebar-foreground: 220 10% 85%;
-    --sidebar-primary: 160 72% 42%;
+    --sidebar-background: 248 20% 10%;
+    --sidebar-foreground: 248 10% 85%;
+    --sidebar-primary: 328 75% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 12%;
-    --sidebar-accent-foreground: 220 10% 85%;
-    --sidebar-border: 220 20% 14%;
-    --sidebar-ring: 160 72% 42%;
+    --sidebar-accent: 248 18% 14%;
+    --sidebar-accent-foreground: 248 10% 85%;
+    --sidebar-border: 248 15% 16%;
+    --sidebar-ring: 328 75% 55%;
   }
 }
 
