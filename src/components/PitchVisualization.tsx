@@ -199,14 +199,14 @@ export const PitchVisualization = ({
           className="relative rounded-2xl overflow-hidden px-4 py-8"
           style={{
             background: `linear-gradient(180deg, 
-              hsl(142 55% 38%) 0%, 
-              hsl(142 50% 42%) 25%,
-              hsl(142 55% 38%) 25.5%,
-              hsl(142 50% 42%) 50%,
-              hsl(142 55% 38%) 50.5%,
-              hsl(142 50% 42%) 75%,
-              hsl(142 55% 38%) 75.5%,
-              hsl(142 50% 42%) 100%)`,
+              hsl(var(--pitch)) 0%, 
+              hsl(var(--pitch-dark)) 25%,
+              hsl(var(--pitch)) 25.5%,
+              hsl(var(--pitch-dark)) 50%,
+              hsl(var(--pitch)) 50.5%,
+              hsl(var(--pitch-dark)) 75%,
+              hsl(var(--pitch)) 75.5%,
+              hsl(var(--pitch-dark)) 100%)`,
             minHeight: "600px",
           }}
         >

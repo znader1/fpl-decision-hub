@@ -239,7 +239,7 @@ export const RecommendationsPanel = ({
           ))}
         </div>
 
-        <Card className="p-4 bg-primary/5 border-primary/20">
+        <Card className="p-4 bg-accent/10 border-accent/20">
           <div className="space-y-2">
             <h3 className="font-semibold text-sm text-foreground">Weekly Summary</h3>
             <div className="space-y-1 text-xs text-muted-foreground">
@@ -247,7 +247,7 @@ export const RecommendationsPanel = ({
               <p>• Check captain + bench tips</p>
               <p>• Watch rotation/bench risks</p>
             </div>
-            <Button className="w-full mt-3" size="sm">
+            <Button className="w-full mt-3 bg-accent text-accent-foreground hover:bg-accent/90" size="sm">
               View Full Analysis
             </Button>
           </div>
