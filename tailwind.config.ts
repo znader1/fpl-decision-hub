@@ -49,6 +49,7 @@ export default {
         },
         pitch: {
           DEFAULT: "hsl(var(--pitch))",
+          dark: "hsl(var(--pitch-dark))",
           lines: "hsl(var(--pitch-lines))",
         },
         sidebar: {

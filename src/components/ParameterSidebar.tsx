@@ -1,4 +1,4 @@
-import { Sliders, Sparkles } from "lucide-react";
+import { Sliders, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+const STRATEGY_OPTIONS = [
+  { value: "", label: "None" },
+  { value: "balanced", label: "Balanced" },
+  { value: "aggressive", label: "Aggressive" },
+  { value: "conservative", label: "Conservative" },
+  { value: "wildcard", label: "Wildcard" },
+  { value: "free_hit", label: "Free Hit" },
+  { value: "bench_boost", label: "Bench Boost" },
+  { value: "triple_captain", label: "Triple Captain" },
+];
 
 interface ParameterSidebarProps {
   entryId: number;
@@ -50,20 +61,21 @@ export const ParameterSidebar = ({
   const recommendDisabled = !canRecommend || !Number.isFinite(entryId) || entryId <= 0 || isRecommending;
 
   return (
-    <aside className="w-80 shrink-0 bg-card border-r border-border p-6 overflow-y-auto">
+    <aside className="w-80 shrink-0 bg-sidebar border-r border-sidebar-border p-6 overflow-y-auto">
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-bold text-foreground flex items-center gap-2 mb-4">
-            <Sliders className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-bold text-sidebar-foreground flex items-center gap-2 mb-1 tracking-tight">
+            <Sliders className="h-5 w-5 text-sidebar-primary" />
             Parameters
           </h2>
+          <p className="text-xs text-sidebar-foreground/60 ml-7">Configure your squad analysis</p>
         </div>
 
-        <Card className="p-4 space-y-4">
-          <h3 className="text-sm font-semibold text-foreground">Team</h3>
+        <Card className="p-4 space-y-4 bg-sidebar-accent border-sidebar-border">
+          <h3 className="text-xs font-semibold text-sidebar-foreground/80 uppercase tracking-wider">Team</h3>
 
-          <div className="space-y-2">
-            <Label htmlFor="entry-id" className="text-xs text-muted-foreground">
+          <div className="space-y-1.5">
+            <Label htmlFor="entry-id" className="text-xs text-sidebar-foreground/70">
               Entry ID
             </Label>
             <Input
@@ -74,47 +86,51 @@ export const ParameterSidebar = ({
               placeholder="e.g. 588004"
               value={entryId ? String(entryId) : ""}
               onChange={(e) => onEntryIdChange(Number(e.target.value))}
+              className="bg-sidebar border-sidebar-border text-sidebar-foreground placeholder:text-sidebar-foreground/40"
             />
           </div>
         </Card>
 
-        <Card className="p-4 space-y-4">
-          <h3 className="text-sm font-semibold text-foreground">Recommendation</h3>
+        <Card className="p-4 space-y-4 bg-sidebar-accent border-sidebar-border">
+          <h3 className="text-xs font-semibold text-sidebar-foreground/80 uppercase tracking-wider">Recommendation</h3>
 
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Horizon (GWs)</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-sidebar-foreground/70">Horizon (GWs)</Label>
             <Select value={String(horizonGws)} onValueChange={(v) => onHorizonGwsChange(Number(v))}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-sidebar border-sidebar-border text-sidebar-foreground">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {[1, 2, 3, 4, 5, 6].map((gw) => (
                   <SelectItem key={gw} value={String(gw)}>
-                    {gw}
+                    {gw} GW{gw > 1 ? "s" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="strategy" className="text-xs text-muted-foreground">
-              Transfer strategy (optional)
+          <div className="space-y-1.5">
+            <Label className="text-xs text-sidebar-foreground/70">
+              Transfer Strategy
             </Label>
-            <Input
-              id="strategy"
-              placeholder="e.g. balanced"
-              value={transferStrategy}
-              onChange={(e) => onTransferStrategyChange(e.target.value)}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Only sent if your recommendation URL template contains <span className="font-mono">{`{strategy}`}</span>.
-            </p>
+            <Select value={transferStrategy || "none"} onValueChange={(v) => onTransferStrategyChange(v === "none" ? "" : v)}>
+              <SelectTrigger className="bg-sidebar border-sidebar-border text-sidebar-foreground">
+                <SelectValue placeholder="Select strategy…" />
+              </SelectTrigger>
+              <SelectContent>
+                {STRATEGY_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value || "none"}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="include-transfers" className="text-xs text-muted-foreground">
+              <Label htmlFor="include-transfers" className="text-xs text-sidebar-foreground/70">
                 Include transfer suggestions
               </Label>
               <Switch
@@ -123,19 +139,15 @@ export const ParameterSidebar = ({
                 onCheckedChange={onIncludeTransfersChange}
               />
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Only sent if your recommendation URL template contains{" "}
-              <span className="font-mono">{`{include_transfers}`}</span>.
-            </p>
           </div>
 
           <Button
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            className="w-full bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 shadow-md"
             onClick={onRecommend}
             disabled={recommendDisabled}
           >
-            <Sparkles className="h-4 w-4 mr-2" />
-            {isRecommending ? "Computing..." : "Recommend Squad"}
+            <Zap className="h-4 w-4 mr-2" />
+            {isRecommending ? "Computing…" : "Recommend Squad"}
           </Button>
           {recommendErrorMessage && (
             <p className="text-xs text-destructive break-words">{recommendErrorMessage}</p>
@@ -146,6 +158,7 @@ export const ParameterSidebar = ({
               <Button
                 variant={pitchMode === "squad" ? "default" : "outline"}
                 size="sm"
+                className={pitchMode === "squad" ? "bg-sidebar-primary text-sidebar-primary-foreground" : "border-sidebar-border text-sidebar-foreground"}
                 onClick={() => onPitchModeChange("squad")}
               >
                 Squad
@@ -153,22 +166,13 @@ export const ParameterSidebar = ({
               <Button
                 variant={pitchMode === "recommendation" ? "default" : "outline"}
                 size="sm"
+                className={pitchMode === "recommendation" ? "bg-sidebar-primary text-sidebar-primary-foreground" : "border-sidebar-border text-sidebar-foreground"}
                 onClick={() => onPitchModeChange("recommendation")}
               >
                 Recommended
               </Button>
             </div>
           )}
-        </Card>
-
-        {/* Existing filter UI can be reconnected to backend later. */}
-        <Card className="p-4 space-y-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">Filters (placeholder)</span>
-              <span className="text-sm text-muted-foreground">Coming soon</span>
-            </div>
-          </div>
         </Card>
       </div>
     </aside>

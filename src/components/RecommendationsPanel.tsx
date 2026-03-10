@@ -141,11 +141,11 @@ export const RecommendationsPanel = ({
     <aside className="w-[28rem] shrink-0 bg-card border-l border-border p-6 overflow-y-auto">
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-            <Lightbulb className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2 tracking-tight">
+            <Lightbulb className="h-5 w-5 text-accent" />
             Insights
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             {recommendation ? `Recommendation for GW ${recommendation.event_id}` : "Compute a recommendation to see insights"}
           </p>
         </div>
@@ -239,7 +239,7 @@ export const RecommendationsPanel = ({
           ))}
         </div>
 
-        <Card className="p-4 bg-primary/5 border-primary/20">
+        <Card className="p-4 bg-accent/10 border-accent/20">
           <div className="space-y-2">
             <h3 className="font-semibold text-sm text-foreground">Weekly Summary</h3>
             <div className="space-y-1 text-xs text-muted-foreground">
@@ -247,7 +247,7 @@ export const RecommendationsPanel = ({
               <p>• Check captain + bench tips</p>
               <p>• Watch rotation/bench risks</p>
             </div>
-            <Button className="w-full mt-3" size="sm">
+            <Button className="w-full mt-3 bg-accent text-accent-foreground hover:bg-accent/90" size="sm">
               View Full Analysis
             </Button>
           </div>

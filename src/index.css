@@ -2,108 +2,105 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* FPL Ace Advisor – Design System
+   All colors are HSL values.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 142 25% 15%;
+    --background: 220 20% 97%;
+    --foreground: 220 25% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 142 25% 15%;
+    --card-foreground: 220 25% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 142 25% 15%;
+    --popover-foreground: 220 25% 12%;
 
-    --primary: 142 76% 36%;
+    --primary: 160 84% 32%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 142 20% 96%;
-    --secondary-foreground: 142 25% 15%;
+    --secondary: 220 14% 94%;
+    --secondary-foreground: 220 25% 12%;
 
-    --muted: 142 20% 96%;
-    --muted-foreground: 142 10% 45%;
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 10% 46%;
 
-    --accent: 142 76% 36%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 38 92% 14%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 142 20% 90%;
-    --input: 142 20% 90%;
-    --ring: 142 76% 36%;
+    --border: 220 13% 90%;
+    --input: 220 13% 88%;
+    --ring: 160 84% 32%;
 
     --radius: 0.75rem;
-    
-    --pitch: 142 50% 45%;
+
+    --pitch: 152 48% 40%;
+    --pitch-dark: 152 52% 32%;
     --pitch-lines: 0 0% 100%;
     --player-card: 0 0% 100%;
-    
-    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.12);
-    
+
+    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.10);
+    --shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.12);
+
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 220 25% 12%;
+    --sidebar-foreground: 220 10% 90%;
+    --sidebar-primary: 160 84% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 20% 18%;
+    --sidebar-accent-foreground: 220 10% 90%;
+    --sidebar-border: 220 20% 20%;
+    --sidebar-ring: 160 84% 32%;
   }
 
   .dark {
-    --background: 142 15% 8%;
-    --foreground: 142 5% 95%;
+    --background: 220 20% 7%;
+    --foreground: 220 10% 92%;
 
-    --card: 142 15% 10%;
-    --card-foreground: 142 5% 95%;
+    --card: 220 20% 10%;
+    --card-foreground: 220 10% 92%;
 
-    --popover: 142 15% 10%;
-    --popover-foreground: 142 5% 95%;
+    --popover: 220 20% 10%;
+    --popover-foreground: 220 10% 92%;
 
-    --primary: 142 76% 36%;
+    --primary: 160 72% 42%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 142 15% 15%;
-    --secondary-foreground: 142 5% 95%;
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 220 10% 92%;
 
-    --muted: 142 15% 15%;
-    --muted-foreground: 142 5% 65%;
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 8% 60%;
 
-    --accent: 142 76% 36%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 38 85% 50%;
+    --accent-foreground: 38 85% 12%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 142 15% 18%;
-    --input: 142 15% 18%;
-    --ring: 142 76% 36%;
-    
-    --pitch: 142 40% 25%;
-    --pitch-lines: 142 10% 45%;
-    --player-card: 142 15% 12%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 160 72% 42%;
+
+    --pitch: 152 40% 25%;
+    --pitch-dark: 152 44% 18%;
+    --pitch-lines: 152 10% 45%;
+    --player-card: 220 15% 12%;
+
+    --sidebar-background: 220 25% 6%;
+    --sidebar-foreground: 220 10% 85%;
+    --sidebar-primary: 160 72% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 220 20% 12%;
+    --sidebar-accent-foreground: 220 10% 85%;
+    --sidebar-border: 220 20% 14%;
+    --sidebar-ring: 160 72% 42%;
   }
 }
 
@@ -114,5 +111,6 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
