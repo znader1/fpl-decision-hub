@@ -114,7 +114,7 @@ export const ParameterSidebar = ({
             <Label className="text-xs text-sidebar-foreground/70">
               Transfer Strategy
             </Label>
-            <Select value={transferStrategy} onValueChange={onTransferStrategyChange}>
+            <Select value={transferStrategy || "none"} onValueChange={(v) => onTransferStrategyChange(v === "none" ? "" : v)}>
               <SelectTrigger className="bg-sidebar border-sidebar-border text-sidebar-foreground">
                 <SelectValue placeholder="Select strategy…" />
               </SelectTrigger>
