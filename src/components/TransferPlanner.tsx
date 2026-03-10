@@ -15,8 +15,38 @@ const formatMoney = (value?: number) => {
   return `£${fixed}m`;
 };
 
+const round1 = (value: number) => Math.round(value * 10) / 10;
+
+const formatPoints = (value?: number, withSign = false) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  const rounded = round1(value);
+  if (withSign) return `${rounded >= 0 ? "+" : ""}${rounded}`;
+  return String(rounded);
+};
+
 export const TransferPlanner = ({ transfers, isLoading = false }: TransferPlannerProps) => {
   const moves = Array.isArray(transfers?.moves) ? transfers?.moves : [];
+  const movesUsed =
+    typeof transfers?.moves_used === "number"
+      ? transfers.moves_used
+      : typeof transfers?.transfer_policy?.moves_used === "number"
+        ? transfers.transfer_policy.moves_used
+        : moves.length;
+  const maxMoves =
+    typeof transfers?.max_moves === "number"
+      ? transfers.max_moves
+      : typeof transfers?.transfer_policy?.max_moves === "number"
+        ? transfers.transfer_policy.max_moves
+        : undefined;
+  const totalScoreGainFromMoves = moves.reduce((sum, move) => sum + (move.score_gain ?? 0), 0);
+  const hasMoveGain = moves.some((move) => typeof move.score_gain === "number");
+  const totalScoreGain =
+    typeof transfers?.total_score_gain === "number"
+      ? transfers.total_score_gain
+      : hasMoveGain
+        ? totalScoreGainFromMoves
+        : undefined;
+
   return (
     <Card className="p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -26,8 +56,19 @@ export const TransferPlanner = ({ transfers, isLoading = false }: TransferPlanne
         </h3>
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs">
-            Moves: {moves.length}
+            Moves: {movesUsed}
+            {typeof maxMoves === "number" ? `/${maxMoves}` : ""}
           </Badge>
+          {typeof totalScoreGain === "number" && (
+            <Badge variant="secondary" className="text-xs">
+              Gain: {formatPoints(totalScoreGain, true)} pts
+            </Badge>
+          )}
+          {typeof transfers?.hit_cost === "number" && (
+            <Badge variant="outline" className="text-xs">
+              Hit: {formatPoints(transfers.hit_cost)}
+            </Badge>
+          )}
           {typeof transfers?.remaining_itb === "number" && (
             <Badge variant="outline" className="text-xs">
               ITB: {formatMoney(transfers.remaining_itb)}
@@ -35,10 +76,6 @@ export const TransferPlanner = ({ transfers, isLoading = false }: TransferPlanne
           )}
         </div>
       </div>
-
-      {transfers?.note && (
-        <p className="text-xs text-muted-foreground">{transfers.note}</p>
-      )}
 
       <div className="space-y-3">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -59,6 +96,7 @@ export const TransferPlanner = ({ transfers, isLoading = false }: TransferPlanne
             key={`${move.sell.id}-${move.buy.id}-${idx}`}
             className="rounded-lg border border-border p-3"
           >
+            <div className="mb-2 text-xs text-muted-foreground">Move {idx + 1}</div>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 {/* Player Out */}
@@ -88,7 +126,7 @@ export const TransferPlanner = ({ transfers, isLoading = false }: TransferPlanne
 
               {typeof move.score_gain === "number" && Number.isFinite(move.score_gain) && (
                 <Badge variant="secondary" className="text-xs shrink-0">
-                  +{Math.round(move.score_gain * 10) / 10} pts
+                  {formatPoints(move.score_gain, true)} pts
                 </Badge>
               )}
             </div>

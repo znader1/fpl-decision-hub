@@ -50,6 +50,14 @@ export interface FplTransfersRecommendation {
   note?: string;
   moves: FplTransferMove[];
   remaining_itb?: number;
+  max_moves?: number;
+  moves_used?: number;
+  hit_cost?: number;
+  total_score_gain?: number;
+  transfer_policy?: {
+    max_moves?: number;
+    moves_used?: number;
+  };
 }
 
 export interface FplTeamFixture {
