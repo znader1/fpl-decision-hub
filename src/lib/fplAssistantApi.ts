@@ -41,13 +41,37 @@ export interface FplTransferPlayer {
 }
 
 export interface FplTransferMove {
+  position?: FplPosition;
   sell: FplTransferPlayer;
   buy: FplTransferPlayer;
   score_gain?: number;
+  buy_hot_score?: number;
+  buy_set_piece_score?: number;
 }
+
+export interface FplTransferPlan {
+  free_transfers?: number;
+  horizon_gws?: number;
+  hit_cap?: number;
+  transfer_count_target?: number;
+  transfer_count_built?: number;
+}
+
+export interface FplHotPlayer extends FplTransferPlayer {
+  pos?: FplPosition;
+  transfer_score?: number;
+  hot_score?: number;
+  set_piece_score?: number;
+}
+
+export type FplMovesByPosition = Partial<Record<FplPosition, number>>;
+export type FplHotByPosition = Partial<Record<FplPosition, FplHotPlayer[]>>;
 
 export interface FplTransfersRecommendation {
   note?: string;
+  transfer_plan?: FplTransferPlan;
+  moves_by_position?: FplMovesByPosition;
+  hot_by_position?: FplHotByPosition;
   moves: FplTransferMove[];
   remaining_itb?: number;
   max_moves?: number;
@@ -100,9 +124,37 @@ export const SAMPLE_TEAM_RECOMMENDATION: FplTeamRecommendation = {
   vice_player_id: 237,
   projected_points_with_captain: 57.931999999999995,
   transfers: {
-    note: "Sample transfer suggestion (replace with backend output).",
+    note: "Heuristic transfer planner with horizon + hot-player + set-piece weighting.",
+    transfer_plan: {
+      free_transfers: 1,
+      horizon_gws: 3,
+      hit_cap: 0,
+      transfer_count_target: 4,
+      transfer_count_built: 1,
+    },
+    moves_by_position: {
+      GKP: 1,
+    },
+    hot_by_position: {
+      GKP: [
+        {
+          id: 32,
+          name: "Martinez",
+          team: "AVL",
+          pos: "GKP",
+          price: 5,
+          transfer_score: 7.8,
+          hot_score: 2.2,
+          set_piece_score: 0,
+        },
+      ],
+      DEF: [],
+      MID: [],
+      FWD: [],
+    },
     moves: [
       {
+        position: "GKP",
         sell: {
           id: 253,
           name: "Henderson",
@@ -116,6 +168,8 @@ export const SAMPLE_TEAM_RECOMMENDATION: FplTeamRecommendation = {
           price: 5,
         },
         score_gain: 5.1,
+        buy_hot_score: 2.2,
+        buy_set_piece_score: 0,
       },
     ],
     remaining_itb: 0.5,
@@ -452,6 +506,10 @@ export interface TeamRecommendationParams {
   horizonGws: number;
   strategy?: string;
   includeTransfers?: boolean;
+  latestNMatches?: number;
+  freeTransfers?: number;
+  hitCap?: number;
+  panelLimit?: number;
 }
 
 export interface SquadParams {
@@ -485,6 +543,10 @@ export const interpolateTeamRecommendationUrl = (template: string, params: TeamR
     horizon_gws: params.horizonGws,
     strategy: params.strategy,
     include_transfers: params.includeTransfers,
+    latest_n_matches: params.latestNMatches,
+    free_transfers: params.freeTransfers,
+    hit_cap: params.hitCap,
+    panel_limit: params.panelLimit,
   });
 };
 

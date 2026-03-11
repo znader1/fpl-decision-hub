@@ -50,19 +50,24 @@ const getTransferCapacity = (recommendation: FplTeamRecommendation) => {
   const transfers = recommendation.transfers;
   if (!transfers) return undefined;
 
+  const transferPlan = transfers.transfer_plan;
   const plannedMoves = Array.isArray(transfers.moves) ? transfers.moves.length : 0;
   const movesUsed =
-    typeof transfers.moves_used === "number"
-      ? transfers.moves_used
-      : typeof transfers.transfer_policy?.moves_used === "number"
-        ? transfers.transfer_policy.moves_used
-        : plannedMoves;
+    typeof transferPlan?.transfer_count_built === "number"
+      ? transferPlan.transfer_count_built
+      : typeof transfers.moves_used === "number"
+        ? transfers.moves_used
+        : typeof transfers.transfer_policy?.moves_used === "number"
+          ? transfers.transfer_policy.moves_used
+          : plannedMoves;
   const maxMoves =
-    typeof transfers.max_moves === "number"
-      ? transfers.max_moves
-      : typeof transfers.transfer_policy?.max_moves === "number"
-        ? transfers.transfer_policy.max_moves
-        : undefined;
+    typeof transferPlan?.transfer_count_target === "number"
+      ? transferPlan.transfer_count_target
+      : typeof transfers.max_moves === "number"
+        ? transfers.max_moves
+        : typeof transfers.transfer_policy?.max_moves === "number"
+          ? transfers.transfer_policy.max_moves
+          : undefined;
 
   return { movesUsed, maxMoves };
 };
