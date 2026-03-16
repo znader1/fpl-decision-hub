@@ -78,6 +78,36 @@ export const RecommendationsPanel = ({
   isRecommending = false,
   horizonGws,
 }: RecommendationsPanelProps) => {
+  const transferPlayerLookups = useMemo(() => {
+    const nameById: Record<number, string> = {};
+    const teamById: Record<number, string> = {};
+
+    const addPlayer = (playerId: unknown, playerName: unknown, teamShort: unknown) => {
+      if (typeof playerId !== "number" || !Number.isFinite(playerId)) return;
+      if (typeof playerName === "string" && playerName.trim().length > 0) {
+        nameById[playerId] = playerName.trim();
+      }
+      if (typeof teamShort === "string" && teamShort.trim().length > 0) {
+        teamById[playerId] = teamShort.trim();
+      }
+    };
+
+    for (const p of squad?.starting_xi ?? []) addPlayer(p.player_id, p.web_name, p.team_short);
+    for (const p of squad?.bench ?? []) addPlayer(p.player_id, p.web_name, p.team_short);
+    for (const p of recommendation?.starting_xi ?? []) addPlayer(p.player_id, p.web_name, p.team_short);
+    for (const p of recommendation?.bench ?? []) addPlayer(p.player_id, p.web_name, p.team_short);
+
+    const hotByPosition = recommendation?.transfers?.hot_by_position ?? {};
+    for (const list of Object.values(hotByPosition)) {
+      if (!Array.isArray(list)) continue;
+      for (const p of list) {
+        addPlayer(p.id, p.name, p.team);
+      }
+    }
+
+    return { nameById, teamById };
+  }, [recommendation, squad]);
+
   const transferCapacity = useMemo(
     () => (recommendation ? getTransferCapacity(recommendation) : undefined),
     [recommendation]
@@ -187,8 +217,12 @@ export const RecommendationsPanel = ({
                   {findName(recommendation, recommendation.vice_player_id) ?? recommendation.vice_player_id}
                 </p>
               </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Target GW</p>
+                <p className="font-semibold text-foreground">GW {recommendation.event_id}</p>
+              </div>
               {typeof horizonGws === "number" && (
-                <div className="col-span-2">
+                <div>
                   <p className="text-xs text-muted-foreground">Horizon</p>
                   <p className="font-semibold text-foreground">{horizonGws} GWs</p>
                 </div>
@@ -207,7 +241,13 @@ export const RecommendationsPanel = ({
           )}
         </Card>
 
-        <TransferPlanner transfers={recommendation?.transfers} isLoading={isRecommending} />
+        <TransferPlanner
+          transfers={recommendation?.transfers}
+          isLoading={isRecommending}
+          targetGw={recommendation?.event_id}
+          playerNameById={transferPlayerLookups.nameById}
+          playerTeamById={transferPlayerLookups.teamById}
+        />
 
         <div className="space-y-3">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">

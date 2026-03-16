@@ -5,12 +5,15 @@ import { PitchVisualization } from "@/components/PitchVisualization";
 import { RecommendationsPanel } from "@/components/RecommendationsPanel";
 import {
   fetchFixtures,
+  fetchNextEvent,
   fetchSquad,
   fetchTeamRecommendation,
+  getNextEventUrlTemplate,
   getRecommendationUrlTemplate,
   getFixturesUrlTemplate,
   getSquadUrlTemplate,
   SAMPLE_SQUAD,
+  type FplNextEventSummary,
   type FplSquad,
   type FplTeamFixture,
   type FplTeamRecommendation,
@@ -19,6 +22,10 @@ import {
 type PitchMode = "squad" | "recommendation";
 
 const clampGw = (gw: number) => Math.min(38, Math.max(1, gw));
+const hasExplicitGwQuery = () => {
+  const query = new URLSearchParams(window.location.search);
+  return query.has("gw") || query.has("squad_gw");
+};
 
 const getInitialGw = () => {
   const fromQuery = Number(new URLSearchParams(window.location.search).get("gw"));
@@ -86,15 +93,26 @@ const Index = () => {
   const [transferStrategy, setTransferStrategy] = useState(getInitialStrategy);
   const [includeTransfers, setIncludeTransfers] = useState(getInitialIncludeTransfers);
   const [pitchMode, setPitchMode] = useState<PitchMode>("squad");
+  const [didApplyNextGwDefault, setDidApplyNextGwDefault] = useState(hasExplicitGwQuery);
 
+  const nextEventTemplate = getNextEventUrlTemplate();
   const squadTemplate = getSquadUrlTemplate();
   const fixturesTemplate = getFixturesUrlTemplate();
   const recommendationTemplate = getRecommendationUrlTemplate();
 
+  const canFetchNextEvent = Boolean(nextEventTemplate);
   const canFetchSquad = Boolean(squadTemplate);
   const canFetchFixtures = Boolean(fixturesTemplate);
   const canRecommend = Boolean(recommendationTemplate);
   const canChangeGw = true;
+
+  const nextEventQuery = useQuery<FplNextEventSummary>({
+    queryKey: ["next-event"],
+    queryFn: ({ signal }) => fetchNextEvent(signal),
+    enabled: canFetchNextEvent && !didApplyNextGwDefault && (canFetchSquad || canRecommend || canFetchFixtures),
+    retry: false,
+    staleTime: 60_000,
+  });
 
   const squadQuery = useQuery<FplSquad>({
     queryKey: ["squad", entryId, squadGW],
@@ -132,6 +150,25 @@ const Index = () => {
       }),
     onSuccess: () => setPitchMode("recommendation"),
   });
+
+  useEffect(() => {
+    if (didApplyNextGwDefault) return;
+
+    const nextGw = nextEventQuery.data?.event_id;
+    if (Number.isFinite(nextGw) && nextGw !== null && nextGw >= 1 && nextGw <= 38) {
+      const gw = clampGw(nextGw);
+      setSelectedGW(gw);
+      setSquadGW(gw);
+      setPitchMode("squad");
+      recommendationMutation.reset();
+      setDidApplyNextGwDefault(true);
+      return;
+    }
+
+    if (nextEventQuery.isFetched) {
+      setDidApplyNextGwDefault(true);
+    }
+  }, [didApplyNextGwDefault, nextEventQuery.data?.event_id, nextEventQuery.isFetched, recommendationMutation]);
 
   useEffect(() => {
     if (squadQuery.isPlaceholderData) return;

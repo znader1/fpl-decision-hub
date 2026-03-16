@@ -91,6 +91,15 @@ export interface FplTeamFixture {
   is_home?: boolean;
 }
 
+export interface FplNextEventSummary {
+  event_id: number | null;
+  deadline_time_utc?: string | null;
+  first_fixture_time_utc?: string | null;
+  hours_to_deadline?: number | null;
+  hours_to_first_fixture?: number | null;
+  fixture_count?: number;
+}
+
 export interface FplSquad {
   entry_id: number;
   event_id: number;
@@ -521,6 +530,12 @@ export interface FixturesParams {
   eventId: number;
 }
 
+const isFplNextEventSummary = (value: unknown): value is FplNextEventSummary => {
+  if (!isRecord(value)) return false;
+  if (value.event_id !== null && typeof value.event_id !== "number") return false;
+  return true;
+};
+
 type UrlTemplateParamValue = string | number | boolean | undefined | null;
 type UrlTemplateParams = Record<string, UrlTemplateParamValue>;
 
@@ -532,12 +547,33 @@ export const interpolateUrlTemplate = (template: string, params: UrlTemplatePara
   });
 };
 
+const appendMissingQueryParams = (url: string, params: UrlTemplateParams): string => {
+  try {
+    const base = typeof window !== "undefined" ? window.location.origin : "http://localhost";
+    const parsed = new URL(url, base);
+    for (const [key, value] of Object.entries(params)) {
+      if (value === undefined || value === null || value === "") continue;
+      if (!parsed.searchParams.has(key)) {
+        parsed.searchParams.set(key, String(value));
+      }
+    }
+
+    const isAbsolute = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url);
+    if (isAbsolute) return parsed.toString();
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return url;
+  }
+};
+
 export const interpolateSquadUrl = (template: string, params: SquadParams): string => {
-  return interpolateUrlTemplate(template, { entry_id: params.entryId, event_id: params.eventId });
+  const query = { entry_id: params.entryId, event_id: params.eventId };
+  const interpolated = interpolateUrlTemplate(template, query);
+  return appendMissingQueryParams(interpolated, query);
 };
 
 export const interpolateTeamRecommendationUrl = (template: string, params: TeamRecommendationParams): string => {
-  return interpolateUrlTemplate(template, {
+  const query = {
     entry_id: params.entryId,
     event_id: params.eventId,
     horizon_gws: params.horizonGws,
@@ -547,11 +583,15 @@ export const interpolateTeamRecommendationUrl = (template: string, params: TeamR
     free_transfers: params.freeTransfers,
     hit_cap: params.hitCap,
     panel_limit: params.panelLimit,
-  });
+  };
+  const interpolated = interpolateUrlTemplate(template, query);
+  return appendMissingQueryParams(interpolated, query);
 };
 
 export const interpolateFixturesUrl = (template: string, params: FixturesParams): string => {
-  return interpolateUrlTemplate(template, { event_id: params.eventId });
+  const query = { event_id: params.eventId };
+  const interpolated = interpolateUrlTemplate(template, query);
+  return appendMissingQueryParams(interpolated, query);
 };
 
 const getEnvString = (key: string): string | undefined => {
@@ -579,9 +619,14 @@ export const getSquadUrlTemplate = (): string | undefined =>
 export const getFixturesUrlTemplate = (): string | undefined =>
   resolveTemplateWithApiBase(getEnvString("VITE_FPL_FIXTURES_URL"));
 
+export const getNextEventUrlTemplate = (): string | undefined =>
+  resolveTemplateWithApiBase(getEnvString("VITE_FPL_NEXT_EVENT_URL") ?? "/events/next");
+
 export const getRecommendationUrlTemplate = (): string | undefined =>
   resolveTemplateWithApiBase(
-    getEnvString("VITE_FPL_RECOMMENDATION_URL") ?? getEnvString("VITE_FPL_TEAM_RECOMMENDATION_URL")
+    getEnvString("VITE_FPL_RECOMMENDATION_URL") ??
+      getEnvString("VITE_FPL_TEAM_RECOMMENDATION_URL") ??
+      "/recommendations?entry_id={entry_id}&event_id={event_id}&horizon_gws={horizon_gws}&include_transfers={include_transfers}"
   );
 
 // Backwards-compatible name (older code uses this).
@@ -735,6 +780,46 @@ export const fetchFixtures = async (params: FixturesParams, signal?: AbortSignal
     .map((fixture) => normalizeTeamFixture(fixture));
 
   return fixtures;
+};
+
+export const fetchNextEvent = async (signal?: AbortSignal): Promise<FplNextEventSummary> => {
+  const template = getNextEventUrlTemplate();
+  if (!template) {
+    return {
+      event_id: SAMPLE_SQUAD.event_id,
+    };
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(template, { signal });
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    if (typeof err === "object" && err !== null && "name" in err && err.name === "AbortError") throw err;
+
+    const hint = formatNetworkHint(template);
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Network error fetching next event. ${hint} (${message})`);
+  }
+
+  if (!response.ok) {
+    let details = "";
+    try {
+      details = await response.text();
+    } catch {
+      details = "";
+    }
+    const trimmed = details.trim();
+    const suffix = trimmed ? `: ${trimmed.slice(0, 300)}` : "";
+    throw new Error(`Failed to fetch next event (${response.status})${suffix}`);
+  }
+
+  const data: unknown = await parseJsonResponse(response, template, "next event endpoint");
+  if (!isFplNextEventSummary(data)) {
+    throw new Error("Invalid next event response");
+  }
+
+  return data;
 };
 
 export const fetchTeamRecommendation = async (
