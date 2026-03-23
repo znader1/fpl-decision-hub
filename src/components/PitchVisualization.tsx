@@ -31,6 +31,12 @@ const getRowGapClass = (count: number) => {
 };
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
+const chipLabel = (value?: string | null) => {
+  if (!value) return "";
+  if (value === "free_hit") return "Free Hit";
+  if (value === "wildcard") return "Wildcard";
+  return value;
+};
 
 const parseNextFixturesLabel = (label?: string): Player["fixture"] | undefined => {
   if (typeof label !== "string") return undefined;
@@ -106,6 +112,30 @@ const computeTeamPoints = (team: PitchTeam) => {
   return team.starting_xi.reduce((sum, p) => sum + p.xpts * p.multiplier, 0);
 };
 
+const getActualGwPoints = (team: PitchTeam) => {
+  if (!("entry_history" in team)) return undefined;
+  const history = team.entry_history;
+  if (!history || typeof history !== "object") return undefined;
+  const points = history.points;
+  return typeof points === "number" && Number.isFinite(points) ? points : undefined;
+};
+
+const getDisplayedTeam = (team: PitchTeam): PitchTeam => {
+  if (!("horizon_gws" in team)) return team;
+  const applied = team.transfer_application?.applied ?? 0;
+  if (applied > 0 && team.squad_with_transfers) return team.squad_with_transfers;
+  return team;
+};
+
+const formatRank = (value?: number) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  try {
+    return value.toLocaleString();
+  } catch {
+    return String(Math.round(value));
+  }
+};
+
 export const PitchVisualization = ({
   team,
   requestedGw,
@@ -116,26 +146,39 @@ export const PitchVisualization = ({
   fixturesByTeam,
 }: PitchVisualizationProps) => {
   const recommendationTeam = "horizon_gws" in team ? team : undefined;
-  const { captainId, viceId } = useMemo(() => getCaptainIds(team), [team]);
+  const chipInfo = recommendationTeam?.chip_strategy;
+  const chipName = chipLabel(chipInfo?.selected);
+  const displayedTeam = useMemo(() => getDisplayedTeam(team), [team]);
+  const { captainId, viceId } = useMemo(() => getCaptainIds(displayedTeam), [displayedTeam]);
 
   const gwPoints = useMemo(() => {
-    const points = computeTeamPoints(team);
+    const points = computeTeamPoints(displayedTeam);
     return Number.isFinite(points) ? round1(points) : 0;
+  }, [displayedTeam]);
+  const actualGwPoints = useMemo(() => {
+    const points = getActualGwPoints(displayedTeam);
+    return typeof points === "number" ? round1(points) : undefined;
+  }, [displayedTeam]);
+  const displayedPoints = recommendationTeam ? gwPoints : actualGwPoints ?? gwPoints;
+  const displayedRank = useMemo(() => {
+    if (!("entry_history" in team)) return "—";
+    const overallRank = team.entry_history?.overall_rank;
+    return formatRank(overallRank);
   }, [team]);
 
   const { goalkeeper, defenders, midfielders, forwards } = useMemo(() => {
-    const starting = team.starting_xi;
+    const starting = displayedTeam.starting_xi;
     return {
       goalkeeper: starting.filter((p) => p.pos === "GKP"),
       defenders: starting.filter((p) => p.pos === "DEF"),
       midfielders: starting.filter((p) => p.pos === "MID"),
       forwards: starting.filter((p) => p.pos === "FWD"),
     };
-  }, [team.starting_xi]);
+  }, [displayedTeam.starting_xi]);
 
   const bench = useMemo(() => {
-    return [...team.bench].sort((a, b) => a.bench_order - b.bench_order);
-  }, [team.bench]);
+    return [...displayedTeam.bench].sort((a, b) => a.bench_order - b.bench_order);
+  }, [displayedTeam.bench]);
 
   const getFixtureForTeam = (teamShort: string): Player["fixture"] | undefined => {
     const fixtures = fixturesByTeam?.[teamShort];
@@ -167,12 +210,26 @@ export const PitchVisualization = ({
             {recommendationTeam && (
               <p className="text-xs text-muted-foreground">
                 Optimized for GW {recommendationTeam.event_id} · Horizon {recommendationTeam.horizon_gws} GWs
+                {chipInfo?.is_active && chipName && ` · ${chipName} mode`}
+                {typeof chipInfo?.remaining_budget_m === "number" &&
+                  ` · £${round1(chipInfo.remaining_budget_m)}m ITB`}
+                {typeof recommendationTeam.transfer_application?.applied === "number" &&
+                  recommendationTeam.transfer_application.applied > 0 &&
+                  ` · ${recommendationTeam.transfer_application.applied} transfer(s) applied`}
+                {typeof recommendationTeam.transfer_impact?.delta_projected_points_with_captain === "number" &&
+                  ` · Δ ${round1(recommendationTeam.transfer_impact.delta_projected_points_with_captain)} xPts`}
+              </p>
+            )}
+            {!recommendationTeam && (
+              <p className="text-xs text-muted-foreground">
+                GW {team.event_id} points now: {typeof actualGwPoints === "number" ? actualGwPoints : "—"} ·
+                projected XI: {gwPoints}
               </p>
             )}
           </div>
           {recommendationTeam && (
             <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
-              Recommended
+              {chipInfo?.is_active && chipName ? `${chipName} Draft` : "Recommended"}
             </span>
           )}
         </div>
@@ -187,8 +244,8 @@ export const PitchVisualization = ({
         <GameweekNav
           currentGW={requestedGw}
           totalGW={38}
-          points={gwPoints}
-          rank="—"
+          points={displayedPoints}
+          rank={displayedRank}
           onPrev={() => gwSelectable && onRequestedGwChange(Math.max(1, requestedGw - 1))}
           onNext={() => gwSelectable && onRequestedGwChange(Math.min(38, requestedGw + 1))}
           navEnabled={gwSelectable}
