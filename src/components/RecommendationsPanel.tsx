@@ -11,6 +11,12 @@ interface RecommendationsPanelProps {
   recommendation?: FplTeamRecommendation;
   isRecommending?: boolean;
   horizonGws?: number;
+  appliedTransferCount?: number;
+  canApplyNextTransfer?: boolean;
+  isApplyingTransfer?: boolean;
+  onApplyNextTransfer?: () => void;
+  onResetAppliedTransfers?: () => void;
+  onApplyTransferAtIndex?: (index: number) => void;
 }
 
 const findPlayer = (team: FplSquad, playerId: number) => {
@@ -46,6 +52,18 @@ const formatXp = (value?: number) => {
   return (Math.round(value * 10) / 10).toString();
 };
 
+const formatMs = (value?: number) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return `${Math.round(value)} ms`;
+};
+
+const chipLabel = (value?: string | null) => {
+  if (!value || value === "none") return "None";
+  if (value === "free_hit") return "Free Hit";
+  if (value === "wildcard") return "Wildcard";
+  return value;
+};
+
 const getTransferCapacity = (recommendation: FplTeamRecommendation) => {
   const transfers = recommendation.transfers;
   if (!transfers) return undefined;
@@ -77,6 +95,12 @@ export const RecommendationsPanel = ({
   recommendation,
   isRecommending = false,
   horizonGws,
+  appliedTransferCount = 0,
+  canApplyNextTransfer = false,
+  isApplyingTransfer = false,
+  onApplyNextTransfer,
+  onResetAppliedTransfers,
+  onApplyTransferAtIndex,
 }: RecommendationsPanelProps) => {
   const transferPlayerLookups = useMemo(() => {
     const nameById: Record<number, string> = {};
@@ -227,6 +251,26 @@ export const RecommendationsPanel = ({
                   <p className="font-semibold text-foreground">{horizonGws} GWs</p>
                 </div>
               )}
+              {recommendation.chip_strategy && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Chip mode</p>
+                  <p className="font-semibold text-foreground">{chipLabel(recommendation.chip_strategy.selected)}</p>
+                </div>
+              )}
+              {typeof recommendation.chip_strategy?.remaining_budget_m === "number" && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Chip ITB</p>
+                  <p className="font-semibold text-foreground">£{formatXp(recommendation.chip_strategy.remaining_budget_m)}m</p>
+                </div>
+              )}
+              {recommendation.squad_source && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Squad source</p>
+                  <p className="font-semibold text-foreground">
+                    {recommendation.squad_source === "chip_draft" ? "Chip draft" : "Entry picks"}
+                  </p>
+                </div>
+              )}
               {transferCapacity && (
                 <div className="col-span-2">
                   <p className="text-xs text-muted-foreground">Transfer plan</p>
@@ -235,6 +279,29 @@ export const RecommendationsPanel = ({
                     {typeof transferCapacity.maxMoves === "number" ? `/${transferCapacity.maxMoves}` : ""}
                     {" "}moves
                   </p>
+                </div>
+              )}
+              {typeof recommendation.transfer_impact?.with_transfers_projected_points_with_captain === "number" && (
+                <div>
+                  <p className="text-xs text-muted-foreground">With transfers</p>
+                  <p className="font-semibold text-foreground">
+                    {formatXp(recommendation.transfer_impact.with_transfers_projected_points_with_captain)}
+                  </p>
+                </div>
+              )}
+              {typeof recommendation.transfer_impact?.delta_projected_points_with_captain === "number" && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Transfer impact</p>
+                  <p className="font-semibold text-foreground">
+                    {recommendation.transfer_impact.delta_projected_points_with_captain >= 0 ? "+" : ""}
+                    {formatXp(recommendation.transfer_impact.delta_projected_points_with_captain)}
+                  </p>
+                </div>
+              )}
+              {typeof recommendation.timings_ms?.total_ms === "number" && (
+                <div className="col-span-2">
+                  <p className="text-xs text-muted-foreground">Compute time</p>
+                  <p className="font-semibold text-foreground">{formatMs(recommendation.timings_ms.total_ms)}</p>
                 </div>
               )}
             </div>
@@ -247,6 +314,12 @@ export const RecommendationsPanel = ({
           targetGw={recommendation?.event_id}
           playerNameById={transferPlayerLookups.nameById}
           playerTeamById={transferPlayerLookups.teamById}
+          appliedTransferCount={appliedTransferCount}
+          canApplyNextTransfer={canApplyNextTransfer}
+          isApplyingTransfer={isApplyingTransfer}
+          onApplyNextTransfer={onApplyNextTransfer}
+          onResetAppliedTransfers={onResetAppliedTransfers}
+          onApplyTransferAtIndex={onApplyTransferAtIndex}
         />
 
         <div className="space-y-3">

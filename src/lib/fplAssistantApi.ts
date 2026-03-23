@@ -66,6 +66,7 @@ export interface FplHotPlayer extends FplTransferPlayer {
 
 export type FplMovesByPosition = Partial<Record<FplPosition, number>>;
 export type FplHotByPosition = Partial<Record<FplPosition, FplHotPlayer[]>>;
+export type FplChipStrategy = "none" | "wildcard" | "free_hit";
 
 export interface FplTransfersRecommendation {
   note?: string;
@@ -100,6 +101,16 @@ export interface FplNextEventSummary {
   fixture_count?: number;
 }
 
+export interface FplEntryHistory {
+  points?: number;
+  total_points?: number;
+  overall_rank?: number;
+  rank?: number;
+  event_transfers?: number;
+  event_transfers_cost?: number;
+  points_on_bench?: number;
+}
+
 export interface FplSquad {
   entry_id: number;
   event_id: number;
@@ -109,17 +120,76 @@ export interface FplSquad {
   vice_player_id?: number;
   starting_xi: FplTeamRecommendationPlayer[];
   bench: FplTeamRecommendationBenchPlayer[];
+  entry_history?: FplEntryHistory;
+  active_chip?: string | null;
+}
+
+export interface FplTransferApplicationSummary {
+  requested: number;
+  applied: number;
+  skipped: number;
+  available_moves?: number;
+  requested_apply_count?: number;
+}
+
+export interface FplTransferImpactSummary {
+  base_projected_points_with_captain: number;
+  with_transfers_projected_points_with_captain: number;
+  delta_projected_points_with_captain: number;
+}
+
+export interface FplApiTimingsMs {
+  load_context_ms?: number;
+  projections_ms?: number;
+  optimize_base_ms?: number;
+  pack_base_lineup_ms?: number;
+  position_panels_ms?: number;
+  transfer_preview_ms?: number;
+  transfer_apply_and_reoptimize_ms?: number;
+  total_ms?: number;
+}
+
+export interface FplOptimizedSquad extends FplSquad {
+  formation: [number, number, number];
+  captain_player_id: number;
+  vice_player_id: number;
+  projected_points_with_captain: number;
+}
+
+export interface FplTransferAppliedStep extends FplOptimizedSquad {
+  applied_count: number;
+  transfer_application?: FplTransferApplicationSummary;
+  transfer_impact?: FplTransferImpactSummary;
+}
+
+export interface FplChipStrategySummary {
+  selected: FplChipStrategy;
+  is_active: boolean;
+  objective_score_col?: string | null;
+  objective_horizon_gws?: number | null;
+  budget_m?: number | null;
+  squad_cost_m?: number | null;
+  remaining_budget_m?: number | null;
+  objective_score_total?: number | null;
+  reason?: string | null;
 }
 
 export interface FplTeamRecommendation extends FplSquad {
   entry_id: number;
   event_id: number;
   horizon_gws: number;
+  squad_source?: string;
   formation: [number, number, number];
   captain_player_id: number;
   vice_player_id: number;
   projected_points_with_captain: number;
+  chip_strategy?: FplChipStrategySummary;
   transfers?: FplTransfersRecommendation;
+  transfer_application?: FplTransferApplicationSummary;
+  transfer_impact?: FplTransferImpactSummary;
+  squad_with_transfers?: FplOptimizedSquad;
+  squad_with_transfers_steps?: FplTransferAppliedStep[];
+  timings_ms?: FplApiTimingsMs;
   starting_xi: FplTeamRecommendationPlayer[];
   bench: FplTeamRecommendationBenchPlayer[];
 }
@@ -478,6 +548,11 @@ export const SAMPLE_SQUAD: FplSquad = {
   vice_player_id: SAMPLE_TEAM_RECOMMENDATION.vice_player_id,
   starting_xi: SAMPLE_TEAM_RECOMMENDATION.starting_xi,
   bench: SAMPLE_TEAM_RECOMMENDATION.bench,
+  entry_history: {
+    points: 54,
+    total_points: 1712,
+    overall_rank: 1203456,
+  },
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -513,8 +588,11 @@ export interface TeamRecommendationParams {
   entryId: number;
   eventId: number;
   horizonGws: number;
+  chipStrategy?: FplChipStrategy;
+  chipHorizonGws?: number;
   strategy?: string;
   includeTransfers?: boolean;
+  applyTransferCount?: number;
   latestNMatches?: number;
   freeTransfers?: number;
   hitCap?: number;
@@ -577,8 +655,11 @@ export const interpolateTeamRecommendationUrl = (template: string, params: TeamR
     entry_id: params.entryId,
     event_id: params.eventId,
     horizon_gws: params.horizonGws,
+    chip_strategy: params.chipStrategy,
+    chip_horizon_gws: params.chipHorizonGws,
     strategy: params.strategy,
     include_transfers: params.includeTransfers,
+    apply_transfer_count: params.applyTransferCount,
     latest_n_matches: params.latestNMatches,
     free_transfers: params.freeTransfers,
     hit_cap: params.hitCap,

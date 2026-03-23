@@ -2,6 +2,7 @@ import { ArrowRightLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { JerseyIcon } from "./JerseyIcon";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { FplPosition, FplTransfersRecommendation } from "@/lib/fplAssistantApi";
 
 interface TransferPlannerProps {
@@ -10,6 +11,12 @@ interface TransferPlannerProps {
   targetGw?: number;
   playerNameById?: Record<number, string>;
   playerTeamById?: Record<number, string>;
+  appliedTransferCount?: number;
+  canApplyNextTransfer?: boolean;
+  isApplyingTransfer?: boolean;
+  onApplyNextTransfer?: () => void;
+  onResetAppliedTransfers?: () => void;
+  onApplyTransferAtIndex?: (index: number) => void;
 }
 
 const POSITION_ORDER: FplPosition[] = ["GKP", "DEF", "MID", "FWD"];
@@ -110,6 +117,12 @@ export const TransferPlanner = ({
   targetGw,
   playerNameById,
   playerTeamById,
+  appliedTransferCount = 0,
+  canApplyNextTransfer = false,
+  isApplyingTransfer = false,
+  onApplyNextTransfer,
+  onResetAppliedTransfers,
+  onApplyTransferAtIndex,
 }: TransferPlannerProps) => {
   const moves = Array.isArray(transfers?.moves) ? transfers.moves : [];
   const transferPlan = transfers?.transfer_plan;
@@ -182,6 +195,35 @@ export const TransferPlanner = ({
             <Badge variant="outline" className="text-xs">
               ITB: {formatMoney(remainingItb)}
             </Badge>
+          )}
+          {moves.length > 0 && (
+            <Badge variant="outline" className="text-xs">
+              Applied: {Math.min(appliedTransferCount, moves.length)}/{moves.length}
+            </Badge>
+          )}
+          {moves.length > 0 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="default"
+              className="h-7 text-xs"
+              disabled={isLoading || isApplyingTransfer || !canApplyNextTransfer}
+              onClick={onApplyNextTransfer}
+            >
+              Apply next transfer
+            </Button>
+          )}
+          {moves.length > 0 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              disabled={isLoading || isApplyingTransfer || appliedTransferCount <= 0}
+              onClick={onResetAppliedTransfers}
+            >
+              Reset applied
+            </Button>
           )}
         </div>
       </div>
@@ -265,6 +307,16 @@ export const TransferPlanner = ({
                     {formatPoints(move.score_gain, true)} pts
                   </Badge>
                 )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={appliedTransferCount >= idx + 1 ? "secondary" : "default"}
+                  className="h-7 text-xs shrink-0"
+                  disabled={isLoading || isApplyingTransfer}
+                  onClick={() => onApplyTransferAtIndex?.(idx)}
+                >
+                  {appliedTransferCount >= idx + 1 ? "Applied" : "Apply transfer"}
+                </Button>
               </div>
             </div>
             {debugTransfers && (

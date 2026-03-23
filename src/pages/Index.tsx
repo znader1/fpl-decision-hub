@@ -14,6 +14,7 @@ import {
   getSquadUrlTemplate,
   SAMPLE_SQUAD,
   type FplNextEventSummary,
+  type FplChipStrategy,
   type FplSquad,
   type FplTeamFixture,
   type FplTeamRecommendation,
@@ -67,10 +68,14 @@ const getInitialHorizon = () => {
   return 3;
 };
 
-const getInitialStrategy = () => {
-  const fromQuery = new URLSearchParams(window.location.search).get("strategy");
-  if (typeof fromQuery === "string" && fromQuery.length > 0) return fromQuery;
-  return localStorage.getItem("fpl_transfer_strategy") ?? "";
+const getInitialChipStrategy = (): FplChipStrategy => {
+  const query = new URLSearchParams(window.location.search);
+  const fromQuery = query.get("chip_strategy") ?? query.get("strategy");
+  if (fromQuery === "wildcard" || fromQuery === "free_hit" || fromQuery === "none") return fromQuery;
+
+  const fromStorage = localStorage.getItem("fpl_chip_strategy") ?? localStorage.getItem("fpl_transfer_strategy");
+  if (fromStorage === "wildcard" || fromStorage === "free_hit" || fromStorage === "none") return fromStorage;
+  return "none";
 };
 
 const getInitialIncludeTransfers = () => {
@@ -85,13 +90,24 @@ const getInitialIncludeTransfers = () => {
   return true;
 };
 
+const getInitialApplyTransferCount = () => {
+  const fromQuery = Number(new URLSearchParams(window.location.search).get("apply_transfer_count"));
+  if (Number.isFinite(fromQuery) && fromQuery >= 0) return Math.max(0, Math.floor(fromQuery));
+
+  const fromStorage = Number(localStorage.getItem("fpl_apply_transfer_count"));
+  if (Number.isFinite(fromStorage) && fromStorage >= 0) return Math.max(0, Math.floor(fromStorage));
+
+  return 0;
+};
+
 const Index = () => {
   const [entryId, setEntryId] = useState(getInitialEntryId);
   const [selectedGW, setSelectedGW] = useState(getInitialGw);
   const [squadGW, setSquadGW] = useState(getInitialSquadGw);
   const [horizonGws, setHorizonGws] = useState(getInitialHorizon);
-  const [transferStrategy, setTransferStrategy] = useState(getInitialStrategy);
+  const [chipStrategy, setChipStrategy] = useState<FplChipStrategy>(getInitialChipStrategy);
   const [includeTransfers, setIncludeTransfers] = useState(getInitialIncludeTransfers);
+  const [appliedTransferCount, setAppliedTransferCount] = useState(getInitialApplyTransferCount);
   const [pitchMode, setPitchMode] = useState<PitchMode>("squad");
   const [didApplyNextGwDefault, setDidApplyNextGwDefault] = useState(hasExplicitGwQuery);
 
@@ -105,6 +121,7 @@ const Index = () => {
   const canFetchFixtures = Boolean(fixturesTemplate);
   const canRecommend = Boolean(recommendationTemplate);
   const canChangeGw = true;
+  const effectiveHorizonGws = chipStrategy === "free_hit" ? 1 : horizonGws;
 
   const nextEventQuery = useQuery<FplNextEventSummary>({
     queryKey: ["next-event"],
@@ -144,9 +161,12 @@ const Index = () => {
       fetchTeamRecommendation({
         entryId,
         eventId: selectedGW,
-        horizonGws,
-        strategy: transferStrategy,
+        horizonGws: effectiveHorizonGws,
+        chipStrategy,
+        chipHorizonGws: chipStrategy === "wildcard" ? horizonGws : undefined,
+        strategy: chipStrategy,
         includeTransfers,
+        applyTransferCount: 0,
       }),
     onSuccess: () => setPitchMode("recommendation"),
   });
@@ -159,6 +179,7 @@ const Index = () => {
       const gw = clampGw(nextGw);
       setSelectedGW(gw);
       setSquadGW(gw);
+      setAppliedTransferCount(0);
       setPitchMode("squad");
       recommendationMutation.reset();
       setDidApplyNextGwDefault(true);
@@ -193,25 +214,67 @@ const Index = () => {
       localStorage.setItem("fpl_selected_gw", String(selectedGW));
       localStorage.setItem("fpl_squad_gw", String(squadGW));
       localStorage.setItem("fpl_horizon_gws", String(horizonGws));
-      localStorage.setItem("fpl_transfer_strategy", transferStrategy);
+      localStorage.setItem("fpl_chip_strategy", chipStrategy);
+      localStorage.setItem("fpl_transfer_strategy", chipStrategy);
       localStorage.setItem("fpl_include_transfers", String(includeTransfers));
+      localStorage.setItem("fpl_apply_transfer_count", String(appliedTransferCount));
     } catch {
       // ignore
     }
-  }, [entryId, selectedGW, squadGW, horizonGws, transferStrategy, includeTransfers]);
+  }, [entryId, selectedGW, squadGW, horizonGws, chipStrategy, includeTransfers, appliedTransferCount]);
 
   useEffect(() => {
     if (!recommendationMutation.data) return;
     if (recommendationMutation.isPending) return;
 
+    setAppliedTransferCount(0);
     recommendationMutation.mutate();
     setPitchMode("recommendation");
-  }, [horizonGws, transferStrategy, includeTransfers]);
+  }, [horizonGws, chipStrategy, includeTransfers]);
+
+  const totalSuggestedMoves = recommendationMutation.data?.transfers?.moves?.length ?? 0;
+  const canApplyNextTransfer = appliedTransferCount < totalSuggestedMoves;
+
+  const applyNextTransfer = () => {
+    if (!recommendationMutation.data) return;
+    setAppliedTransferCount((prev) => Math.min(prev + 1, totalSuggestedMoves));
+  };
+
+  const applyTransferAtIndex = (index: number) => {
+    if (!recommendationMutation.data) return;
+    const normalized = Number.isFinite(index) ? Math.max(0, Math.floor(index)) : 0;
+    setAppliedTransferCount(Math.min(normalized + 1, totalSuggestedMoves));
+  };
+
+  const resetAppliedTransfers = () => {
+    setAppliedTransferCount(0);
+  };
+
+  const activeRecommendation = useMemo(() => {
+    const rec = recommendationMutation.data;
+    if (!rec) return undefined;
+
+    const steps = Array.isArray(rec.squad_with_transfers_steps) ? rec.squad_with_transfers_steps : [];
+    if (steps.length === 0) return rec;
+
+    const maxStep = Math.max(0, steps.length - 1);
+    const targetCount = Math.min(Math.max(0, appliedTransferCount), maxStep);
+    const fallbackStep = steps[targetCount];
+    const selectedStep = steps.find((step) => step.applied_count === targetCount) ?? fallbackStep;
+    if (!selectedStep) return rec;
+
+    return {
+      ...rec,
+      transfer_application: selectedStep.transfer_application ?? rec.transfer_application,
+      transfer_impact: selectedStep.transfer_impact ?? rec.transfer_impact,
+      squad_with_transfers: selectedStep,
+    };
+  }, [appliedTransferCount, recommendationMutation.data]);
 
   const activeTeam = useMemo(() => {
-    if (pitchMode === "recommendation" && recommendationMutation.data) return recommendationMutation.data;
+    if (pitchMode === "recommendation" && activeRecommendation) return activeRecommendation;
     return squadQuery.data;
-  }, [pitchMode, recommendationMutation.data, squadQuery.data]);
+  }, [pitchMode, activeRecommendation, squadQuery.data]);
 
   const activeError =
     pitchMode === "recommendation"
@@ -239,6 +302,7 @@ const Index = () => {
   const setGwAndReset = (gw: number) => {
     setSelectedGW(gw);
     setSquadGW(gw);
+    setAppliedTransferCount(0);
     setPitchMode("squad");
     recommendationMutation.reset();
   };
@@ -246,6 +310,7 @@ const Index = () => {
   const setEntryAndReset = (value: number) => {
     setEntryId(value);
     setSquadGW(selectedGW);
+    setAppliedTransferCount(0);
     setPitchMode("squad");
     recommendationMutation.reset();
   };
@@ -257,13 +322,16 @@ const Index = () => {
         onEntryIdChange={setEntryAndReset}
         horizonGws={horizonGws}
         onHorizonGwsChange={setHorizonGws}
-        transferStrategy={transferStrategy}
-        onTransferStrategyChange={setTransferStrategy}
+        chipStrategy={chipStrategy}
+        onChipStrategyChange={setChipStrategy}
         includeTransfers={includeTransfers}
         onIncludeTransfersChange={setIncludeTransfers}
         canRecommend={canRecommend}
         isRecommending={recommendationMutation.isPending}
-        onRecommend={() => recommendationMutation.mutate()}
+        onRecommend={() => {
+          setAppliedTransferCount(0);
+          recommendationMutation.mutate();
+        }}
         recommendErrorMessage={recommendErrorMessage}
         pitchMode={pitchMode}
         onPitchModeChange={setPitchMode}
@@ -285,6 +353,12 @@ const Index = () => {
         recommendation={recommendationMutation.data}
         isRecommending={recommendationMutation.isPending}
         horizonGws={horizonGws}
+        appliedTransferCount={appliedTransferCount}
+        canApplyNextTransfer={canApplyNextTransfer}
+        isApplyingTransfer={recommendationMutation.isPending}
+        onApplyNextTransfer={applyNextTransfer}
+        onResetAppliedTransfers={resetAppliedTransfers}
+        onApplyTransferAtIndex={applyTransferAtIndex}
       />
     </div>
   );
