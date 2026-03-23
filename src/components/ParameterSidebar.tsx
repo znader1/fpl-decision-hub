@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import type { FplChipStrategy } from "@/lib/fplAssistantApi";
 import {
   Select,
   SelectContent,
@@ -12,15 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const STRATEGY_OPTIONS = [
-  { value: "", label: "None" },
-  { value: "balanced", label: "Balanced" },
-  { value: "aggressive", label: "Aggressive" },
-  { value: "conservative", label: "Conservative" },
+const CHIP_OPTIONS: Array<{ value: FplChipStrategy; label: string }> = [
+  { value: "none", label: "No chip" },
   { value: "wildcard", label: "Wildcard" },
   { value: "free_hit", label: "Free Hit" },
-  { value: "bench_boost", label: "Bench Boost" },
-  { value: "triple_captain", label: "Triple Captain" },
 ];
 
 interface ParameterSidebarProps {
@@ -28,8 +24,8 @@ interface ParameterSidebarProps {
   onEntryIdChange: (entryId: number) => void;
   horizonGws: number;
   onHorizonGwsChange: (horizonGws: number) => void;
-  transferStrategy: string;
-  onTransferStrategyChange: (strategy: string) => void;
+  chipStrategy: FplChipStrategy;
+  onChipStrategyChange: (strategy: FplChipStrategy) => void;
   includeTransfers: boolean;
   onIncludeTransfersChange: (includeTransfers: boolean) => void;
   canRecommend: boolean;
@@ -46,8 +42,8 @@ export const ParameterSidebar = ({
   onEntryIdChange,
   horizonGws,
   onHorizonGwsChange,
-  transferStrategy,
-  onTransferStrategyChange,
+  chipStrategy,
+  onChipStrategyChange,
   includeTransfers,
   onIncludeTransfersChange,
   canRecommend,
@@ -59,6 +55,9 @@ export const ParameterSidebar = ({
   hasRecommendation,
 }: ParameterSidebarProps) => {
   const recommendDisabled = !canRecommend || !Number.isFinite(entryId) || entryId <= 0 || isRecommending;
+  const chipActive = chipStrategy === "wildcard" || chipStrategy === "free_hit";
+  const includeTransfersDisabled = chipActive;
+  const effectiveHorizonLabel = chipStrategy === "free_hit" ? "1 GW (forced by Free Hit)" : `${horizonGws} GWs`;
 
   return (
     <aside className="w-80 shrink-0 bg-sidebar border-r border-sidebar-border p-6 overflow-y-auto">
@@ -108,24 +107,30 @@ export const ParameterSidebar = ({
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-[11px] text-sidebar-foreground/55">Active objective horizon: {effectiveHorizonLabel}</p>
           </div>
 
           <div className="space-y-1.5">
             <Label className="text-xs text-sidebar-foreground/70">
-              Transfer Strategy
+              Chip Strategy
             </Label>
-            <Select value={transferStrategy || "none"} onValueChange={(v) => onTransferStrategyChange(v === "none" ? "" : v)}>
+            <Select value={chipStrategy} onValueChange={(v) => onChipStrategyChange(v as FplChipStrategy)}>
               <SelectTrigger className="bg-sidebar border-sidebar-border text-sidebar-foreground">
                 <SelectValue placeholder="Select strategy…" />
               </SelectTrigger>
               <SelectContent>
-                {STRATEGY_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value || "none"}>
+                {CHIP_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
                     {opt.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {chipActive && (
+              <p className="text-[11px] text-sidebar-foreground/55">
+                Chip draft mode active: lineup is built from market optimization, not current picks.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -137,8 +142,14 @@ export const ParameterSidebar = ({
                 id="include-transfers"
                 checked={includeTransfers}
                 onCheckedChange={onIncludeTransfersChange}
+                disabled={includeTransfersDisabled}
               />
             </div>
+            {includeTransfersDisabled && (
+              <p className="text-[11px] text-sidebar-foreground/55">
+                Transfer planner is skipped while a chip strategy is active.
+              </p>
+            )}
           </div>
 
           <Button
@@ -147,7 +158,7 @@ export const ParameterSidebar = ({
             disabled={recommendDisabled}
           >
             <Zap className="h-4 w-4 mr-2" />
-            {isRecommending ? "Computing…" : "Recommend Squad"}
+            {isRecommending ? "Computing…" : chipActive ? "Build Chip Draft" : "Recommend Squad"}
           </Button>
           {recommendErrorMessage && (
             <p className="text-xs text-destructive break-words">{recommendErrorMessage}</p>
