@@ -1,73 +1,95 @@
-# Welcome to your Lovable project
+# FPL Decision Hub (Frontend)
 
-## Project info
+Frontend app for the FPL Assistant demo.  
+It shows squad visualization, recommended lineup, transfer planner, and chip scenario views powered by the backend API.
 
-**URL**: https://lovable.dev/projects/767fe8bd-a3b0-4d58-8563-b1ef4cbaa306
+## Live Demo Links
 
-## How can I edit this code?
+- Frontend URL: `<YOUR_FRONTEND_URL>`
+- Backend API URL: `<YOUR_BACKEND_URL>`
+- Backend docs: `<YOUR_BACKEND_URL>/docs`
+- Loom walkthrough: `<YOUR_LOOM_URL>`
 
-There are several ways of editing your application.
+## What This Frontend Does
 
-**Use Lovable**
+- Loads your FPL squad for a selected gameweek.
+- Shows optimized pitch lineup and bench in a clear visual format.
+- Displays transfer recommendations and lets you apply suggested moves step-by-step.
+- Supports chip strategy mode:
+  - `No chip`
+  - `Free Hit` (1 GW focus)
+  - `Wildcard` (horizon focus)
+- Surfaces recommendation metadata (target GW, horizon, timing, chip budget info).
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/767fe8bd-a3b0-4d58-8563-b1ef4cbaa306) and start prompting.
+## Tech Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+- React + TypeScript + Vite
+- Tailwind CSS + shadcn/ui
+- TanStack Query for API data/mutations
 
-**Use your preferred IDE**
+## Architecture Overview
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```mermaid
+flowchart LR
+    A["UI (React Components)"] --> B["API Client (src/lib/fplAssistantApi.ts)"]
+    B --> C["FPL Assistant FastAPI Backend"]
+    C --> D["Official FPL API + Projection Engine"]
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Local Setup
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+cd fpl-decision-hub
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Build:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+npm run build
+```
 
-**Use GitHub Codespaces**
+## Required Environment Variables
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Create `.env` with:
 
-## What technologies are used for this project?
+```bash
+VITE_FPL_API_BASE_URL=https://<YOUR_BACKEND_URL>
+VITE_FPL_SQUAD_URL=/squad?entry_id={entry_id}&event_id={event_id}
+VITE_FPL_RECOMMENDATION_URL=/recommendations?entry_id={entry_id}&event_id={event_id}&horizon_gws={horizon_gws}&include_transfers={include_transfers}
+VITE_FPL_NEXT_EVENT_URL=/events/next
+```
 
-This project is built with:
+Optional:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+VITE_FPL_FIXTURES_URL=/fixtures?event_id={event_id}
+```
 
-## How can I deploy this project?
+## Main User Flow (Demo)
 
-Simply open [Lovable](https://lovable.dev/projects/767fe8bd-a3b0-4d58-8563-b1ef4cbaa306) and click on Share -> Publish.
+1. Enter `Entry ID`.
+2. Select target GW + horizon.
+3. Choose chip strategy (`No chip`, `Free Hit`, `Wildcard`).
+4. Click **Recommend Squad**.
+5. Review pitch, captain/vice, transfer plan, and insights.
+6. Apply transfer steps directly in UI.
 
-## Can I connect a custom domain to my Lovable project?
+## Deployment
 
-Yes, you can!
+- **Lovable publish**: use Share → Publish.
+- **Alternative**: Vercel/Netlify static deploy with env variables above.
+- Ensure backend CORS allows your frontend domain.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Project Structure
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- `src/pages/Index.tsx` — page state + query orchestration
+- `src/lib/fplAssistantApi.ts` — typed API models and request builders
+- `src/components/PitchVisualization.tsx` — pitch layout and lineup rendering
+- `src/components/RecommendationsPanel.tsx` — insights + transfer summary
+- `src/components/ParameterSidebar.tsx` — controls (GW, horizon, chip mode)
+
+## Related Repos
+
+- Backend API: `<YOUR_BACKEND_REPO_URL>`
