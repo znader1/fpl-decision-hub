@@ -198,6 +198,7 @@ export const RecommendationsPanel = ({
 
   const squadInsights = recommendation?.squad_insights?.summary_points ?? [];
   const scoringBullets = recommendation?.scoring_guide?.bullets ?? [];
+  const historyContext = recommendation?.history_context;
 
   return (
     <aside className="w-[28rem] shrink-0 bg-card border-l border-border p-6 overflow-y-auto">
@@ -210,6 +211,13 @@ export const RecommendationsPanel = ({
           <p className="text-xs text-muted-foreground mt-1">
             {recommendation ? `Recommendation for GW ${recommendation.event_id}` : "Compute a recommendation to see insights"}
           </p>
+          {historyContext && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              History source: <span className="font-medium text-foreground">{historyContext.source ?? "unknown"}</span>
+              {typeof historyContext.max_gw === "number" ? ` · latest GW ${historyContext.max_gw}` : ""}
+              {historyContext.season ? ` · ${historyContext.season}` : ""}
+            </p>
+          )}
         </div>
 
         <Card className="p-4 space-y-3">

@@ -246,6 +246,15 @@ export interface FplSquadInsights {
   player_flags?: FplPlayerAlert[];
 }
 
+export interface FplHistoryContext {
+  source?: "csv" | "fallback" | string;
+  base_dir?: string;
+  path?: string | null;
+  max_gw?: number | null;
+  updated_at_utc?: string | null;
+  season?: string | null;
+}
+
 export interface FplTeamRecommendation extends FplSquad {
   entry_id: number;
   event_id: number;
@@ -264,6 +273,7 @@ export interface FplTeamRecommendation extends FplSquad {
   timings_ms?: FplApiTimingsMs;
   scoring_guide?: FplScoringGuide;
   squad_insights?: FplSquadInsights;
+  history_context?: FplHistoryContext;
   starting_xi: FplTeamRecommendationPlayer[];
   bench: FplTeamRecommendationBenchPlayer[];
 }
