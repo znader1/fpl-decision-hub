@@ -81,6 +81,8 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
   const alerts = Array.isArray(player.alerts) ? player.alerts.filter((item) => item.text) : [];
   const breakdown = player.scoreBreakdown;
   const wildcard = breakdown?.wildcard;
+  const recentForm = breakdown?.recent_form;
+  const baseline = breakdown?.baseline;
   const objectiveScore = wildcard?.score ?? breakdown?.objective_score ?? breakdown?.horizon_xpts;
   const weightedFutureXpts = wildcard?.weighted_xpts ?? breakdown?.horizon_xpts;
   const dgwBonus = wildcard?.future_dgw_bonus ?? 0;
@@ -169,6 +171,32 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
 
         {breakdown?.objective_explanation && (
           <p className="text-xs text-muted-foreground">{breakdown.objective_explanation}</p>
+        )}
+
+        {recentForm && (
+          <div className="space-y-1 rounded-md border border-border bg-card px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Recent Form Input</p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <p>Window: <span className="font-semibold text-foreground">{recentForm.window_gws ?? "—"} GWs</span></p>
+              <p>Samples: <span className="font-semibold text-foreground">{recentForm.samples ?? "—"}</span></p>
+              <p>Avg points: <span className="font-semibold text-foreground">{formatMetric(recentForm.avg_points, 2)}</span></p>
+              <p>Avg minutes: <span className="font-semibold text-foreground">{formatMetric(recentForm.avg_minutes, 1)}</span></p>
+              <p>Last GW used: <span className="font-semibold text-foreground">{recentForm.last_gw ?? "—"}</span></p>
+              <p>History file through: <span className="font-semibold text-foreground">{recentForm.history_max_gw ?? "—"}</span></p>
+            </div>
+          </div>
+        )}
+
+        {baseline && (
+          <div className="space-y-1 rounded-md border border-border bg-card px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Projection Baseline</p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <p>Long-term: <span className="font-semibold text-foreground">{formatMetric(baseline.long_term, 2)}</span></p>
+              <p>Recent GW avg: <span className="font-semibold text-foreground">{formatMetric(baseline.recent_gw, 2)}</span></p>
+              <p>Blended base: <span className="font-semibold text-foreground">{formatMetric(baseline.blended, 2)}</span></p>
+              <p>GW32/GW start base: <span className="font-semibold text-foreground">{formatMetric(baseline.gw1_after_ep_next_blend, 2)}</span></p>
+            </div>
+          </div>
         )}
 
         {(breakdown?.objective_score_col === "wildcard_score" || breakdown?.wildcard) && (

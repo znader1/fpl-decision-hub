@@ -51,6 +51,25 @@ export interface FplWildcardScoreBreakdown {
   captaincy_bonus?: number | null;
 }
 
+export interface FplRecentFormBreakdown {
+  window_gws?: number | null;
+  history_max_gw?: number | null;
+  samples?: number | null;
+  last_gw?: number | null;
+  available?: boolean;
+  avg_points?: number | null;
+  avg_minutes?: number | null;
+  avg_fixture_count?: number | null;
+  avg_starts?: number | null;
+}
+
+export interface FplBaselineBreakdown {
+  long_term?: number | null;
+  recent_gw?: number | null;
+  blended?: number | null;
+  gw1_after_ep_next_blend?: number | null;
+}
+
 export interface FplPlayerScoreBreakdown {
   note?: string;
   current_gw_xpts?: number | null;
@@ -59,6 +78,8 @@ export interface FplPlayerScoreBreakdown {
   objective_score?: number | null;
   objective_explanation?: string;
   wildcard?: FplWildcardScoreBreakdown;
+  recent_form?: FplRecentFormBreakdown;
+  baseline?: FplBaselineBreakdown;
   fixtures_horizon?: FplFixturesHorizonItem[];
 }
 
