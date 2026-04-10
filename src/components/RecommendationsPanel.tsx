@@ -196,6 +196,9 @@ export const RecommendationsPanel = ({
     return tips;
   }, [recommendation, squad]);
 
+  const squadInsights = recommendation?.squad_insights?.summary_points ?? [];
+  const scoringBullets = recommendation?.scoring_guide?.bullets ?? [];
+
   return (
     <aside className="w-[28rem] shrink-0 bg-card border-l border-border p-6 overflow-y-auto">
       <div className="space-y-6">
@@ -257,6 +260,18 @@ export const RecommendationsPanel = ({
                   <p className="font-semibold text-foreground">{chipLabel(recommendation.chip_strategy.selected)}</p>
                 </div>
               )}
+              {typeof recommendation.chip_strategy?.play_event_id === "number" && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Chip plays from</p>
+                  <p className="font-semibold text-foreground">GW {recommendation.chip_strategy.play_event_id}</p>
+                </div>
+              )}
+              {typeof recommendation.chip_strategy?.objective_horizon_gws === "number" && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Chip horizon</p>
+                  <p className="font-semibold text-foreground">{recommendation.chip_strategy.objective_horizon_gws} GWs</p>
+                </div>
+              )}
               {typeof recommendation.chip_strategy?.remaining_budget_m === "number" && (
                 <div>
                   <p className="text-xs text-muted-foreground">Chip ITB</p>
@@ -306,6 +321,9 @@ export const RecommendationsPanel = ({
               )}
             </div>
           )}
+          {recommendation?.chip_strategy?.explanation && (
+            <p className="text-xs text-muted-foreground">{recommendation.chip_strategy.explanation}</p>
+          )}
         </Card>
 
         <TransferPlanner
@@ -321,6 +339,31 @@ export const RecommendationsPanel = ({
           onResetAppliedTransfers={onResetAppliedTransfers}
           onApplyTransferAtIndex={onApplyTransferAtIndex}
         />
+
+        <Card className="p-4 space-y-3">
+          <div>
+            <h3 className="font-semibold text-sm text-foreground">Squad Watchlist</h3>
+            <p className="text-xs text-muted-foreground">
+              Key warnings and opportunities from the selected gameweek window.
+            </p>
+          </div>
+          {squadInsights.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Compute a recommendation to see injury, blank, double, and bench-boost setup flags.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {squadInsights.map((item, index) => (
+                <div key={`${item.category ?? "insight"}-${index}`} className="rounded-md border border-border bg-muted/30 px-3 py-2">
+                  <p className="text-sm text-foreground">{item.text}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+                    {item.severity ?? "info"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
 
         <div className="space-y-3">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -359,15 +402,19 @@ export const RecommendationsPanel = ({
 
         <Card className="p-4 bg-accent/10 border-accent/20">
           <div className="space-y-2">
-            <h3 className="font-semibold text-sm text-foreground">Weekly Summary</h3>
+            <h3 className="font-semibold text-sm text-foreground">How Scoring Works</h3>
+            <p className="text-xs text-muted-foreground">
+              {recommendation?.scoring_guide?.headline ?? "Hover a player to see the scoring breakdown behind the draft."}
+            </p>
             <div className="space-y-1 text-xs text-muted-foreground">
-              <p>• Review transfer suggestions</p>
-              <p>• Check captain + bench tips</p>
-              <p>• Watch rotation/bench risks</p>
+              {scoringBullets.length === 0 ? (
+                <p>Compute a recommendation to see the scoring guide for this chip mode.</p>
+              ) : (
+                scoringBullets.map((bullet, index) => (
+                  <p key={`score-${index}`}>• {bullet}</p>
+                ))
+              )}
             </div>
-            <Button className="w-full mt-3 bg-accent text-accent-foreground hover:bg-accent/90" size="sm">
-              View Full Analysis
-            </Button>
           </div>
         </Card>
       </div>

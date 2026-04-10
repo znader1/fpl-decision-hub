@@ -18,6 +18,7 @@ import {
   type FplSquad,
   type FplTeamFixture,
   type FplTeamRecommendation,
+  type TeamRecommendationParams,
 } from "@/lib/fplAssistantApi";
 
 type PitchMode = "squad" | "recommendation";
@@ -78,6 +79,16 @@ const getInitialChipStrategy = (): FplChipStrategy => {
   return "none";
 };
 
+const getInitialChipPlayEventId = () => {
+  const fromQuery = Number(new URLSearchParams(window.location.search).get("chip_play_event_id"));
+  if (Number.isFinite(fromQuery) && fromQuery >= 1 && fromQuery <= 38) return clampGw(fromQuery);
+
+  const fromStorage = Number(localStorage.getItem("fpl_chip_play_event_id"));
+  if (Number.isFinite(fromStorage) && fromStorage >= 1 && fromStorage <= 38) return clampGw(fromStorage);
+
+  return undefined;
+};
+
 const getInitialIncludeTransfers = () => {
   const fromQuery = new URLSearchParams(window.location.search).get("include_transfers");
   if (fromQuery === "true") return true;
@@ -106,6 +117,7 @@ const Index = () => {
   const [squadGW, setSquadGW] = useState(getInitialSquadGw);
   const [horizonGws, setHorizonGws] = useState(getInitialHorizon);
   const [chipStrategy, setChipStrategy] = useState<FplChipStrategy>(getInitialChipStrategy);
+  const [chipPlayEventId, setChipPlayEventId] = useState<number | undefined>(getInitialChipPlayEventId);
   const [includeTransfers, setIncludeTransfers] = useState(getInitialIncludeTransfers);
   const [appliedTransferCount, setAppliedTransferCount] = useState(getInitialApplyTransferCount);
   const [pitchMode, setPitchMode] = useState<PitchMode>("squad");
@@ -156,19 +168,39 @@ const Index = () => {
     return mapping;
   }, [fixturesQuery.data]);
 
-  const recommendationMutation = useMutation<FplTeamRecommendation, unknown, void>({
-    mutationFn: async () =>
-      fetchTeamRecommendation({
-        entryId,
-        eventId: selectedGW,
-        horizonGws: effectiveHorizonGws,
-        chipStrategy,
-        chipHorizonGws: chipStrategy === "wildcard" ? horizonGws : undefined,
-        strategy: chipStrategy,
-        includeTransfers,
-        applyTransferCount: 0,
-      }),
-    onSuccess: () => setPitchMode("recommendation"),
+  const buildRecommendationParams = (
+    eventId: number,
+    overrides?: { chipPlayEventId?: number }
+  ): TeamRecommendationParams => {
+    const wildcardPlayEventId =
+      chipStrategy === "wildcard"
+        ? overrides?.chipPlayEventId ??
+          chipPlayEventId ??
+          recommendationMutation.data?.chip_strategy?.play_event_id ??
+          eventId
+        : undefined;
+
+    return {
+      entryId,
+      eventId,
+      horizonGws: effectiveHorizonGws,
+      chipStrategy,
+      chipHorizonGws: chipStrategy === "wildcard" ? horizonGws : undefined,
+      chipPlayEventId: wildcardPlayEventId,
+      strategy: chipStrategy,
+      includeTransfers,
+      applyTransferCount: 0,
+    };
+  };
+
+  const recommendationMutation = useMutation<FplTeamRecommendation, unknown, TeamRecommendationParams>({
+    mutationFn: async (params) => fetchTeamRecommendation(params),
+    onSuccess: (data) => {
+      if (data.chip_strategy?.selected === "wildcard" && typeof data.chip_strategy.play_event_id === "number") {
+        setChipPlayEventId(data.chip_strategy.play_event_id);
+      }
+      setPitchMode("recommendation");
+    },
   });
 
   useEffect(() => {
@@ -209,6 +241,12 @@ const Index = () => {
   ]);
 
   useEffect(() => {
+    if (chipStrategy !== "wildcard" && chipPlayEventId !== undefined) {
+      setChipPlayEventId(undefined);
+    }
+  }, [chipPlayEventId, chipStrategy]);
+
+  useEffect(() => {
     try {
       localStorage.setItem("fpl_entry_id", String(entryId));
       localStorage.setItem("fpl_selected_gw", String(selectedGW));
@@ -216,19 +254,37 @@ const Index = () => {
       localStorage.setItem("fpl_horizon_gws", String(horizonGws));
       localStorage.setItem("fpl_chip_strategy", chipStrategy);
       localStorage.setItem("fpl_transfer_strategy", chipStrategy);
+      if (typeof chipPlayEventId === "number") {
+        localStorage.setItem("fpl_chip_play_event_id", String(chipPlayEventId));
+      } else {
+        localStorage.removeItem("fpl_chip_play_event_id");
+      }
       localStorage.setItem("fpl_include_transfers", String(includeTransfers));
       localStorage.setItem("fpl_apply_transfer_count", String(appliedTransferCount));
     } catch {
       // ignore
     }
-  }, [entryId, selectedGW, squadGW, horizonGws, chipStrategy, includeTransfers, appliedTransferCount]);
+  }, [entryId, selectedGW, squadGW, horizonGws, chipStrategy, chipPlayEventId, includeTransfers, appliedTransferCount]);
 
   useEffect(() => {
     if (!recommendationMutation.data) return;
     if (recommendationMutation.isPending) return;
 
+    const nextChipPlayEventId =
+      chipStrategy === "wildcard"
+        ? recommendationMutation.data.chip_strategy?.play_event_id ?? chipPlayEventId ?? selectedGW
+        : undefined;
+
+    if (chipStrategy === "wildcard" && nextChipPlayEventId !== chipPlayEventId) {
+      setChipPlayEventId(nextChipPlayEventId);
+    }
+
     setAppliedTransferCount(0);
-    recommendationMutation.mutate();
+    recommendationMutation.mutate(
+      buildRecommendationParams(selectedGW, {
+        chipPlayEventId: nextChipPlayEventId,
+      })
+    );
     setPitchMode("recommendation");
   }, [horizonGws, chipStrategy, includeTransfers]);
 
@@ -303,6 +359,24 @@ const Index = () => {
     setSelectedGW(gw);
     setSquadGW(gw);
     setAppliedTransferCount(0);
+    const shouldRefreshRecommendation =
+      Boolean(recommendationMutation.data) &&
+      (pitchMode === "recommendation" || chipStrategy !== "none");
+
+    if (shouldRefreshRecommendation) {
+      const nextChipPlayEventId =
+        chipStrategy === "wildcard"
+          ? chipPlayEventId ?? recommendationMutation.data?.chip_strategy?.play_event_id ?? selectedGW
+          : undefined;
+      setPitchMode("recommendation");
+      recommendationMutation.mutate(
+        buildRecommendationParams(gw, {
+          chipPlayEventId: nextChipPlayEventId,
+        })
+      );
+      return;
+    }
+
     setPitchMode("squad");
     recommendationMutation.reset();
   };
@@ -310,6 +384,7 @@ const Index = () => {
   const setEntryAndReset = (value: number) => {
     setEntryId(value);
     setSquadGW(selectedGW);
+    setChipPlayEventId(undefined);
     setAppliedTransferCount(0);
     setPitchMode("squad");
     recommendationMutation.reset();
@@ -329,8 +404,16 @@ const Index = () => {
         canRecommend={canRecommend}
         isRecommending={recommendationMutation.isPending}
         onRecommend={() => {
+          const nextChipPlayEventId = chipStrategy === "wildcard" ? selectedGW : undefined;
+          if (chipStrategy === "wildcard") {
+            setChipPlayEventId(nextChipPlayEventId);
+          }
           setAppliedTransferCount(0);
-          recommendationMutation.mutate();
+          recommendationMutation.mutate(
+            buildRecommendationParams(selectedGW, {
+              chipPlayEventId: nextChipPlayEventId,
+            })
+          );
         }}
         recommendErrorMessage={recommendErrorMessage}
         pitchMode={pitchMode}
@@ -350,7 +433,7 @@ const Index = () => {
       )}
       <RecommendationsPanel
         squad={squadQuery.data}
-        recommendation={recommendationMutation.data}
+        recommendation={activeRecommendation}
         isRecommending={recommendationMutation.isPending}
         horizonGws={horizonGws}
         appliedTransferCount={appliedTransferCount}

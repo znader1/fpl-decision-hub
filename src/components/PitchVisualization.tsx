@@ -89,10 +89,13 @@ const toPitchPlayer = (
   id: player.player_id,
   name: player.web_name,
   team: player.team_short,
+  teamName: player.team_name,
   points: player.xpts,
   fixture,
   isCaptain: typeof captainId === "number" && player.player_id === captainId,
   isViceCaptain: typeof viceId === "number" && player.player_id === viceId,
+  alerts: player.alerts,
+  scoreBreakdown: player.score_breakdown,
 });
 
 const toBenchPlayer = (
@@ -148,6 +151,7 @@ export const PitchVisualization = ({
   const recommendationTeam = "horizon_gws" in team ? team : undefined;
   const chipInfo = recommendationTeam?.chip_strategy;
   const chipName = chipLabel(chipInfo?.selected);
+  const chipPlayGw = chipInfo?.play_event_id;
   const displayedTeam = useMemo(() => getDisplayedTeam(team), [team]);
   const { captainId, viceId } = useMemo(() => getCaptainIds(displayedTeam), [displayedTeam]);
 
@@ -211,6 +215,8 @@ export const PitchVisualization = ({
               <p className="text-xs text-muted-foreground">
                 Optimized for GW {recommendationTeam.event_id} · Horizon {recommendationTeam.horizon_gws} GWs
                 {chipInfo?.is_active && chipName && ` · ${chipName} mode`}
+                {chipInfo?.propagates_to_future_gws && typeof chipPlayGw === "number" &&
+                  ` · anchored from GW ${chipPlayGw}`}
                 {typeof chipInfo?.remaining_budget_m === "number" &&
                   ` · £${round1(chipInfo.remaining_budget_m)}m ITB`}
                 {typeof recommendationTeam.transfer_application?.applied === "number" &&
@@ -229,10 +235,18 @@ export const PitchVisualization = ({
           </div>
           {recommendationTeam && (
             <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
-              {chipInfo?.is_active && chipName ? `${chipName} Draft` : "Recommended"}
+              {chipInfo?.is_active && chipName
+                ? `${chipName} Draft${typeof chipPlayGw === "number" ? ` · GW${chipPlayGw}+` : ""}`
+                : "Recommended"}
             </span>
           )}
         </div>
+
+        {recommendationTeam?.chip_strategy?.reason && (
+          <div className="mb-4 rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+            {recommendationTeam.chip_strategy.reason}
+          </div>
+        )}
 
         {errorMessage && (
           <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">

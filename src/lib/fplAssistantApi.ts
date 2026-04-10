@@ -19,6 +19,8 @@ export interface FplTeamRecommendationPlayer {
   photo?: string;
   badge_url?: string;
   photo_url?: string;
+  alerts?: FplPlayerAlert[];
+  score_breakdown?: FplPlayerScoreBreakdown;
 }
 
 export interface FplFixturesHorizonItem {
@@ -31,6 +33,33 @@ export interface FplFixturesHorizonItem {
 
 export interface FplTeamRecommendationBenchPlayer extends FplTeamRecommendationPlayer {
   bench_order: number;
+}
+
+export interface FplPlayerAlert {
+  severity?: "high" | "medium" | "info" | "low" | string;
+  category?: string;
+  text?: string;
+  event_id?: number | null;
+  player_id?: number | null;
+  player_name?: string;
+}
+
+export interface FplWildcardScoreBreakdown {
+  score?: number | null;
+  weighted_xpts?: number | null;
+  future_dgw_bonus?: number | null;
+  captaincy_bonus?: number | null;
+}
+
+export interface FplPlayerScoreBreakdown {
+  note?: string;
+  current_gw_xpts?: number | null;
+  horizon_xpts?: number | null;
+  objective_score_col?: string | null;
+  objective_score?: number | null;
+  objective_explanation?: string;
+  wildcard?: FplWildcardScoreBreakdown;
+  fixtures_horizon?: FplFixturesHorizonItem[];
 }
 
 export interface FplTransferPlayer {
@@ -167,11 +196,33 @@ export interface FplChipStrategySummary {
   is_active: boolean;
   objective_score_col?: string | null;
   objective_horizon_gws?: number | null;
+  play_event_id?: number | null;
+  propagates_to_future_gws?: boolean;
   budget_m?: number | null;
   squad_cost_m?: number | null;
   remaining_budget_m?: number | null;
   objective_score_total?: number | null;
+  objective_components?: string[];
+  explanation?: string | null;
+  profile?: {
+    summary?: string;
+    focus?: string[];
+    premium_attackers?: number;
+    future_double_gameweeks?: number[];
+    future_double_players?: number;
+  } | null;
   reason?: string | null;
+}
+
+export interface FplScoringGuide {
+  headline?: string;
+  bullets?: string[];
+  objective_score_col?: string | null;
+}
+
+export interface FplSquadInsights {
+  summary_points?: FplPlayerAlert[];
+  player_flags?: FplPlayerAlert[];
 }
 
 export interface FplTeamRecommendation extends FplSquad {
@@ -190,6 +241,8 @@ export interface FplTeamRecommendation extends FplSquad {
   squad_with_transfers?: FplOptimizedSquad;
   squad_with_transfers_steps?: FplTransferAppliedStep[];
   timings_ms?: FplApiTimingsMs;
+  scoring_guide?: FplScoringGuide;
+  squad_insights?: FplSquadInsights;
   starting_xi: FplTeamRecommendationPlayer[];
   bench: FplTeamRecommendationBenchPlayer[];
 }
@@ -590,6 +643,7 @@ export interface TeamRecommendationParams {
   horizonGws: number;
   chipStrategy?: FplChipStrategy;
   chipHorizonGws?: number;
+  chipPlayEventId?: number;
   strategy?: string;
   includeTransfers?: boolean;
   applyTransferCount?: number;
@@ -657,6 +711,7 @@ export const interpolateTeamRecommendationUrl = (template: string, params: TeamR
     horizon_gws: params.horizonGws,
     chip_strategy: params.chipStrategy,
     chip_horizon_gws: params.chipHorizonGws,
+    chip_play_event_id: params.chipPlayEventId,
     strategy: params.strategy,
     include_transfers: params.includeTransfers,
     apply_transfer_count: params.applyTransferCount,
