@@ -70,10 +70,21 @@ const getAlertTone = (severity?: string) => {
   }
 };
 
+const getObjectiveLabel = (objectiveScoreCol?: string | null) => {
+  if (objectiveScoreCol === "wildcard_score") return "Wildcard draft score";
+  if (objectiveScoreCol) return objectiveScoreCol.replaceAll("_", " ");
+  return "Lineup score";
+};
+
 export const PlayerCard = ({ player }: PlayerCardProps) => {
   const fixture = player.fixture;
   const alerts = Array.isArray(player.alerts) ? player.alerts.filter((item) => item.text) : [];
   const breakdown = player.scoreBreakdown;
+  const wildcard = breakdown?.wildcard;
+  const objectiveScore = wildcard?.score ?? breakdown?.objective_score ?? breakdown?.horizon_xpts;
+  const weightedFutureXpts = wildcard?.weighted_xpts ?? breakdown?.horizon_xpts;
+  const dgwBonus = wildcard?.future_dgw_bonus ?? 0;
+  const captaincyBonus = wildcard?.captaincy_bonus ?? 0;
   const fixtureDifficulty =
     fixture && typeof fixture.difficulty === "number" && Number.isFinite(fixture.difficulty)
       ? fixture.difficulty
@@ -133,7 +144,7 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
           </div>
         </div>
       </HoverCardTrigger>
-      <HoverCardContent className="w-80 space-y-3" align="center">
+      <HoverCardContent className="w-96 space-y-3" align="center" sideOffset={10}>
         <div>
           <p className="text-sm font-semibold text-foreground">{player.name}</p>
           <p className="text-xs text-muted-foreground">{player.teamName ?? player.team}</p>
@@ -145,13 +156,13 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
             <p className="font-semibold text-foreground">{formatMetric(breakdown?.current_gw_xpts)}</p>
           </div>
           <div className="rounded-md bg-muted/50 px-2 py-1.5">
-            <p className="text-muted-foreground">Planning horizon</p>
+            <p className="text-muted-foreground">Horizon xPts</p>
             <p className="font-semibold text-foreground">{formatMetric(breakdown?.horizon_xpts)}</p>
           </div>
           <div className="col-span-2 rounded-md bg-muted/50 px-2 py-1.5">
-            <p className="text-muted-foreground">Objective score</p>
+            <p className="text-muted-foreground">{getObjectiveLabel(breakdown?.objective_score_col)}</p>
             <p className="font-semibold text-foreground">
-              {breakdown?.objective_score_col ?? "Lineup xPts"}: {formatMetric(breakdown?.objective_score, 2)}
+              {formatMetric(objectiveScore, 2)}
             </p>
           </div>
         </div>
@@ -160,14 +171,19 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
           <p className="text-xs text-muted-foreground">{breakdown.objective_explanation}</p>
         )}
 
-        {breakdown?.wildcard && (
+        {(breakdown?.objective_score_col === "wildcard_score" || breakdown?.wildcard) && (
           <div className="space-y-1 rounded-md border border-border bg-card px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Wildcard Score</p>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <p>Score: <span className="font-semibold text-foreground">{formatMetric(breakdown.wildcard.score, 2)}</span></p>
-              <p>Weighted xPts: <span className="font-semibold text-foreground">{formatMetric(breakdown.wildcard.weighted_xpts, 2)}</span></p>
-              <p>DGW bonus: <span className="font-semibold text-foreground">{formatMetric(breakdown.wildcard.future_dgw_bonus, 2)}</span></p>
-              <p>Captaincy: <span className="font-semibold text-foreground">{formatMetric(breakdown.wildcard.captaincy_bonus, 2)}</span></p>
+              <p>Score: <span className="font-semibold text-foreground">{formatMetric(objectiveScore, 2)}</span></p>
+              <p>Weighted xPts: <span className="font-semibold text-foreground">{formatMetric(weightedFutureXpts, 2)}</span></p>
+              <p>DGW bonus: <span className="font-semibold text-foreground">{formatMetric(dgwBonus, 2)}</span></p>
+              <p>Captaincy: <span className="font-semibold text-foreground">{formatMetric(captaincyBonus, 2)}</span></p>
+            </div>
+            <div className="space-y-1 pt-1 text-[11px] text-muted-foreground">
+              <p>Base score comes from future projected xPts across the wildcard window.</p>
+              <p>DGW bonus only appears when a later gameweek has more than one fixture.</p>
+              <p>Captaincy bonus mainly rewards premium MID/FWD options, so many defenders or cheaper mids stay at 0.</p>
             </div>
           </div>
         )}
@@ -190,12 +206,16 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
 
         {Array.isArray(breakdown?.fixtures_horizon) && breakdown.fixtures_horizon.length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Upcoming Fixtures</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Upcoming Window</p>
             <div className="space-y-1">
               {breakdown.fixtures_horizon.slice(0, 3).map((item) => (
-                <div key={`gw-${item.event_id}`} className="flex items-center justify-between text-xs">
+                <div key={`gw-${item.event_id}`} className="grid grid-cols-[64px_1fr_auto] items-center gap-2 text-xs">
                   <span className="text-muted-foreground">GW {item.event_id}</span>
                   <span className="font-medium text-foreground">{item.fixtures || "—"}</span>
+                  <span className="text-primary font-semibold">
+                    {formatMetric(item.xpts, 1)}
+                    {typeof item.fixture_count === "number" && item.fixture_count > 1 ? ` · x${item.fixture_count}` : ""}
+                  </span>
                 </div>
               ))}
             </div>

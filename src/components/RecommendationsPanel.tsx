@@ -213,6 +213,31 @@ export const RecommendationsPanel = ({
         </div>
 
         <Card className="p-4 space-y-3">
+          <div>
+            <h3 className="font-semibold text-sm text-foreground">Squad Watchlist</h3>
+            <p className="text-xs text-muted-foreground">
+              Key warnings and opportunities from the selected gameweek window.
+            </p>
+          </div>
+          {squadInsights.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Compute a recommendation to see injury, blank, double, and bench-boost setup flags.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {squadInsights.map((item, index) => (
+                <div key={`${item.category ?? "insight"}-${index}`} className="rounded-md border border-border bg-muted/30 px-3 py-2">
+                  <p className="text-sm text-foreground">{item.text}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+                    {item.severity ?? "info"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-4 space-y-3">
           <h3 className="font-semibold text-sm text-foreground">Recommendation Summary</h3>
           {isRecommending && <p className="text-sm text-muted-foreground">Computing…</p>}
           {!recommendation && !isRecommending && (
@@ -339,31 +364,6 @@ export const RecommendationsPanel = ({
           onResetAppliedTransfers={onResetAppliedTransfers}
           onApplyTransferAtIndex={onApplyTransferAtIndex}
         />
-
-        <Card className="p-4 space-y-3">
-          <div>
-            <h3 className="font-semibold text-sm text-foreground">Squad Watchlist</h3>
-            <p className="text-xs text-muted-foreground">
-              Key warnings and opportunities from the selected gameweek window.
-            </p>
-          </div>
-          {squadInsights.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Compute a recommendation to see injury, blank, double, and bench-boost setup flags.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {squadInsights.map((item, index) => (
-                <div key={`${item.category ?? "insight"}-${index}`} className="rounded-md border border-border bg-muted/30 px-3 py-2">
-                  <p className="text-sm text-foreground">{item.text}</p>
-                  <p className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">
-                    {item.severity ?? "info"}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
 
         <div className="space-y-3">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
