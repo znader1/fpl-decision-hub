@@ -159,7 +159,7 @@ export default function Landing() {
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 mb-16">
-            <Link to="/app">
+            <Link to="/auth">
               <Button
                 size="lg"
                 className="bg-primary hover:bg-primary/90 text-white font-bold px-8 h-12 text-base"
@@ -241,7 +241,7 @@ export default function Landing() {
               real pitch, complete with fixture difficulty ratings, xPts for
               every player, and one-click AI recommendations.
             </p>
-            <Link to="/app">
+            <Link to="/auth">
               <Button className="bg-accent hover:bg-accent/90 text-white font-bold">
                 Try it now — it's free
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -257,7 +257,7 @@ export default function Landing() {
               <div className="absolute top-1/2 left-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20" />
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 p-6">
                 <p className="text-white/40 text-sm font-medium">Pitch view</p>
-                <Link to="/app">
+                <Link to="/auth">
                   <Button size="sm" className="bg-white/15 hover:bg-white/25 text-white border border-white/20">
                     Open squad →
                   </Button>
@@ -314,7 +314,7 @@ export default function Landing() {
                   ))}
                 </ul>
 
-                <Link to="/app" className="mt-auto">
+                <Link to="/auth" className="mt-auto">
                   <Button
                     className={`w-full font-bold ${
                       plan.featured
@@ -358,7 +358,7 @@ export default function Landing() {
             Free to start. No credit card required. Your first AI recommendation
             is one click away.
           </p>
-          <Link to="/app">
+          <Link to="/auth">
             <Button
               size="lg"
               className="bg-primary hover:bg-primary/90 text-white font-bold px-10 h-12 text-base"

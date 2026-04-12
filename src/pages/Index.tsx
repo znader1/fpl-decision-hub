@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { ParameterSidebar } from "@/components/ParameterSidebar";
 import { PitchVisualization } from "@/components/PitchVisualization";
 import { RecommendationsPanel } from "@/components/RecommendationsPanel";
+import { Navbar } from "@/components/layout/Navbar";
 import {
   fetchFixtures,
   fetchNextEvent,
@@ -391,7 +392,9 @@ const Index = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background">
+      <Navbar />
+      <div className="flex flex-1 min-h-0 pt-14">
       <ParameterSidebar
         entryId={entryId}
         onEntryIdChange={setEntryAndReset}
@@ -443,6 +446,7 @@ const Index = () => {
         onResetAppliedTransfers={resetAppliedTransfers}
         onApplyTransferAtIndex={applyTransferAtIndex}
       />
+      </div>
     </div>
   );
 };
