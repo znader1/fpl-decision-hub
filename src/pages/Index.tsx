@@ -423,17 +423,17 @@ const Index = () => {
         onPitchModeChange={setPitchMode}
         hasRecommendation={Boolean(recommendationMutation.data)}
       />
-      {activeTeam && (
-        <PitchVisualization
-          team={activeTeam}
-          requestedGw={selectedGW}
-          onRequestedGwChange={setGwAndReset}
-          gwSelectable={canChangeGw}
-          isLoading={isLoading}
-          errorMessage={activeErrorMessage}
-          fixturesByTeam={fixturesByTeam}
-        />
-      )}
+      <PitchVisualization
+        entryId={entryId}
+        onEntryIdSubmit={setEntryAndReset}
+        team={activeTeam ?? SAMPLE_SQUAD}
+        requestedGw={selectedGW}
+        onRequestedGwChange={setGwAndReset}
+        gwSelectable={canChangeGw}
+        isLoading={isLoading}
+        errorMessage={activeErrorMessage}
+        fixturesByTeam={fixturesByTeam}
+      />
       <RecommendationsPanel
         squad={squadQuery.data}
         recommendation={activeRecommendation}

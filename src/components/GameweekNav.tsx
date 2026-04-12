@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Trophy } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trophy, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -17,6 +17,7 @@ interface GameweekNavProps {
   onNext: () => void;
   navEnabled?: boolean;
   onSelectGW?: (gw: number) => void;
+  isRecommendation?: boolean;
 }
 
 export const GameweekNav = ({
@@ -28,51 +29,49 @@ export const GameweekNav = ({
   onNext,
   navEnabled = true,
   onSelectGW,
+  isRecommendation = false,
 }: GameweekNavProps) => {
   return (
-    <div className="flex items-center justify-between mb-6">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 mb-5 bg-card border border-border rounded-xl px-4 py-2.5">
+      {/* GW navigation */}
+      <div className="flex items-center gap-1.5 shrink-0">
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground"
           onClick={onPrev}
           disabled={!navEnabled || currentGW <= 1}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <div className="text-center">
-          {onSelectGW ? (
-            <div className="flex flex-col items-center gap-1">
-              <Select
-                value={String(currentGW)}
-                onValueChange={(value) => onSelectGW(Number(value))}
-                disabled={!navEnabled}
-              >
-                <SelectTrigger className="h-9 w-[160px] text-base font-bold justify-center">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: totalGW }, (_, i) => i + 1).map((gw) => (
-                    <SelectItem key={gw} value={String(gw)}>
-                      GW {gw}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">of {totalGW}</p>
-            </div>
-          ) : (
-            <>
-              <h1 className="text-2xl font-bold text-foreground">Gameweek {currentGW}</h1>
-              <p className="text-xs text-muted-foreground">of {totalGW}</p>
-            </>
-          )}
-        </div>
+
+        {onSelectGW ? (
+          <Select
+            value={String(currentGW)}
+            onValueChange={(v) => onSelectGW(Number(v))}
+            disabled={!navEnabled}
+          >
+            <SelectTrigger className="h-8 w-[108px] text-sm font-bold border-0 bg-transparent focus:ring-0 px-2">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: totalGW }, (_, i) => i + 1).map((gw) => (
+                <SelectItem key={gw} value={String(gw)}>
+                  GW {gw}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <span className="text-sm font-bold text-foreground w-[108px] text-center">
+            Gameweek {currentGW}
+          </span>
+        )}
+
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground"
           onClick={onNext}
           disabled={!navEnabled || currentGW >= totalGW}
         >
@@ -80,18 +79,29 @@ export const GameweekNav = ({
         </Button>
       </div>
 
-      <div className="flex items-center gap-6">
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground font-medium">GW Points</p>
-          <p className="text-2xl font-bold text-primary">{points}</p>
+      {/* Divider */}
+      <div className="h-5 w-px bg-border shrink-0" />
+
+      {/* Stats */}
+      <div className="flex items-center gap-5 flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <Star className="h-3.5 w-3.5 text-primary shrink-0" />
+          <span className="text-xs text-muted-foreground shrink-0">
+            {isRecommendation ? "Proj. xPts" : "GW Pts"}
+          </span>
+          <span className="text-sm font-bold text-primary tabular-nums">{points}</span>
         </div>
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground font-medium flex items-center gap-1 justify-center">
-            <Trophy className="h-3 w-3" />
-            Overall Rank
-          </p>
-          <p className="text-lg font-bold text-foreground">{rank}</p>
-        </div>
+
+        {!isRecommendation && rank !== "—" && (
+          <>
+            <div className="h-4 w-px bg-border shrink-0" />
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Trophy className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground shrink-0">Rank</span>
+              <span className="text-sm font-bold text-foreground tabular-nums truncate">{rank}</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

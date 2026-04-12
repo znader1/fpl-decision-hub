@@ -1,6 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PlayerCard, type Player } from "./PlayerCard";
 import { GameweekNav } from "./GameweekNav";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 import type {
   FplSquad,
   FplTeamFixture,
@@ -12,6 +15,8 @@ import type {
 type PitchTeam = FplSquad | FplTeamRecommendation;
 
 interface PitchVisualizationProps {
+  entryId?: number;
+  onEntryIdSubmit?: (id: number) => void;
   team: PitchTeam;
   requestedGw: number;
   onRequestedGwChange: (gw: number) => void;
@@ -140,6 +145,8 @@ const formatRank = (value?: number) => {
 };
 
 export const PitchVisualization = ({
+  entryId,
+  onEntryIdSubmit,
   team,
   requestedGw,
   onRequestedGwChange,
@@ -148,6 +155,7 @@ export const PitchVisualization = ({
   errorMessage,
   fixturesByTeam,
 }: PitchVisualizationProps) => {
+  const [draftId, setDraftId] = useState("");
   const recommendationTeam = "horizon_gws" in team ? team : undefined;
   const chipInfo = recommendationTeam?.chip_strategy;
   const chipName = chipLabel(chipInfo?.selected);
@@ -264,6 +272,7 @@ export const PitchVisualization = ({
           onNext={() => gwSelectable && onRequestedGwChange(Math.min(38, requestedGw + 1))}
           navEnabled={gwSelectable}
           onSelectGW={(gw) => gwSelectable && onRequestedGwChange(gw)}
+          isRecommendation={Boolean(recommendationTeam)}
         />
 
         <div
@@ -281,6 +290,41 @@ export const PitchVisualization = ({
             minHeight: "600px",
           }}
         >
+          {/* Entry ID prompt overlay — shown when no valid ID is set */}
+          {onEntryIdSubmit && (!entryId || entryId <= 0) && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm rounded-2xl">
+              <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-sm mx-4 text-center shadow-xl">
+                <Search className="h-8 w-8 text-primary mx-auto mb-3" />
+                <h3 className="font-bold text-foreground mb-1">Enter your FPL team ID</h3>
+                <p className="text-sm text-muted-foreground mb-5">
+                  Find it on the FPL website under Points → click your team name in the URL.
+                </p>
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const id = Number(draftId);
+                    if (id > 0) onEntryIdSubmit(id);
+                  }}
+                >
+                  <Input
+                    type="number"
+                    min={1}
+                    inputMode="numeric"
+                    placeholder="e.g. 588004"
+                    value={draftId}
+                    onChange={(e) => setDraftId(e.target.value)}
+                    className="flex-1"
+                    autoFocus
+                  />
+                  <Button type="submit" className="bg-primary text-white hover:bg-primary/90 shrink-0">
+                    Load
+                  </Button>
+                </form>
+              </div>
+            </div>
+          )}
+
           {/* Center circle */}
           <div
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 opacity-20"
