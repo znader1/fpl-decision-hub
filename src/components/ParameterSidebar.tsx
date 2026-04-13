@@ -42,9 +42,6 @@ interface ParameterSidebarProps {
   isRecommending: boolean;
   onRecommend: () => void;
   recommendErrorMessage?: string;
-  pitchMode: "squad" | "recommendation";
-  onPitchModeChange: (mode: "squad" | "recommendation") => void;
-  hasRecommendation: boolean;
 }
 
 export const ParameterSidebar = ({
@@ -60,9 +57,6 @@ export const ParameterSidebar = ({
   isRecommending,
   onRecommend,
   recommendErrorMessage,
-  pitchMode,
-  onPitchModeChange,
-  hasRecommendation,
 }: ParameterSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -261,40 +255,6 @@ export const ParameterSidebar = ({
           />
         </div>
 
-        {/* View toggle (only when recommendation exists) */}
-        {hasRecommendation && (
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wider">
-              View
-            </Label>
-            <div className="grid grid-cols-2 gap-1.5">
-              <Button
-                variant={pitchMode === "squad" ? "default" : "outline"}
-                size="sm"
-                className={
-                  pitchMode === "squad"
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground text-xs"
-                    : "border-sidebar-border text-sidebar-foreground text-xs"
-                }
-                onClick={() => onPitchModeChange("squad")}
-              >
-                Current
-              </Button>
-              <Button
-                variant={pitchMode === "recommendation" ? "default" : "outline"}
-                size="sm"
-                className={
-                  pitchMode === "recommendation"
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground text-xs"
-                    : "border-sidebar-border text-sidebar-foreground text-xs"
-                }
-                onClick={() => onPitchModeChange("recommendation")}
-              >
-                AI Pick
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Recommend CTA — pinned to bottom */}

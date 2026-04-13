@@ -392,7 +392,7 @@ const Index = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="dark flex flex-col h-screen bg-background">
       <Navbar />
       <div className="flex flex-1 min-h-0 pt-14">
       <ParameterSidebar
@@ -419,9 +419,6 @@ const Index = () => {
           );
         }}
         recommendErrorMessage={recommendErrorMessage}
-        pitchMode={pitchMode}
-        onPitchModeChange={setPitchMode}
-        hasRecommendation={Boolean(recommendationMutation.data)}
       />
       <PitchVisualization
         entryId={entryId}
@@ -433,6 +430,9 @@ const Index = () => {
         isLoading={isLoading}
         errorMessage={activeErrorMessage}
         fixturesByTeam={fixturesByTeam}
+        pitchMode={pitchMode}
+        onPitchModeChange={setPitchMode}
+        hasRecommendation={Boolean(recommendationMutation.data)}
       />
       <RecommendationsPanel
         squad={squadQuery.data}

@@ -24,6 +24,9 @@ interface PitchVisualizationProps {
   isLoading?: boolean;
   errorMessage?: string;
   fixturesByTeam?: Record<string, FplTeamFixture[]>;
+  pitchMode?: "squad" | "recommendation";
+  onPitchModeChange?: (mode: "squad" | "recommendation") => void;
+  hasRecommendation?: boolean;
 }
 
 const getRowGapClass = (count: number) => {
@@ -154,6 +157,9 @@ export const PitchVisualization = ({
   isLoading = false,
   errorMessage,
   fixturesByTeam,
+  pitchMode = "squad",
+  onPitchModeChange,
+  hasRecommendation = false,
 }: PitchVisualizationProps) => {
   const [draftId, setDraftId] = useState("");
   const recommendationTeam = "horizon_gws" in team ? team : undefined;
@@ -212,54 +218,49 @@ export const PitchVisualization = ({
   };
 
   return (
-    <div className="flex-1 min-w-0 p-6 overflow-y-auto">
+    <div className="flex-1 min-w-0 p-5 overflow-y-auto">
       <div className="max-w-5xl mx-auto">
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-foreground">
-              {recommendationTeam ? "Recommended Squad" : "Current Squad"}
-            </h2>
-            {recommendationTeam && (
-              <p className="text-xs text-muted-foreground">
-                Optimized for GW {recommendationTeam.event_id} · Horizon {recommendationTeam.horizon_gws} GWs
-                {chipInfo?.is_active && chipName && ` · ${chipName} mode`}
-                {chipInfo?.propagates_to_future_gws && typeof chipPlayGw === "number" &&
-                  ` · anchored from GW ${chipPlayGw}`}
-                {typeof chipInfo?.remaining_budget_m === "number" &&
-                  ` · £${round1(chipInfo.remaining_budget_m)}m ITB`}
-                {typeof recommendationTeam.transfer_application?.applied === "number" &&
-                  recommendationTeam.transfer_application.applied > 0 &&
-                  ` · ${recommendationTeam.transfer_application.applied} transfer(s) applied`}
-                {typeof recommendationTeam.transfer_impact?.delta_projected_points_with_captain === "number" &&
-                  ` · Δ ${round1(recommendationTeam.transfer_impact.delta_projected_points_with_captain)} xPts`}
-              </p>
-            )}
-            {!recommendationTeam && (
-              <p className="text-xs text-muted-foreground">
-                GW {team.event_id} points now: {typeof actualGwPoints === "number" ? actualGwPoints : "—"} ·
-                projected XI: {gwPoints}
-              </p>
-            )}
-          </div>
-          {recommendationTeam && (
-            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
-              {chipInfo?.is_active && chipName
-                ? `${chipName} Draft${typeof chipPlayGw === "number" ? ` · GW${chipPlayGw}+` : ""}`
-                : "Recommended"}
-            </span>
-          )}
-        </div>
 
-        {recommendationTeam?.chip_strategy?.reason && (
-          <div className="mb-4 rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-            {recommendationTeam.chip_strategy.reason}
+        {/* Squad / AI Pick tab bar */}
+        {onPitchModeChange && (
+          <div className="flex items-center gap-1 mb-4 bg-card border border-border rounded-xl p-1 w-fit">
+            <button
+              onClick={() => onPitchModeChange("squad")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                pitchMode === "squad"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Squad
+            </button>
+            <button
+              onClick={() => hasRecommendation && onPitchModeChange("recommendation")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                pitchMode === "recommendation"
+                  ? "bg-primary text-white shadow-sm"
+                  : hasRecommendation
+                  ? "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground/30 cursor-not-allowed"
+              }`}
+            >
+              AI Pick
+              {!hasRecommendation && (
+                <span className="ml-1.5 text-[10px] font-normal opacity-60">run first</span>
+              )}
+            </button>
+            {chipInfo?.is_active && chipName && (
+              <span className="ml-2 px-2 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-semibold">
+                {chipName}
+              </span>
+            )}
           </div>
         )}
 
         {errorMessage && (
-          <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            <p>Failed to load from backend. Showing last loaded data instead.</p>
-            <p className="mt-1 text-xs text-destructive/90">{errorMessage}</p>
+          <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <p>Failed to load from backend. Showing last loaded data.</p>
+            <p className="mt-1 text-xs opacity-80">{errorMessage}</p>
           </div>
         )}
 
