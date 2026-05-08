@@ -58,6 +58,13 @@ export function Navbar() {
                   </Button>
                 </Link>
               )}
+              {isApp && (
+                <Link to={pathname === "/app/league" ? "/app" : "/app/league"}>
+                  <Button variant="ghost" size="sm" className="text-white/70 hover:text-white">
+                    {pathname === "/app/league" ? "Squad" : "Mini-league"}
+                  </Button>
+                </Link>
+              )}
               <Button
                 variant="ghost"
                 size="sm"

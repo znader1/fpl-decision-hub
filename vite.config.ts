@@ -12,15 +12,15 @@ export default defineConfig(({ mode }) => ({
       // Local dev helper to avoid CORS when hitting FastAPI directly.
       // Use `VITE_FPL_TEAM_RECOMMENDATION_URL="/recommendations?..."`
       "/recommendations": {
-        target: "https://fpl-refresh-app.whitestone-9a91372e.francecentral.azurecontainerapps.io/",
+        target: process.env.VITE_FPL_API_BASE_URL ?? "https://fpl-refresh-app.whitestone-9a91372e.francecentral.azurecontainerapps.io/",
         changeOrigin: true,
       },
       "/squad": {
-        target: "https://fpl-refresh-app.whitestone-9a91372e.francecentral.azurecontainerapps.io/",
+        target: process.env.VITE_FPL_API_BASE_URL ?? "https://fpl-refresh-app.whitestone-9a91372e.francecentral.azurecontainerapps.io/",
         changeOrigin: true,
       },
       "/fixtures": {
-        target: "https://fpl-refresh-app.whitestone-9a91372e.francecentral.azurecontainerapps.io/",
+        target: process.env.VITE_FPL_API_BASE_URL ?? "https://fpl-refresh-app.whitestone-9a91372e.francecentral.azurecontainerapps.io/",
         changeOrigin: true,
       },
     },

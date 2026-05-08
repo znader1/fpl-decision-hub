@@ -17,6 +17,8 @@ export interface Player {
   teamName?: string;
   price?: number;
   points: number;
+  livePoints?: number | null;
+  isLiveGw?: boolean;
   number?: number;
   isCaptain?: boolean;
   isViceCaptain?: boolean;
@@ -79,6 +81,8 @@ const getObjectiveLabel = (objectiveScoreCol?: string | null) => {
 export const PlayerCard = ({ player }: PlayerCardProps) => {
   const fixture = player.fixture;
   const alerts = Array.isArray(player.alerts) ? player.alerts.filter((item) => item.text) : [];
+  const hasLivePoints = player.isLiveGw && typeof player.livePoints === "number" && Number.isFinite(player.livePoints);
+  const displayPoints = hasLivePoints ? player.livePoints! : player.points;
   const breakdown = player.scoreBreakdown;
   const wildcard = breakdown?.wildcard;
   const recentForm = breakdown?.recent_form;
@@ -141,7 +145,15 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
               ) : (
                 <span className="text-muted-foreground">{player.team}</span>
               )}
-              <span className="font-semibold text-primary">{formatPoints(player.points)}</span>
+              {hasLivePoints ? (
+                <>
+                  <span className="font-semibold text-emerald-400">{formatPoints(displayPoints)}</span>
+                  <span className="text-muted-foreground/60">·</span>
+                  <span className="text-muted-foreground/70">{formatPoints(player.points)}</span>
+                </>
+              ) : (
+                <span className="font-semibold text-primary">{formatPoints(player.points)}</span>
+              )}
             </div>
           </div>
         </div>

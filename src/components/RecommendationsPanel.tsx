@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TransferPlanner } from "./TransferPlanner";
 import { JerseyIcon } from "./JerseyIcon";
+import { ExplanationPanel } from "./ExplanationPanel";
 import type { FplSquad, FplTeamRecommendation } from "@/lib/fplAssistantApi";
 
 interface RecommendationsPanelProps {
@@ -423,7 +424,7 @@ export const RecommendationsPanel = ({
   const moveCount = recommendation?.transfers?.moves?.length ?? 0;
 
   return (
-    <aside className="w-80 shrink-0 bg-card border-l border-border flex flex-col">
+    <aside className="w-[380px] xl:w-[440px] shrink-0 bg-card border-l border-border flex flex-col">
       {/* Tab bar */}
       <div className="flex border-b border-border shrink-0">
         {tabs.map((tab) => {
@@ -484,6 +485,7 @@ export const RecommendationsPanel = ({
             isRecommending={isRecommending}
           />
         )}
+        <ExplanationPanel recommendation={recommendation} />
       </div>
     </aside>
   );

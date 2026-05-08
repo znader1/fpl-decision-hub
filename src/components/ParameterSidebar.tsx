@@ -184,6 +184,9 @@ export const ParameterSidebar = ({
             onChange={(e) => onEntryIdChange(Number(e.target.value))}
             className="bg-sidebar border-sidebar-border text-sidebar-foreground placeholder:text-sidebar-foreground/30 h-9"
           />
+          <p className="text-[11px] text-sidebar-foreground/40 leading-relaxed">
+            Find yours on the FPL site under Points — it's in the page URL.
+          </p>
         </div>
 
         <div className="border-t border-sidebar-border" />
@@ -209,9 +212,11 @@ export const ParameterSidebar = ({
               ))}
             </SelectContent>
           </Select>
-          {chipStrategy === "free_hit" && (
-            <p className="text-[11px] text-sidebar-foreground/40">Forced to 1 GW by Free Hit</p>
-          )}
+          <p className="text-[11px] text-sidebar-foreground/40 leading-relaxed">
+            {chipStrategy === "free_hit"
+              ? "Forced to 1 GW — Free Hit only optimises the next gameweek."
+              : "How many gameweeks ahead to optimise for. 3 GWs is a good default."}
+          </p>
         </div>
 
         {/* Chip strategy */}
@@ -231,28 +236,32 @@ export const ParameterSidebar = ({
               ))}
             </SelectContent>
           </Select>
-          {chipActive && (
-            <p className="text-[11px] text-sidebar-foreground/40">
-              Squad built from market optimisation, not current picks.
-            </p>
-          )}
+          <p className="text-[11px] text-sidebar-foreground/40 leading-relaxed">
+            {chipStrategy === "wildcard"
+              ? "Wildcard: builds an entirely new 15-man squad from scratch."
+              : chipStrategy === "free_hit"
+              ? "Free Hit: one-week optimal squad — your picks reset next GW."
+              : "Select Wildcard or Free Hit to draft a chip squad."}
+          </p>
         </div>
 
         {/* Include transfers */}
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wider">
               Transfer suggestions
             </p>
-            {includeTransfersDisabled && (
-              <p className="text-[11px] text-sidebar-foreground/40 mt-0.5">Disabled while chip is active</p>
-            )}
+            <Switch
+              checked={includeTransfers}
+              onCheckedChange={onIncludeTransfersChange}
+              disabled={includeTransfersDisabled}
+            />
           </div>
-          <Switch
-            checked={includeTransfers}
-            onCheckedChange={onIncludeTransfersChange}
-            disabled={includeTransfersDisabled}
-          />
+          <p className="text-[11px] text-sidebar-foreground/40 leading-relaxed">
+            {includeTransfersDisabled
+              ? "Disabled — chip mode builds a full squad, transfers don't apply."
+              : "Show which players to bring in and the expected point gain per move."}
+          </p>
         </div>
 
       </div>

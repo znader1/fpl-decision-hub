@@ -51,7 +51,7 @@ export const GameweekNav = ({
             onValueChange={(v) => onSelectGW(Number(v))}
             disabled={!navEnabled}
           >
-            <SelectTrigger className="h-8 w-[108px] text-sm font-bold border-0 bg-transparent focus:ring-0 px-2">
+            <SelectTrigger className="h-8 w-[108px] text-sm font-bold text-foreground border-0 bg-transparent focus:ring-0 px-2">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

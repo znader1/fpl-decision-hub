@@ -10,6 +10,7 @@ export interface FplTeamRecommendationPlayer {
   is_vice_captain: boolean;
   multiplier: number;
   xpts: number;
+  event_points?: number | null;
   next_fixtures?: string;
   fixtures_horizon?: FplFixturesHorizonItem[];
   is_captain_suggested?: boolean;
@@ -109,6 +110,8 @@ export interface FplTransferPlan {
 
 export interface FplHotPlayer extends FplTransferPlayer {
   pos?: FplPosition;
+  xpts?: number;
+  xpts_horizon?: number;
   transfer_score?: number;
   hot_score?: number;
   set_piece_score?: number;
@@ -1027,4 +1030,140 @@ export const fetchTeamRecommendation = async (
   }
 
   return data;
+};
+
+// ============================================================================
+// Phase 1 — /explain (LLM rationale for recommendations)
+// Phase 2 — /league/list and /league/strategy (mini-league strategy)
+// ============================================================================
+
+export type ExplainTransfer = {
+  out_id: number | null;
+  in_id: number | null;
+  rationale: string;
+};
+
+export type ExplainResponse = {
+  transfers: ExplainTransfer[];
+  captain: { player_id: number | null; rationale: string | null };
+  chip: { name: string | null; rationale: string | null };
+  model?: string;
+  cached?: boolean;
+  error?: string;
+};
+
+export const fetchExplanation = async (
+  recommendations: unknown,
+  signal?: AbortSignal
+): Promise<ExplainResponse> => {
+  const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
+  const url = apiBase ? new URL("/explain", apiBase).toString() : "/explain";
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ recommendations }),
+    signal,
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Failed to fetch explanation (${response.status}): ${body.slice(0, 200)}`);
+  }
+  return (await response.json()) as ExplainResponse;
+};
+
+export type LeagueSummary = {
+  id: number;
+  name: string;
+  entry_rank: number | null;
+  entry_last_rank: number | null;
+  league_type?: string | null;
+  scoring?: string | null;
+  size?: number | null;
+};
+
+export const fetchUserLeagues = async (
+  entryId: number,
+  signal?: AbortSignal
+): Promise<{ entry_id: number; leagues: LeagueSummary[] }> => {
+  const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
+  const path = `/league/list?entry_id=${encodeURIComponent(entryId)}`;
+  const url = apiBase ? new URL(path, apiBase).toString() : path;
+  const response = await fetch(url, { signal });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Failed to fetch leagues (${response.status}): ${body.slice(0, 200)}`);
+  }
+  return (await response.json()) as { entry_id: number; leagues: LeagueSummary[] };
+};
+
+export type LeagueStrategyMode = "chase" | "defend" | "differential";
+
+export type LeagueRivalEntry = {
+  entry_id: number;
+  player_name: string | null;
+  entry_name: string | null;
+  rank: number | null;
+  last_rank: number | null;
+  total: number | null;
+  event_total: number | null;
+};
+
+export type LeagueStrategyCandidate = {
+  id: number;
+  web_name: string | null;
+  team_short: string | null;
+  position_id: number | null;
+  now_cost: number | null;
+  selected_by_percent: string | null;
+  ep_next: string | number | null;
+  form: string | null;
+  model_xpts_horizon: number | null;
+  model_xpts_per_gw: Record<string, number> | null;
+  league_ownership: number | null;
+};
+
+export type LeagueStrategyNarrative = {
+  headline?: string;
+  key_gap?: string;
+  recommended_targets?: Array<{ player_id: number; name?: string; rationale: string }>;
+  watchouts?: string;
+  model?: string;
+  error?: string;
+};
+
+export type LeagueStrategyResponse = {
+  mode: LeagueStrategyMode;
+  league: { id: number; name: string };
+  user: LeagueRivalEntry;
+  rivals_above: LeagueRivalEntry[];
+  rivals_below: LeagueRivalEntry[];
+  differentials_count: {
+    owned_by_me_not_rivals: number;
+    owned_by_rivals_not_me: number;
+    shared: number;
+  };
+  candidates: LeagueStrategyCandidate[];
+  narrative: LeagueStrategyNarrative;
+  projection_horizon_gws?: number;
+  projection_error?: string;
+  error?: string;
+};
+
+export const fetchLeagueStrategy = async (
+  params: { entry_id: number; league_id: number; mode: LeagueStrategyMode; event_id?: number; horizon_gws?: number },
+  signal?: AbortSignal
+): Promise<LeagueStrategyResponse> => {
+  const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
+  const url = apiBase ? new URL("/league/strategy", apiBase).toString() : "/league/strategy";
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+    signal,
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Failed to fetch league strategy (${response.status}): ${body.slice(0, 200)}`);
+  }
+  return (await response.json()) as LeagueStrategyResponse;
 };

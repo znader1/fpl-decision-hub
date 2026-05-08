@@ -348,27 +348,42 @@ export const TransferPlanner = ({
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Hot Targets</p>
           {hotRows.map(({ position, players }) => (
-            <div key={position} className="rounded-lg border border-border p-2">
-              <p className="text-xs text-muted-foreground mb-2">{position}</p>
-              <div className="space-y-1.5">
-                {players.slice(0, 2).map((player) => (
-                  <div key={player.id} className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
+            <div key={position} className="rounded-xl border border-border bg-card/50 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">{position}</p>
+              <div className="space-y-2">
+                {players.slice(0, 3).map((player) => {
+                  const hasXpts = typeof player.xpts === "number";
+                  const hasHorizon = typeof player.xpts_horizon === "number";
+                  return (
+                    <div key={player.id} className="flex items-center gap-2">
                       <JerseyIcon team={player.team} size="sm" />
-                      <p className="text-xs text-foreground truncate">
-                        {player.name} ({player.team})
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground truncate">{player.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {player.team} · {formatMoney(player.price)}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        {hasXpts ? (
+                          <>
+                            <p className="text-sm font-bold text-primary leading-none">
+                              {formatPoints(player.xpts)} xPts
+                            </p>
+                            {hasHorizon && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                {formatPoints(player.xpts_horizon)} horizon
+                              </p>
+                            )}
+                          </>
+                        ) : typeof player.transfer_score === "number" ? (
+                          <Badge variant="outline" className="text-xs">
+                            score {formatPoints(player.transfer_score)}
+                          </Badge>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{formatMoney(player.price)}</span>
-                      {typeof player.transfer_score === "number" && (
-                        <Badge variant="outline" className="text-xs">
-                          {formatPoints(player.transfer_score)}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}

@@ -139,9 +139,9 @@ const Index = () => {
   const nextEventQuery = useQuery<FplNextEventSummary>({
     queryKey: ["next-event"],
     queryFn: ({ signal }) => fetchNextEvent(signal),
-    enabled: canFetchNextEvent && !didApplyNextGwDefault && (canFetchSquad || canRecommend || canFetchFixtures),
+    enabled: canFetchNextEvent && (canFetchSquad || canRecommend || canFetchFixtures),
     retry: false,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 
   const squadQuery = useQuery<FplSquad>({
@@ -289,6 +289,12 @@ const Index = () => {
     setPitchMode("recommendation");
   }, [horizonGws, chipStrategy, includeTransfers]);
 
+  const nextEventId = nextEventQuery.data?.event_id;
+  // Current GW = nextEventId - 1 (next event hasn't started yet).
+  // isLiveGw is true only for that specific GW so past GWs still show xPts.
+  const currentLiveGw = typeof nextEventId === "number" ? nextEventId - 1 : undefined;
+  const isLiveGw = typeof currentLiveGw === "number" && selectedGW === currentLiveGw;
+
   const totalSuggestedMoves = recommendationMutation.data?.transfers?.moves?.length ?? 0;
   const canApplyNextTransfer = appliedTransferCount < totalSuggestedMoves;
 
@@ -433,6 +439,7 @@ const Index = () => {
         pitchMode={pitchMode}
         onPitchModeChange={setPitchMode}
         hasRecommendation={Boolean(recommendationMutation.data)}
+        isLiveGw={isLiveGw}
       />
       <RecommendationsPanel
         squad={squadQuery.data}

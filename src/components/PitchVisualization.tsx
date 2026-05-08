@@ -27,6 +27,7 @@ interface PitchVisualizationProps {
   pitchMode?: "squad" | "recommendation";
   onPitchModeChange?: (mode: "squad" | "recommendation") => void;
   hasRecommendation?: boolean;
+  isLiveGw?: boolean;
 }
 
 const getRowGapClass = (count: number) => {
@@ -92,13 +93,16 @@ const toPitchPlayer = (
   player: FplTeamRecommendationPlayer,
   captainId?: number,
   viceId?: number,
-  fixture?: Player["fixture"]
+  fixture?: Player["fixture"],
+  isLiveGw = false,
 ): Player => ({
   id: player.player_id,
   name: player.web_name,
   team: player.team_short,
   teamName: player.team_name,
   points: player.xpts,
+  livePoints: player.event_points,
+  isLiveGw,
   fixture,
   isCaptain: typeof captainId === "number" && player.player_id === captainId,
   isViceCaptain: typeof viceId === "number" && player.player_id === viceId,
@@ -110,9 +114,10 @@ const toBenchPlayer = (
   player: FplTeamRecommendationBenchPlayer,
   captainId?: number,
   viceId?: number,
-  fixture?: Player["fixture"]
+  fixture?: Player["fixture"],
+  isLiveGw = false,
 ): Player => ({
-  ...toPitchPlayer(player, captainId, viceId, fixture),
+  ...toPitchPlayer(player, captainId, viceId, fixture, isLiveGw),
   number: player.bench_order,
 });
 
@@ -160,6 +165,7 @@ export const PitchVisualization = ({
   pitchMode = "squad",
   onPitchModeChange,
   hasRecommendation = false,
+  isLiveGw = false,
 }: PitchVisualizationProps) => {
   const [draftId, setDraftId] = useState("");
   const recommendationTeam = "horizon_gws" in team ? team : undefined;
@@ -212,14 +218,16 @@ export const PitchVisualization = ({
   };
 
   const getFixtureForPlayer = (player: FplTeamRecommendationPlayer): Player["fixture"] | undefined => {
-    const fromLabel = parseNextFixturesLabel(player.next_fixtures);
-    if (fromLabel) return fromLabel;
-    return getFixtureForTeam(player.team_short);
+    // Prefer live per-GW fixtures fetch — always reflects the GW being viewed.
+    // Fall back to the baked-in next_fixtures label only if fixtures haven't loaded yet.
+    const fromLive = getFixtureForTeam(player.team_short);
+    if (fromLive) return fromLive;
+    return parseNextFixturesLabel(player.next_fixtures);
   };
 
   return (
-    <div className="flex-1 min-w-0 p-5 overflow-y-auto">
-      <div className="max-w-5xl mx-auto">
+    <div className="flex-1 min-w-0 p-4 overflow-y-auto">
+      <div className="w-full max-w-3xl mx-auto">
 
         {/* Squad / AI Pick tab bar */}
         {onPitchModeChange && (
@@ -346,7 +354,7 @@ export const PitchVisualization = ({
             {goalkeeper.map((player) => (
               <PlayerCard
                 key={player.player_id}
-                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player))}
+                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
               />
             ))}
           </div>
@@ -356,7 +364,7 @@ export const PitchVisualization = ({
             {defenders.map((player) => (
               <PlayerCard
                 key={player.player_id}
-                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player))}
+                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
               />
             ))}
           </div>
@@ -366,7 +374,7 @@ export const PitchVisualization = ({
             {midfielders.map((player) => (
               <PlayerCard
                 key={player.player_id}
-                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player))}
+                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
               />
             ))}
           </div>
@@ -376,7 +384,7 @@ export const PitchVisualization = ({
             {forwards.map((player) => (
               <PlayerCard
                 key={player.player_id}
-                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player))}
+                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
               />
             ))}
           </div>
@@ -392,7 +400,7 @@ export const PitchVisualization = ({
             {bench.map((player) => (
               <PlayerCard
                 key={player.player_id}
-                player={toBenchPlayer(player, captainId, viceId, getFixtureForPlayer(player))}
+                player={toBenchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
               />
             ))}
           </div>
