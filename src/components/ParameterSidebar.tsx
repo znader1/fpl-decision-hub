@@ -42,6 +42,8 @@ interface ParameterSidebarProps {
   isRecommending: boolean;
   onRecommend: () => void;
   recommendErrorMessage?: string;
+  isLiveGw?: boolean;
+  maxHorizon?: number;
 }
 
 export const ParameterSidebar = ({
@@ -57,10 +59,13 @@ export const ParameterSidebar = ({
   isRecommending,
   onRecommend,
   recommendErrorMessage,
+  isLiveGw = false,
+  maxHorizon = 6,
 }: ParameterSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
 
-  const recommendDisabled = !canRecommend || !Number.isFinite(entryId) || entryId <= 0 || isRecommending;
+  const recommendDisabled = !canRecommend || !Number.isFinite(entryId) || entryId <= 0 || isRecommending || isLiveGw;
+  const cappedHorizonOptions = Array.from({ length: Math.max(1, Math.min(6, maxHorizon)) }, (_, i) => i + 1);
   const chipActive = chipStrategy === "wildcard" || chipStrategy === "free_hit";
   const includeTransfersDisabled = chipActive;
   const effectiveHorizonLabel = chipStrategy === "free_hit" ? "1 GW (Free Hit)" : `${horizonGws} GWs`;
@@ -205,7 +210,7 @@ export const ParameterSidebar = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[1, 2, 3, 4, 5, 6].map((gw) => (
+              {cappedHorizonOptions.map((gw) => (
                 <SelectItem key={gw} value={String(gw)}>
                   {gw} GW{gw > 1 ? "s" : ""}
                 </SelectItem>
@@ -276,6 +281,11 @@ export const ParameterSidebar = ({
           <Zap className="h-4 w-4 mr-2" />
           {isRecommending ? "Computing…" : chipActive ? "Build Chip Draft" : "Recommend Squad"}
         </Button>
+        {isLiveGw && (
+          <p className="text-xs text-muted-foreground">
+            GW in progress — switch to a future GW to plan transfers.
+          </p>
+        )}
         {recommendErrorMessage && (
           <p className="text-xs text-destructive break-words">{recommendErrorMessage}</p>
         )}

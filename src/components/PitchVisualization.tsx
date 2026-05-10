@@ -282,6 +282,7 @@ export const PitchVisualization = ({
           navEnabled={gwSelectable}
           onSelectGW={(gw) => gwSelectable && onRequestedGwChange(gw)}
           isRecommendation={Boolean(recommendationTeam)}
+          isLiveGw={isLiveGw}
         />
 
         <div

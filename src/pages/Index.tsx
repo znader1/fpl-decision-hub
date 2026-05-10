@@ -412,6 +412,8 @@ const Index = () => {
         onIncludeTransfersChange={setIncludeTransfers}
         canRecommend={canRecommend}
         isRecommending={recommendationMutation.isPending}
+        isLiveGw={isLiveGw}
+        maxHorizon={Math.max(1, 38 - selectedGW + 1)}
         onRecommend={() => {
           const nextChipPlayEventId = chipStrategy === "wildcard" ? selectedGW : undefined;
           if (chipStrategy === "wildcard") {

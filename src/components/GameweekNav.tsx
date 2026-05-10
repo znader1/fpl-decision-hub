@@ -18,6 +18,7 @@ interface GameweekNavProps {
   navEnabled?: boolean;
   onSelectGW?: (gw: number) => void;
   isRecommendation?: boolean;
+  isLiveGw?: boolean;
 }
 
 export const GameweekNav = ({
@@ -30,7 +31,10 @@ export const GameweekNav = ({
   navEnabled = true,
   onSelectGW,
   isRecommendation = false,
+  isLiveGw = false,
 }: GameweekNavProps) => {
+  const stateLabel = isLiveGw ? "Live" : "Planning";
+  const stateDotClass = isLiveGw ? "bg-rose-500 animate-pulse" : "bg-emerald-500";
   return (
     <div className="flex items-center gap-3 mb-5 bg-card border border-border rounded-xl px-4 py-2.5">
       {/* GW navigation */}
@@ -77,6 +81,12 @@ export const GameweekNav = ({
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
+      </div>
+
+      {/* State pill */}
+      <div className="flex items-center gap-1.5 shrink-0 rounded-full bg-muted/50 px-2 py-0.5">
+        <span className={`h-1.5 w-1.5 rounded-full ${stateDotClass}`} />
+        <span className="text-[11px] font-medium text-muted-foreground">{stateLabel}</span>
       </div>
 
       {/* Divider */}
