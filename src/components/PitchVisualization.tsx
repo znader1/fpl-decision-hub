@@ -252,7 +252,7 @@ export const PitchVisualization = ({
                   : "text-muted-foreground/30 cursor-not-allowed"
               }`}
             >
-              AI Pick
+              ZN Pick
               {!hasRecommendation && (
                 <span className="ml-1.5 text-[10px] font-normal opacity-60">run first</span>
               )}

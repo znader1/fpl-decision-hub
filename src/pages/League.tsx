@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Loader2, ArrowLeft, Trophy, Target, Shield, Zap } from "lucide-react";
+import { Loader2, Trophy, Target, Shield, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -112,14 +111,8 @@ const League = () => {
   return (
     <div className="dark min-h-screen bg-background text-foreground">
       <Navbar />
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <div className="container mx-auto px-4 pt-20 pb-8 max-w-5xl">
         <div className="flex items-center gap-3 mb-6">
-          <Link to="/app">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Back to squad
-            </Button>
-          </Link>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Trophy className="h-6 w-6 text-primary" />
             Mini-league strategy

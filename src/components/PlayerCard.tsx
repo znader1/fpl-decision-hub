@@ -74,7 +74,7 @@ const getAlertTone = (severity?: string) => {
 
 const getObjectiveLabel = (objectiveScoreCol?: string | null) => {
   if (objectiveScoreCol === "wildcard_score") return "Wildcard draft score";
-  if (objectiveScoreCol) return objectiveScoreCol.replaceAll("_", " ");
+  if (objectiveScoreCol) return objectiveScoreCol.replace(/_/g, " ");
   return "Lineup score";
 };
 
@@ -131,18 +131,17 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
           </div>
           <div className="bg-card/95 backdrop-blur-sm rounded-md px-2 py-1 text-center shadow-sm border border-border min-w-[80px]">
             <p className="text-xs font-bold text-foreground truncate">{player.name}</p>
-            <div className="flex justify-center gap-2 text-[10px]">
-              {fixtureShort ? (
-                <span
-                  className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium max-w-[92px] truncate ${getDifficultyClass(
-                    fixtureDifficulty,
-                  )}`}
-                  title={fixtureDifficulty ? `FDR ${fixtureDifficulty}` : undefined}
-                >
-                  {fixtureShort}
-                  {fixtureMeta ? ` ${fixtureMeta}` : ""}
-                </span>
-              ) : (
+            {fixtureShort && (
+              <span
+                className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-medium max-w-[92px] truncate ${getDifficultyClass(fixtureDifficulty)}`}
+                title={fixtureDifficulty ? `FDR ${fixtureDifficulty}` : undefined}
+              >
+                {fixtureShort}
+                {fixtureMeta ? ` ${fixtureMeta}` : ""}
+              </span>
+            )}
+            <div className="flex justify-center gap-1 text-[10px] mt-0.5">
+              {!fixtureShort && (
                 <span className="text-muted-foreground">{player.team}</span>
               )}
               {hasLivePoints ? (
