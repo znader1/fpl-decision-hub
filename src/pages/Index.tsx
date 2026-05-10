@@ -37,7 +37,8 @@ const getInitialGw = () => {
   const fromStorage = Number(localStorage.getItem("fpl_selected_gw"));
   if (Number.isFinite(fromStorage) && fromStorage >= 1 && fromStorage <= 38) return clampGw(fromStorage);
 
-  return SAMPLE_SQUAD.event_id;
+  // No stored GW — return null so we wait for the next-event API before rendering
+  return null;
 };
 
 const getInitialSquadGw = () => {
@@ -114,8 +115,8 @@ const getInitialApplyTransferCount = () => {
 
 const Index = () => {
   const [entryId, setEntryId] = useState(getInitialEntryId);
-  const [selectedGW, setSelectedGW] = useState(getInitialGw);
-  const [squadGW, setSquadGW] = useState(getInitialSquadGw);
+  const [selectedGW, setSelectedGW] = useState<number | null>(getInitialGw);
+  const [squadGW, setSquadGW] = useState<number | null>(getInitialSquadGw);
   const [horizonGws, setHorizonGws] = useState(getInitialHorizon);
   const [chipStrategy, setChipStrategy] = useState<FplChipStrategy>(getInitialChipStrategy);
   const [chipPlayEventId, setChipPlayEventId] = useState<number | undefined>(getInitialChipPlayEventId);
@@ -146,16 +147,16 @@ const Index = () => {
 
   const squadQuery = useQuery<FplSquad>({
     queryKey: ["squad", entryId, squadGW],
-    queryFn: ({ signal }) => fetchSquad({ entryId, eventId: squadGW }, signal),
-    enabled: canFetchSquad && Number.isFinite(entryId) && entryId > 0,
-    placeholderData: (previousData) => previousData ?? SAMPLE_SQUAD,
+    queryFn: ({ signal }) => fetchSquad({ entryId, eventId: squadGW! }, signal),
+    enabled: canFetchSquad && Number.isFinite(entryId) && entryId > 0 && squadGW !== null,
+    placeholderData: (previousData) => previousData,
     retry: false,
   });
 
   const fixturesQuery = useQuery<FplTeamFixture[]>({
     queryKey: ["fixtures", selectedGW],
-    queryFn: ({ signal }) => fetchFixtures({ eventId: selectedGW }, signal),
-    enabled: canFetchFixtures && Number.isFinite(selectedGW) && selectedGW >= 1 && selectedGW <= 38,
+    queryFn: ({ signal }) => fetchFixtures({ eventId: selectedGW! }, signal),
+    enabled: canFetchFixtures && selectedGW !== null && selectedGW >= 1 && selectedGW <= 38,
     retry: false,
   });
 
@@ -206,22 +207,25 @@ const Index = () => {
 
   useEffect(() => {
     if (didApplyNextGwDefault) return;
+    if (!nextEventQuery.isFetched) return;
 
     const nextGw = nextEventQuery.data?.event_id;
     if (Number.isFinite(nextGw) && nextGw !== null && nextGw >= 1 && nextGw <= 38) {
-      const gw = clampGw(nextGw);
-      setSelectedGW(gw);
-      setSquadGW(gw);
-      setAppliedTransferCount(0);
-      setPitchMode("squad");
-      recommendationMutation.reset();
-      setDidApplyNextGwDefault(true);
-      return;
+      // Open on the live GW (current in-progress) so the user sees real scores first.
+      // They can navigate forward to plan transfers for the next GW.
+      const liveGw = clampGw(nextGw - 1);
+      setSelectedGW(liveGw);
+      setSquadGW(liveGw);
+    } else {
+      // Off-season or API unavailable — fall back to SAMPLE_SQUAD
+      setSelectedGW(SAMPLE_SQUAD.event_id);
+      setSquadGW(SAMPLE_SQUAD.event_id);
     }
 
-    if (nextEventQuery.isFetched) {
-      setDidApplyNextGwDefault(true);
-    }
+    setAppliedTransferCount(0);
+    setPitchMode("squad");
+    recommendationMutation.reset();
+    setDidApplyNextGwDefault(true);
   }, [didApplyNextGwDefault, nextEventQuery.data?.event_id, nextEventQuery.isFetched, recommendationMutation]);
 
   useEffect(() => {
@@ -250,8 +254,8 @@ const Index = () => {
   useEffect(() => {
     try {
       localStorage.setItem("fpl_entry_id", String(entryId));
-      localStorage.setItem("fpl_selected_gw", String(selectedGW));
-      localStorage.setItem("fpl_squad_gw", String(squadGW));
+      if (selectedGW !== null) localStorage.setItem("fpl_selected_gw", String(selectedGW));
+      if (squadGW !== null) localStorage.setItem("fpl_squad_gw", String(squadGW));
       localStorage.setItem("fpl_horizon_gws", String(horizonGws));
       localStorage.setItem("fpl_chip_strategy", chipStrategy);
       localStorage.setItem("fpl_transfer_strategy", chipStrategy);
@@ -290,10 +294,12 @@ const Index = () => {
   }, [horizonGws, chipStrategy, includeTransfers]);
 
   const nextEventId = nextEventQuery.data?.event_id;
-  // Current GW = nextEventId - 1 (next event hasn't started yet).
-  // isLiveGw is true only for that specific GW so past GWs still show xPts.
+  // Current GW = nextEventId - 1 (in-progress). isLiveGw true only for that GW.
   const currentLiveGw = typeof nextEventId === "number" ? nextEventId - 1 : undefined;
-  const isLiveGw = typeof currentLiveGw === "number" && selectedGW === currentLiveGw;
+  const isLiveGw = typeof currentLiveGw === "number" && selectedGW !== null && selectedGW === currentLiveGw;
+
+  // Don't render the app until we know which GW to show — avoids the fallback flash.
+  const gwResolved = selectedGW !== null;
 
   const totalSuggestedMoves = recommendationMutation.data?.transfers?.moves?.length ?? 0;
   const canApplyNextTransfer = appliedTransferCount < totalSuggestedMoves;
@@ -373,13 +379,11 @@ const Index = () => {
     if (shouldRefreshRecommendation) {
       const nextChipPlayEventId =
         chipStrategy === "wildcard"
-          ? chipPlayEventId ?? recommendationMutation.data?.chip_strategy?.play_event_id ?? selectedGW
+          ? chipPlayEventId ?? recommendationMutation.data?.chip_strategy?.play_event_id ?? gw
           : undefined;
       setPitchMode("recommendation");
       recommendationMutation.mutate(
-        buildRecommendationParams(gw, {
-          chipPlayEventId: nextChipPlayEventId,
-        })
+        buildRecommendationParams(gw, { chipPlayEventId: nextChipPlayEventId })
       );
       return;
     }
@@ -397,10 +401,20 @@ const Index = () => {
     recommendationMutation.reset();
   };
 
+  // Resolved GW for rendering — fall back to SAMPLE_SQUAD.event_id only as last resort
+  const resolvedGW = selectedGW ?? SAMPLE_SQUAD.event_id;
+
   return (
     <div className="dark flex flex-col h-screen bg-background">
       <Navbar />
       <div className="flex flex-1 min-h-0 pt-14">
+      {!gwResolved ? (
+        // Wait for next-event API before showing anything — prevents fallback-squad flash
+        <div className="flex flex-1 items-center justify-center text-muted-foreground text-sm">
+          Loading…
+        </div>
+      ) : (
+        <>
       <ParameterSidebar
         entryId={entryId}
         onEntryIdChange={setEntryAndReset}
@@ -413,17 +427,15 @@ const Index = () => {
         canRecommend={canRecommend}
         isRecommending={recommendationMutation.isPending}
         isLiveGw={isLiveGw}
-        maxHorizon={Math.max(1, 38 - selectedGW + 1)}
+        maxHorizon={Math.max(1, 38 - resolvedGW + 1)}
         onRecommend={() => {
-          const nextChipPlayEventId = chipStrategy === "wildcard" ? selectedGW : undefined;
+          const nextChipPlayEventId = chipStrategy === "wildcard" ? resolvedGW : undefined;
           if (chipStrategy === "wildcard") {
             setChipPlayEventId(nextChipPlayEventId);
           }
           setAppliedTransferCount(0);
           recommendationMutation.mutate(
-            buildRecommendationParams(selectedGW, {
-              chipPlayEventId: nextChipPlayEventId,
-            })
+            buildRecommendationParams(resolvedGW, { chipPlayEventId: nextChipPlayEventId })
           );
         }}
         recommendErrorMessage={recommendErrorMessage}
@@ -432,7 +444,7 @@ const Index = () => {
         entryId={entryId}
         onEntryIdSubmit={setEntryAndReset}
         team={activeTeam ?? SAMPLE_SQUAD}
-        requestedGw={selectedGW}
+        requestedGw={resolvedGW}
         onRequestedGwChange={setGwAndReset}
         gwSelectable={canChangeGw}
         isLoading={isLoading}
@@ -455,6 +467,8 @@ const Index = () => {
         onResetAppliedTransfers={resetAppliedTransfers}
         onApplyTransferAtIndex={applyTransferAtIndex}
       />
+        </>
+      )}
       </div>
     </div>
   );
