@@ -61,9 +61,27 @@ Supabase handles auth. `AuthContext` (`src/contexts/AuthContext.tsx`) exposes `s
 - `src/pages/League.tsx` — calls `GET /league/list` then `POST /league/strategy` with chase/defend/differential mode.
 - `src/components/ParameterSidebar.tsx` — collapsible icon sidebar + expanded panel for entry ID, GW, chip, transfer controls.
 
+### GW selection and flash prevention
+
+`selectedGW` and `squadGW` are typed `number | null`. `getInitialGw()` returns `null` on first load — **do not default to `SAMPLE_SQUAD.event_id`**, that causes a flash of old squad data. All squad/fixtures queries are disabled while `selectedGW === null`. A `useEffect` sets the live GW (`nextEventId - 1`) once `nextEventQuery` resolves — this is the "open on live scores" behaviour. The entire pitch is gated behind `gwResolved = selectedGW !== null`.
+
+### Tab names
+
+The recommendation tab on `PitchVisualization.tsx` is labelled **"ZN Pick"** (not "AI Pick").
+
+### League page
+
+`League.tsx` uses `pt-20 pb-8` (not `py-8`) to clear the fixed navbar height of `h-14`.
+
+### PlayerCard fixture chip
+
+The fixture chip (`fixtureShort`) renders on its **own line** between the player name and points — not inline with the team abbreviation. See `PlayerCard.tsx`.
+
 ### Deployment
 
 Vercel auto-deploys on push to `main`. `vercel.json` rewrites all paths to `index.html` for SPA routing. Set `VITE_FPL_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` as Vercel environment variables.
+
+For feature branch testing, create a Vercel preview environment variable pointing `VITE_FPL_API_BASE_URL` at `fpl-assistant-api-dev.fly.dev`.
 
 ### Backend endpoints consumed
 
