@@ -2,12 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Fix browser autofill overriding input text/background colors */
+/* Fix browser autofill overriding input text/background colors on dark forms */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: white;
-  -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.06) inset;
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: white !important;
+  -webkit-box-shadow: 0 0 0 1000px rgb(20, 20, 30) inset !important;
+  caret-color: white !important;
   transition: background-color 5000s ease-in-out 0s;
 }
 
