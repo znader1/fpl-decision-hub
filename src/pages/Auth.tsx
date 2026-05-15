@@ -93,7 +93,7 @@ function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="bg-white/6 border-white/12 text-white placeholder:text-white/25 focus-visible:ring-primary"
+            className="!bg-white/10 border-white/20 text-white placeholder:text-white/25 focus-visible:ring-primary"
           />
         </div>
 
@@ -112,7 +112,7 @@ function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="bg-white/6 border-white/12 text-white placeholder:text-white/25 focus-visible:ring-primary"
+            className="!bg-white/10 border-white/20 text-white placeholder:text-white/25 focus-visible:ring-primary"
           />
         </div>
 
@@ -194,7 +194,7 @@ function SignupForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="bg-white/6 border-white/12 text-white placeholder:text-white/25 focus-visible:ring-primary"
+            className="!bg-white/10 border-white/20 text-white placeholder:text-white/25 focus-visible:ring-primary"
           />
         </div>
 
@@ -208,7 +208,7 @@ function SignupForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="bg-white/6 border-white/12 text-white placeholder:text-white/25 focus-visible:ring-primary"
+            className="!bg-white/10 border-white/20 text-white placeholder:text-white/25 focus-visible:ring-primary"
           />
         </div>
 
