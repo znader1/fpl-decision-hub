@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fix browser autofill overriding input text/background colors */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: white;
+  -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.06) inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 /* FPL Ace Advisor – Premier League inspired design system
    All colors are HSL values.
 */
