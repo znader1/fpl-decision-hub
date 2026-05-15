@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import League from "./pages/League";
 import NotFound from "./pages/NotFound";
+import AuthConfirm from "./pages/AuthConfirm";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/confirm" element={<AuthConfirm />} />
             {/* Legacy redirects so old bookmarks still work */}
             <Route path="/login" element={<Auth />} />
             <Route path="/signup" element={<Auth />} />
