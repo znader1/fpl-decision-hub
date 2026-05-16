@@ -1071,6 +1071,40 @@ export const fetchExplanation = async (
   return (await response.json()) as ExplainResponse;
 };
 
+/* ── Chat (Orchestrator agent) ───────────────────────────────────────────── */
+
+export type ChatRequest = {
+  entry_id: number;
+  message: string;
+  current_gw?: number;
+  chips_remaining?: string[];
+};
+
+export type ChatResponse = {
+  answer: string;
+  current_gw: number;
+  latency_ms: number;
+};
+
+export const fetchChatAnswer = async (
+  req: ChatRequest,
+  signal?: AbortSignal
+): Promise<ChatResponse> => {
+  const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
+  const url = apiBase ? new URL("/chat", apiBase).toString() : "/chat";
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+    signal,
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Chat request failed (${response.status}): ${body.slice(0, 200)}`);
+  }
+  return (await response.json()) as ChatResponse;
+};
+
 export type LeagueSummary = {
   id: number;
   name: string;

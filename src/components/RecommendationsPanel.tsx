@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { TransferPlanner } from "./TransferPlanner";
 import { JerseyIcon } from "./JerseyIcon";
 import { ExplanationPanel } from "./ExplanationPanel";
+import { AiAdvisorPanel } from "./AiAdvisorPanel";
 import type { FplSquad, FplTeamRecommendation } from "@/lib/fplAssistantApi";
 
 interface RecommendationsPanelProps {
@@ -26,6 +27,9 @@ interface RecommendationsPanelProps {
   onApplyNextTransfer?: () => void;
   onResetAppliedTransfers?: () => void;
   onApplyTransferAtIndex?: (index: number) => void;
+  entryId?: number;
+  currentGw?: number;
+  chipsRemaining?: string[];
 }
 
 type Tab = "summary" | "transfers" | "watchlist";
@@ -100,11 +104,17 @@ function SummaryTab({
   squad,
   horizonGws,
   isRecommending,
+  entryId,
+  currentGw,
+  chipsRemaining,
 }: {
   recommendation?: FplTeamRecommendation;
   squad?: FplSquad;
   horizonGws?: number;
   isRecommending: boolean;
+  entryId?: number;
+  currentGw?: number;
+  chipsRemaining?: string[];
 }) {
   if (isRecommending) {
     return (
@@ -205,6 +215,13 @@ function SummaryTab({
           {recommendation.chip_strategy.explanation}
         </div>
       )}
+
+      {/* AI Advisor */}
+      <AiAdvisorPanel
+        entryId={entryId}
+        currentGw={currentGw}
+        chipsRemaining={chipsRemaining}
+      />
     </div>
   );
 }
@@ -412,6 +429,9 @@ export const RecommendationsPanel = ({
   onApplyNextTransfer,
   onResetAppliedTransfers,
   onApplyTransferAtIndex,
+  entryId,
+  currentGw,
+  chipsRemaining,
 }: RecommendationsPanelProps) => {
   const [activeTab, setActiveTab] = useState<Tab>("summary");
 
@@ -463,6 +483,9 @@ export const RecommendationsPanel = ({
             squad={squad}
             horizonGws={horizonGws}
             isRecommending={isRecommending}
+            entryId={entryId}
+            currentGw={currentGw}
+            chipsRemaining={chipsRemaining}
           />
         )}
         {activeTab === "transfers" && (

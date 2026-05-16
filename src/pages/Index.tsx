@@ -466,6 +466,8 @@ const Index = () => {
         onApplyNextTransfer={applyNextTransfer}
         onResetAppliedTransfers={resetAppliedTransfers}
         onApplyTransferAtIndex={applyTransferAtIndex}
+        entryId={entryId}
+        currentGw={selectedGW ?? undefined}
       />
         </>
       )}
