@@ -1,55 +1,75 @@
 import { useState } from "react";
 import { Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fetchChatAnswer, type ChatResponse } from "@/lib/fplAssistantApi";
+import {
+  fetchChatAnswer,
+  fetchSpecialistAnswer,
+  type ChatResponse,
+  type Specialist,
+} from "@/lib/fplAssistantApi";
 
 interface AiAdvisorPanelProps {
   entryId?: number;
   currentGw?: number;
   chipsRemaining?: string[];
-  /** Optional prompt suggestions shown beneath the button */
-  presetQuestions?: string[];
 }
 
-const DEFAULT_PRESETS = [
-  "What should I do this week?",
-  "Who should I captain?",
-  "Should I take a hit?",
-  "Should I play a chip?",
+type Preset = {
+  label: string;
+  specialist?: Specialist; // if set, skip orchestrator
+  question: string;        // used for display + orchestrator fallback
+};
+
+const PRESETS: Preset[] = [
+  { label: "Who should I captain?", specialist: "captain", question: "Who should I captain?" },
+  { label: "Best transfer?", specialist: "transfer", question: "Should I make a transfer or roll my FT?" },
+  { label: "Should I play a chip?", specialist: "chip", question: "Should I play a chip this week?" },
+  { label: "Full game plan", question: "What should I do this week?" }, // uses orchestrator
 ];
 
 export const AiAdvisorPanel = ({
   entryId,
   currentGw,
   chipsRemaining,
-  presetQuestions = DEFAULT_PRESETS,
 }: AiAdvisorPanelProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [answer, setAnswer] = useState<ChatResponse | null>(null);
   const [lastQuestion, setLastQuestion] = useState<string>("");
+  const [lastPreset, setLastPreset] = useState<Preset | null>(null);
 
-  const ask = async (question: string) => {
+  const runPreset = async (preset: Preset) => {
     if (!entryId) {
       setError("Enter your FPL team ID first.");
       return;
     }
     setLoading(true);
     setError(null);
-    setLastQuestion(question);
+    setLastQuestion(preset.question);
+    setLastPreset(preset);
     try {
-      const res = await fetchChatAnswer({
-        entry_id: entryId,
-        message: question,
-        current_gw: currentGw,
-        chips_remaining: chipsRemaining,
-      });
+      const res = preset.specialist
+        ? await fetchSpecialistAnswer(preset.specialist, {
+            entry_id: entryId,
+            current_gw: currentGw,
+            chips_remaining: chipsRemaining,
+          })
+        : await fetchChatAnswer({
+            entry_id: entryId,
+            message: preset.question,
+            current_gw: currentGw,
+            chips_remaining: chipsRemaining,
+          });
       setAnswer(res);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
+  };
+
+  const regenerate = () => {
+    if (lastPreset) runPreset(lastPreset);
   };
 
   return (
@@ -67,23 +87,21 @@ export const AiAdvisorPanel = ({
         </p>
       )}
 
-      {/* Preset question buttons */}
       <div className="flex flex-wrap gap-1.5">
-        {presetQuestions.map((q) => (
+        {PRESETS.map((p) => (
           <Button
-            key={q}
+            key={p.label}
             variant="outline"
             size="sm"
             disabled={loading || !entryId}
-            onClick={() => ask(q)}
+            onClick={() => runPreset(p)}
             className="text-[11px] h-7 px-2.5"
           >
-            {q}
+            {p.label}
           </Button>
         ))}
       </div>
 
-      {/* Loading state */}
       {loading && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -91,14 +109,12 @@ export const AiAdvisorPanel = ({
         </div>
       )}
 
-      {/* Error state */}
       {error && !loading && (
         <div className="rounded-md bg-destructive/10 border border-destructive/30 px-2.5 py-2 text-xs text-destructive">
           {error}
         </div>
       )}
 
-      {/* Answer */}
       {answer && !loading && (
         <div className="rounded-md bg-card border border-border px-3 py-2.5 text-xs text-foreground leading-relaxed whitespace-pre-wrap">
           {lastQuestion && (
@@ -114,7 +130,7 @@ export const AiAdvisorPanel = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => ask(lastQuestion)}
+              onClick={regenerate}
               className="h-6 px-2 text-[10px]"
             >
               <RefreshCw className="h-3 w-3 mr-1" /> Regenerate

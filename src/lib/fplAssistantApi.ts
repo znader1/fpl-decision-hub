@@ -1105,6 +1105,37 @@ export const fetchChatAnswer = async (
   return (await response.json()) as ChatResponse;
 };
 
+/* ── Fast specialist endpoints (skip orchestrator) ───────────────────────── */
+
+export type SpecialistRequest = {
+  entry_id: number;
+  current_gw?: number;
+  chips_remaining?: string[];
+};
+
+export type Specialist = "captain" | "transfer" | "chip";
+
+export const fetchSpecialistAnswer = async (
+  specialist: Specialist,
+  req: SpecialistRequest,
+  signal?: AbortSignal
+): Promise<ChatResponse> => {
+  const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
+  const path = `/chat/${specialist}`;
+  const url = apiBase ? new URL(path, apiBase).toString() : path;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+    signal,
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Specialist request failed (${response.status}): ${body.slice(0, 200)}`);
+  }
+  return (await response.json()) as ChatResponse;
+};
+
 export type LeagueSummary = {
   id: number;
   name: string;
