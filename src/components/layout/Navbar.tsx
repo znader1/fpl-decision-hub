@@ -9,6 +9,12 @@ const landingLinks = [
   { label: "Pricing", href: "/#pricing" },
 ];
 
+const appLinks = [
+  { label: "Squad", to: "/app" },
+  { label: "Mini-league", to: "/app/league" },
+  { label: "Fixtures", to: "/app/fixtures" },
+];
+
 export function Navbar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -58,13 +64,16 @@ export function Navbar() {
                   </Button>
                 </Link>
               )}
-              {isApp && (
-                <Link to={pathname === "/app/league" ? "/app" : "/app/league"}>
-                  <Button variant="ghost" size="sm" className="text-white/70 hover:text-white">
-                    {pathname === "/app/league" ? "Squad" : "Mini-league"}
-                  </Button>
-                </Link>
-              )}
+              {isApp &&
+                appLinks
+                  .filter((l) => l.to !== pathname)
+                  .map((l) => (
+                    <Link key={l.to} to={l.to}>
+                      <Button variant="ghost" size="sm" className="text-white/70 hover:text-white">
+                        {l.label}
+                      </Button>
+                    </Link>
+                  ))}
               <Button
                 variant="ghost"
                 size="sm"

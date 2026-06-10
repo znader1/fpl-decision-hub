@@ -1232,3 +1232,69 @@ export const fetchLeagueStrategy = async (
   }
   return (await response.json()) as LeagueStrategyResponse;
 };
+
+/* ── Fixture difficulty ticker (xG model) ────────────────────────────────── */
+
+export type FixtureDifficultyBand = "very_easy" | "easy" | "medium" | "hard" | "very_hard";
+
+export type FixtureTickerOpponent = {
+  opp_id: number;
+  opp_short: string;
+  home: boolean;
+  difficulty: number;
+  band: FixtureDifficultyBand;
+  color: string;
+};
+
+export type FixtureTickerCell = {
+  opponents: FixtureTickerOpponent[];
+  difficulty: number | null;
+  count: number;
+  blank: boolean;
+};
+
+export type FixtureTickerTeam = {
+  team_id: number;
+  team_short: string;
+  avg_difficulty: number;
+  sum_difficulty: number;
+  n_fixtures: number;
+  band: FixtureDifficultyBand;
+  color: string;
+  gws: Record<string, FixtureTickerCell>;
+};
+
+export type FixtureDifficultyResponse = {
+  gw_start: number;
+  horizon_gws: number;
+  gws: number[];
+  teams: FixtureTickerTeam[];
+  easiest_runs: string[];
+  hardest_runs: string[];
+  meta?: {
+    model?: string;
+    rating_sources?: Record<string, number>;
+    league_avg_xg?: number;
+    knowledge_as_of?: string | null;
+    generated_at_utc?: string;
+  };
+  error?: string;
+};
+
+export const fetchFixtureDifficulty = async (
+  params: { gw_start?: number; horizon_gws?: number },
+  signal?: AbortSignal
+): Promise<FixtureDifficultyResponse> => {
+  const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
+  const search = new URLSearchParams();
+  if (params.gw_start) search.set("gw_start", String(params.gw_start));
+  if (params.horizon_gws) search.set("horizon_gws", String(params.horizon_gws));
+  const path = `/fixtures/difficulty${search.size ? `?${search.toString()}` : ""}`;
+  const url = apiBase ? new URL(path, apiBase).toString() : path;
+  const response = await fetch(url, { signal });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Failed to fetch fixture difficulty (${response.status}): ${body.slice(0, 200)}`);
+  }
+  return (await response.json()) as FixtureDifficultyResponse;
+};

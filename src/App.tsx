@@ -9,6 +9,7 @@ import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import League from "./pages/League";
+import Fixtures from "./pages/Fixtures";
 import NotFound from "./pages/NotFound";
 import AuthConfirm from "./pages/AuthConfirm";
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/signup" element={<Auth />} />
             <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/app/league" element={<ProtectedRoute><League /></ProtectedRoute>} />
+            <Route path="/app/fixtures" element={<ProtectedRoute><Fixtures /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
