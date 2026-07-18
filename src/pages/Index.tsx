@@ -490,7 +490,10 @@ const Index = () => {
       ) : (
         <MobileParameterDrawer {...parameterProps} />
       )}
-      {isOffSeason ? (
+      {/* entryId <= 0 falls through to the pitch so the onboarding overlay stays
+          reachable during pre-season — otherwise first-run signups in the launch
+          window would only ever see the off-season card. */}
+      {isOffSeason && entryId > 0 ? (
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="max-w-sm text-center rounded-2xl border border-border bg-card p-8">
             <h3 className="font-bold text-foreground mb-2">Season hasn't started</h3>
