@@ -4,6 +4,8 @@ import { ParameterSidebar } from "@/components/ParameterSidebar";
 import { PitchVisualization } from "@/components/PitchVisualization";
 import { RecommendationsPanel } from "@/components/RecommendationsPanel";
 import { Navbar } from "@/components/layout/Navbar";
+import { parseEntryIdInput } from "@/lib/entryId";
+import { useProfile } from "@/hooks/useProfile";
 import {
   fetchFixtures,
   fetchNextEvent,
@@ -58,7 +60,8 @@ const getInitialEntryId = () => {
   const fromStorage = Number(localStorage.getItem("fpl_entry_id"));
   if (Number.isFinite(fromStorage) && fromStorage > 0) return fromStorage;
 
-  return SAMPLE_SQUAD.entry_id;
+  // No stored ID — 0 triggers the onboarding overlay in PitchVisualization.
+  return 0;
 };
 
 const getInitialHorizon = () => {
@@ -124,6 +127,16 @@ const Index = () => {
   const [appliedTransferCount, setAppliedTransferCount] = useState(getInitialApplyTransferCount);
   const [pitchMode, setPitchMode] = useState<PitchMode>("squad");
   const [didApplyNextGwDefault, setDidApplyNextGwDefault] = useState(hasExplicitGwQuery);
+
+  const { profile, saveEntryId } = useProfile();
+
+  // Cross-device hydration: profile beats "nothing", localStorage beats profile.
+  useEffect(() => {
+    if (entryId > 0) return;
+    if (profile?.entryId && profile.entryId > 0) {
+      setEntryId(profile.entryId);
+    }
+  }, [entryId, profile?.entryId]);
 
   const nextEventTemplate = getNextEventUrlTemplate();
   const squadTemplate = getSquadUrlTemplate();
@@ -399,10 +412,30 @@ const Index = () => {
     setAppliedTransferCount(0);
     setPitchMode("squad");
     recommendationMutation.reset();
+    if (value > 0) void saveEntryId(value);
   };
 
   // Resolved GW for rendering — fall back to SAMPLE_SQUAD.event_id only as last resort
   const resolvedGW = selectedGW ?? SAMPLE_SQUAD.event_id;
+
+  const handleEntryIdSubmit = async (raw: string): Promise<string | null> => {
+    const id = parseEntryIdInput(raw);
+    if (id === null) {
+      return "That doesn't look like a team ID. Paste the number or your full FPL team URL.";
+    }
+    try {
+      await fetchSquad({ entryId: id, eventId: resolvedGW });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      // Only a definitive not-found blocks onboarding; transient/backend
+      // errors must not lock the user out — accept and let error states surface.
+      if (/\b404\b|not found/i.test(message)) {
+        return "Couldn't find a team with that ID. Double-check it on the FPL site.";
+      }
+    }
+    setEntryAndReset(id);
+    return null;
+  };
 
   return (
     <div className="dark flex flex-col h-screen bg-background">
@@ -442,7 +475,7 @@ const Index = () => {
       />
       <PitchVisualization
         entryId={entryId}
-        onEntryIdSubmit={setEntryAndReset}
+        onEntryIdSubmit={handleEntryIdSubmit}
         team={activeTeam ?? SAMPLE_SQUAD}
         requestedGw={resolvedGW}
         onRequestedGwChange={setGwAndReset}

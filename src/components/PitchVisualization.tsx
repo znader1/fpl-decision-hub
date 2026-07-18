@@ -16,7 +16,7 @@ type PitchTeam = FplSquad | FplTeamRecommendation;
 
 interface PitchVisualizationProps {
   entryId?: number;
-  onEntryIdSubmit?: (id: number) => void;
+  onEntryIdSubmit?: (raw: string) => Promise<string | null>;
   team: PitchTeam;
   requestedGw: number;
   onRequestedGwChange: (gw: number) => void;
@@ -168,6 +168,8 @@ export const PitchVisualization = ({
   isLiveGw = false,
 }: PitchVisualizationProps) => {
   const [draftId, setDraftId] = useState("");
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const recommendationTeam = "horizon_gws" in team ? team : undefined;
   const chipInfo = recommendationTeam?.chip_strategy;
   const chipName = chipLabel(chipInfo?.selected);
@@ -305,32 +307,46 @@ export const PitchVisualization = ({
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm rounded-2xl">
               <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-sm mx-4 text-center shadow-xl">
                 <Search className="h-8 w-8 text-primary mx-auto mb-3" />
-                <h3 className="font-bold text-foreground mb-1">Enter your FPL team ID</h3>
-                <p className="text-sm text-muted-foreground mb-5">
-                  Find it on the FPL website under Points → click your team name in the URL.
+                <h3 className="font-bold text-foreground mb-1">Link your FPL team</h3>
+                <p className="text-sm text-muted-foreground mb-1">
+                  On the FPL site, open <span className="font-medium text-foreground">Points</span> —
+                  your team URL looks like:
+                </p>
+                <p className="text-xs font-mono text-muted-foreground mb-5 break-all">
+                  fantasy.premierleague.com/entry/<span className="text-primary font-bold">588004</span>/event/38
                 </p>
                 <form
                   className="flex gap-2"
-                  onSubmit={(e) => {
+                  onSubmit={async (e) => {
                     e.preventDefault();
-                    const id = Number(draftId);
-                    if (id > 0) onEntryIdSubmit(id);
+                    if (submitting) return;
+                    setSubmitting(true);
+                    setSubmitError(null);
+                    const error = await onEntryIdSubmit(draftId);
+                    setSubmitting(false);
+                    if (error) setSubmitError(error);
                   }}
                 >
                   <Input
-                    type="number"
-                    min={1}
+                    type="text"
                     inputMode="numeric"
-                    placeholder="e.g. 588004"
+                    placeholder="Team ID or full URL"
                     value={draftId}
                     onChange={(e) => setDraftId(e.target.value)}
                     className="flex-1"
                     autoFocus
                   />
-                  <Button type="submit" className="bg-primary text-white hover:bg-primary/90 shrink-0">
-                    Load
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    className="bg-primary text-white hover:bg-primary/90 shrink-0"
+                  >
+                    {submitting ? "Checking…" : "Load"}
                   </Button>
                 </form>
+                {submitError && (
+                  <p className="mt-3 text-xs text-destructive">{submitError}</p>
+                )}
               </div>
             </div>
           )}
