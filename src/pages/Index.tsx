@@ -46,11 +46,13 @@ const getInitialGw = () => {
 };
 
 const getInitialSquadGw = () => {
+  // Deliberately does NOT read the "fpl_squad_gw" localStorage key. Prior to the P0
+  // GW-navigation fix, squadGW could silently diverge from selectedGW and that drifted
+  // value would get persisted — reading it back here would resurrect a stale wedge for
+  // any user who hit the bug before this fix shipped. An explicit ?squad_gw= query
+  // param is still honored for intentional deep links; everything else follows selectedGW.
   const fromQuery = Number(new URLSearchParams(window.location.search).get("squad_gw"));
   if (Number.isFinite(fromQuery) && fromQuery >= 1 && fromQuery <= 38) return clampGw(fromQuery);
-
-  const fromStorage = Number(localStorage.getItem("fpl_squad_gw"));
-  if (Number.isFinite(fromStorage) && fromStorage >= 1 && fromStorage <= 38) return clampGw(fromStorage);
 
   return getInitialGw();
 };
@@ -243,22 +245,22 @@ const Index = () => {
     setDidApplyNextGwDefault(true);
   }, [didApplyNextGwDefault, nextEventQuery.data?.event_id, nextEventQuery.isFetched, recommendationMutation]);
 
-  useEffect(() => {
-    if (squadQuery.isPlaceholderData) return;
-    if (squadQuery.isFetching || squadQuery.isError) return;
-
-    const returnedGw = squadQuery.data?.event_id;
-    if (!Number.isFinite(returnedGw) || returnedGw < 1 || returnedGw > 38) return;
-    if (returnedGw !== squadGW) {
-      setSquadGW(clampGw(returnedGw));
-    }
-  }, [
-    squadQuery.data?.event_id,
-    squadQuery.isError,
-    squadQuery.isFetching,
-    squadQuery.isPlaceholderData,
-    squadGW,
-  ]);
+  // Root cause of the GW-navigation wedge (see BACKLOG P0): the backend can silently
+  // substitute a different GW's squad (200 OK) when it can't fetch picks for the
+  // specifically-requested historical event_id — e.g. upstream FPL API hiccup — and
+  // returns whatever GW it fell back to instead of an error. This used to be treated
+  // as authoritative and silently written into squadGW here, desyncing it from
+  // selectedGW: the GW nav kept showing the GW the user picked while the pitch quietly
+  // rendered a different GW's squad, with no indication anything had gone wrong
+  // ("bounce-back"/"wedge"). We now treat a mismatch as an explicit load failure
+  // instead — see squadEventMismatch below and its QueryErrorCard branch in the render.
+  const squadEventMismatch =
+    !squadQuery.isPlaceholderData &&
+    !squadQuery.isFetching &&
+    squadQuery.isSuccess &&
+    typeof squadQuery.data?.event_id === "number" &&
+    squadGW !== null &&
+    squadQuery.data.event_id !== squadGW;
 
   useEffect(() => {
     if (chipStrategy !== "wildcard" && chipPlayEventId !== undefined) {
@@ -359,10 +361,15 @@ const Index = () => {
     };
   }, [appliedTransferCount, recommendationMutation.data]);
 
+  // While the squad response's event_id doesn't match the requested squadGW, the
+  // response describes a different GW than the one the user asked for — don't treat
+  // it as valid squad data (see squadEventMismatch above).
+  const displayableSquad = squadEventMismatch ? undefined : squadQuery.data;
+
   const activeTeam = useMemo(() => {
     if (pitchMode === "recommendation" && activeRecommendation) return activeRecommendation;
-    return squadQuery.data;
-  }, [pitchMode, activeRecommendation, squadQuery.data]);
+    return displayableSquad;
+  }, [pitchMode, activeRecommendation, displayableSquad]);
 
   const activeError =
     pitchMode === "recommendation"
@@ -370,10 +377,16 @@ const Index = () => {
       : squadQuery.error;
 
   const activeErrorMessage = useMemo(() => {
+    if (pitchMode === "squad" && squadEventMismatch) {
+      const returnedGw = squadQuery.data?.event_id;
+      const backendNote = squadQuery.data?.notes?.join(" ");
+      const base = `The server returned squad data for GW${returnedGw} instead of the requested GW${squadGW}.`;
+      return backendNote ? `${base} ${backendNote}` : base;
+    }
     if (!activeError) return undefined;
     if (activeError instanceof Error) return activeError.message;
     return String(activeError);
-  }, [activeError]);
+  }, [activeError, pitchMode, squadEventMismatch, squadQuery.data?.event_id, squadQuery.data?.notes, squadGW]);
 
   const recommendErrorMessage = useMemo(() => {
     const err = recommendationMutation.error;
@@ -496,10 +509,11 @@ const Index = () => {
             </p>
           </div>
         </div>
-      ) : pitchMode === "squad" && squadQuery.isError && !squadQuery.data ? (
+      ) : pitchMode === "squad" && ((squadQuery.isError && !squadQuery.data) || squadEventMismatch) ? (
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="w-full max-w-sm">
             <QueryErrorCard
+              title={squadEventMismatch ? `Couldn't load GW${squadGW}` : undefined}
               message={activeErrorMessage}
               onRetry={() => squadQuery.refetch()}
               retrying={squadQuery.isFetching}
@@ -524,7 +538,7 @@ const Index = () => {
         />
       )}
       <RecommendationsPanel
-        squad={squadQuery.data}
+        squad={displayableSquad}
         recommendation={activeRecommendation}
         isRecommending={recommendationMutation.isPending}
         horizonGws={horizonGws}

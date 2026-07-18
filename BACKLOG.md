@@ -3,7 +3,7 @@
 Use this file for quick capture and prioritization. If you want collaboration/history, create a GitHub Issue for an item and paste the link next to it.
 
 ## P0 — Bugs
-- [ ] **GW navigation can fail to load** (repro: select an earlier GW; confirm which endpoint errors and why).
+- [x] **GW navigation can fail to load** — cause: `/squad` can silently substitute a different GW's picks (200 OK) when the backend can't fetch the requested historical `event_id` from upstream FPL, and Index.tsx's snap-back effect blindly adopted that returned `event_id` into `squadGW` while `selectedGW` stayed put, desyncing the two and rendering a mismatched squad with no error shown. Fixed frontend-side: mismatches now render an explicit `QueryErrorCard` (with retry) instead of silently swapping state; backend fallback-without-error behavior documented in `.superpowers/sdd/task-7-report.md` for a future backend-side fix.
 
 ## P1 — UX / Cleanup
 - [ ] **Remove debug UI** (Entry ID / Requested GW / Returned Event ID / Request URL boxes) or gate behind a `VITE_SHOW_DEBUG=true` flag.

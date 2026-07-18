@@ -167,7 +167,7 @@ export interface FplEntryHistory {
 export interface FplSquad {
   entry_id: number;
   event_id: number;
-  note?: string;
+  notes?: string[];
   formation?: [number, number, number];
   captain_player_id?: number;
   vice_player_id?: number;
