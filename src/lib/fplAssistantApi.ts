@@ -1185,6 +1185,24 @@ export type LeagueStrategyCandidate = {
   model_xpts_horizon: number | null;
   model_xpts_per_gw: Record<string, number> | null;
   league_ownership: number | null;
+  differential_ev?: number | null;
+  template_xpts?: number | null;
+};
+
+export type LeagueCaptainDifferentialPlayer = {
+  id: number;
+  web_name: string | null;
+  team_short: string | null;
+  league_ownership: number | null;
+  model_xpts_horizon: number | null;
+  fixture_run_band?: string | null;
+  differential_ev?: number | null;
+};
+
+export type LeagueCaptainDifferential = {
+  consensus_captain: LeagueCaptainDifferentialPlayer;
+  alternative: LeagueCaptainDifferentialPlayer;
+  reason: string;
 };
 
 export type LeagueStrategyNarrative = {
@@ -1209,6 +1227,7 @@ export type LeagueStrategyResponse = {
   };
   candidates: LeagueStrategyCandidate[];
   narrative: LeagueStrategyNarrative;
+  captain_differential?: LeagueCaptainDifferential | null;
   projection_horizon_gws?: number;
   projection_error?: string;
   error?: string;

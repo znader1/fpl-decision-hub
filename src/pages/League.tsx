@@ -26,14 +26,21 @@ const MODES: Array<{ id: LeagueStrategyMode; label: string; icon: typeof Target;
   { id: "differential", label: "Differential", icon: Zap, blurb: "High-EV picks no one in your league owns" },
 ];
 
+const ownPct = (o: number | null | undefined): string =>
+  o != null ? `${Math.round(o * 100)}%` : "?";
+
 const playerLookup = (strategy: LeagueStrategyResponse) => {
-  const map = new Map<number, { name: string; team: string; xpts: number | null; ownership: number | null }>();
+  const map = new Map<
+    number,
+    { name: string; team: string; xpts: number | null; ownership: number | null; diffEv: number | null }
+  >();
   for (const c of strategy.candidates) {
     map.set(c.id, {
       name: c.web_name ?? `#${c.id}`,
       team: c.team_short ?? "",
       xpts: c.model_xpts_horizon,
       ownership: c.league_ownership,
+      diffEv: c.differential_ev ?? null,
     });
   }
   return map;
@@ -232,6 +239,30 @@ const League = () => {
                   </p>
                 </div>
 
+                {strategy.captain_differential && (
+                  <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
+                    <div className="mb-1.5 flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-amber-500" />
+                      <span className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                        Captain differential
+                      </span>
+                    </div>
+                    <p className="text-sm leading-snug">{strategy.captain_differential.reason}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                      <span className="text-muted-foreground">Consensus</span>
+                      <Badge variant="outline">
+                        {strategy.captain_differential.consensus_captain.web_name} ·{" "}
+                        {ownPct(strategy.captain_differential.consensus_captain.league_ownership)} own
+                      </Badge>
+                      <span className="text-muted-foreground">→ Differential</span>
+                      <Badge className="border-amber-500/40 bg-amber-500/20 text-amber-700 hover:bg-amber-500/30 dark:text-amber-300">
+                        {strategy.captain_differential.alternative.web_name} ·{" "}
+                        {ownPct(strategy.captain_differential.alternative.league_ownership)} own
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   {strategy.rivals_above.length > 0 && (
                     <div>
@@ -285,6 +316,15 @@ const League = () => {
                                   {(t as { name?: string }).name ?? meta?.name ?? `#${t.player_id}`}
                                   {meta?.team && <span className="text-xs text-muted-foreground ml-1.5">{meta.team}</span>}
                                   {meta?.xpts != null && <span className="text-xs text-primary ml-1.5">{meta.xpts.toFixed(1)} xPts</span>}
+                                  {meta?.diffEv != null && (
+                                    <span className="text-xs text-amber-600 dark:text-amber-400 ml-1.5">
+                                      {meta.diffEv >= 0 ? "+" : ""}
+                                      {meta.diffEv.toFixed(1)} diff-EV
+                                    </span>
+                                  )}
+                                  {meta?.ownership != null && (
+                                    <span className="text-xs text-muted-foreground ml-1.5">{ownPct(meta.ownership)} own</span>
+                                  )}
                                 </span>
                                 <p className="text-xs text-muted-foreground mt-0.5">{t.rationale}</p>
                               </div>
