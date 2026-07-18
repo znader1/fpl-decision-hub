@@ -151,6 +151,8 @@ export const ParameterForm = (props: ParameterFormProps) => {
         </div>
 
       </div>
+
+      {/* Recommend CTA — pinned to bottom */}
       <div className="p-4 border-t border-sidebar-border space-y-2">
         <Button
           className="w-full bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 font-bold shadow-md"

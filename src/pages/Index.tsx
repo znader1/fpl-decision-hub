@@ -7,6 +7,7 @@ import { RecommendationsPanel } from "@/components/RecommendationsPanel";
 import { Navbar } from "@/components/layout/Navbar";
 import { parseEntryIdInput } from "@/lib/entryId";
 import { useProfile } from "@/hooks/useProfile";
+import { useIsDesktop } from "@/hooks/use-desktop";
 import {
   fetchFixtures,
   fetchNextEvent,
@@ -130,6 +131,7 @@ const Index = () => {
   const [didApplyNextGwDefault, setDidApplyNextGwDefault] = useState(hasExplicitGwQuery);
 
   const { profile, saveEntryId } = useProfile();
+  const isDesktop = useIsDesktop();
 
   // Cross-device hydration: profile beats "nothing", localStorage beats profile.
   useEffect(() => {
@@ -475,10 +477,13 @@ const Index = () => {
         </div>
       ) : (
         <>
-      <div className="hidden lg:flex shrink-0">
-        <ParameterSidebar {...parameterProps} />
-      </div>
-      <MobileParameterDrawer {...parameterProps} />
+      {isDesktop ? (
+        <div className="hidden lg:flex shrink-0">
+          <ParameterSidebar {...parameterProps} />
+        </div>
+      ) : (
+        <MobileParameterDrawer {...parameterProps} />
+      )}
       <PitchVisualization
         entryId={entryId}
         onEntryIdSubmit={handleEntryIdSubmit}
