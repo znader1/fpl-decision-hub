@@ -5,6 +5,7 @@ import { MobileParameterDrawer } from "@/components/MobileParameterDrawer";
 import { PitchVisualization } from "@/components/PitchVisualization";
 import { RecommendationsPanel } from "@/components/RecommendationsPanel";
 import { Navbar } from "@/components/layout/Navbar";
+import { QueryErrorCard } from "@/components/QueryErrorCard";
 import { parseEntryIdInput } from "@/lib/entryId";
 import { useProfile } from "@/hooks/useProfile";
 import { useIsDesktop } from "@/hooks/use-desktop";
@@ -17,7 +18,6 @@ import {
   getRecommendationUrlTemplate,
   getFixturesUrlTemplate,
   getSquadUrlTemplate,
-  SAMPLE_SQUAD,
   type FplNextEventSummary,
   type FplChipStrategy,
   type FplSquad,
@@ -166,14 +166,12 @@ const Index = () => {
     queryFn: ({ signal }) => fetchSquad({ entryId, eventId: squadGW! }, signal),
     enabled: canFetchSquad && Number.isFinite(entryId) && entryId > 0 && squadGW !== null,
     placeholderData: (previousData) => previousData,
-    retry: false,
   });
 
   const fixturesQuery = useQuery<FplTeamFixture[]>({
     queryKey: ["fixtures", selectedGW],
     queryFn: ({ signal }) => fetchFixtures({ eventId: selectedGW! }, signal),
     enabled: canFetchFixtures && selectedGW !== null && selectedGW >= 1 && selectedGW <= 38,
-    retry: false,
   });
 
   const fixturesByTeam = useMemo(() => {
@@ -233,9 +231,10 @@ const Index = () => {
       setSelectedGW(liveGw);
       setSquadGW(liveGw);
     } else {
-      // Off-season or API unavailable — fall back to SAMPLE_SQUAD
-      setSelectedGW(SAMPLE_SQUAD.event_id);
-      setSquadGW(SAMPLE_SQUAD.event_id);
+      // Off-season or API unavailable — fall back to a placeholder GW number.
+      // isOffSeason (below) gates whether the pitch or the off-season card renders.
+      setSelectedGW(38);
+      setSquadGW(38);
     }
 
     setAppliedTransferCount(0);
@@ -316,6 +315,10 @@ const Index = () => {
 
   // Don't render the app until we know which GW to show — avoids the fallback flash.
   const gwResolved = selectedGW !== null;
+
+  // isSuccess (not isFetched) — a failed next-event fetch must show the error path,
+  // not a false "off-season" card.
+  const isOffSeason = nextEventQuery.isSuccess && !Number.isFinite(nextEventQuery.data?.event_id);
 
   const totalSuggestedMoves = recommendationMutation.data?.transfers?.moves?.length ?? 0;
   const canApplyNextTransfer = appliedTransferCount < totalSuggestedMoves;
@@ -418,8 +421,8 @@ const Index = () => {
     if (value > 0) void saveEntryId(value);
   };
 
-  // Resolved GW for rendering — fall back to SAMPLE_SQUAD.event_id only as last resort
-  const resolvedGW = selectedGW ?? SAMPLE_SQUAD.event_id;
+  // Resolved GW for rendering — pre-resolution placeholder; gwResolved gates rendering
+  const resolvedGW = selectedGW ?? 38;
 
   const parameterProps = {
     entryId,
@@ -484,21 +487,42 @@ const Index = () => {
       ) : (
         <MobileParameterDrawer {...parameterProps} />
       )}
-      <PitchVisualization
-        entryId={entryId}
-        onEntryIdSubmit={handleEntryIdSubmit}
-        team={activeTeam ?? SAMPLE_SQUAD}
-        requestedGw={resolvedGW}
-        onRequestedGwChange={setGwAndReset}
-        gwSelectable={canChangeGw}
-        isLoading={isLoading}
-        errorMessage={activeErrorMessage}
-        fixturesByTeam={fixturesByTeam}
-        pitchMode={pitchMode}
-        onPitchModeChange={setPitchMode}
-        hasRecommendation={Boolean(recommendationMutation.data)}
-        isLiveGw={isLiveGw}
-      />
+      {isOffSeason ? (
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-sm text-center rounded-2xl border border-border bg-card p-8">
+            <h3 className="font-bold text-foreground mb-2">Season hasn't started</h3>
+            <p className="text-sm text-muted-foreground">
+              The FPL API has no upcoming gameweek yet. Check back when the new season fixtures are live.
+            </p>
+          </div>
+        </div>
+      ) : squadQuery.isError && !squadQuery.data ? (
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-sm">
+            <QueryErrorCard
+              message={activeErrorMessage}
+              onRetry={() => squadQuery.refetch()}
+              retrying={squadQuery.isFetching}
+            />
+          </div>
+        </div>
+      ) : (
+        <PitchVisualization
+          entryId={entryId}
+          onEntryIdSubmit={handleEntryIdSubmit}
+          team={activeTeam}
+          requestedGw={resolvedGW}
+          onRequestedGwChange={setGwAndReset}
+          gwSelectable={canChangeGw}
+          isLoading={isLoading}
+          errorMessage={activeErrorMessage}
+          fixturesByTeam={fixturesByTeam}
+          pitchMode={pitchMode}
+          onPitchModeChange={setPitchMode}
+          hasRecommendation={Boolean(recommendationMutation.data)}
+          isLiveGw={isLiveGw}
+        />
+      )}
       <RecommendationsPanel
         squad={squadQuery.data}
         recommendation={activeRecommendation}

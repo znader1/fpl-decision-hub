@@ -3,6 +3,7 @@ import { PlayerCard, type Player } from "./PlayerCard";
 import { GameweekNav } from "./GameweekNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Search } from "lucide-react";
 import type {
   FplSquad,
@@ -17,7 +18,7 @@ type PitchTeam = FplSquad | FplTeamRecommendation;
 interface PitchVisualizationProps {
   entryId?: number;
   onEntryIdSubmit?: (raw: string) => Promise<string | null>;
-  team: PitchTeam;
+  team?: PitchTeam;
   requestedGw: number;
   onRequestedGwChange: (gw: number) => void;
   gwSelectable: boolean;
@@ -170,41 +171,47 @@ export const PitchVisualization = ({
   const [draftId, setDraftId] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const recommendationTeam = "horizon_gws" in team ? team : undefined;
+  const hasTeam = Boolean(team);
+  const recommendationTeam = team && "horizon_gws" in team ? team : undefined;
   const chipInfo = recommendationTeam?.chip_strategy;
   const chipName = chipLabel(chipInfo?.selected);
   const chipPlayGw = chipInfo?.play_event_id;
-  const displayedTeam = useMemo(() => getDisplayedTeam(team), [team]);
-  const { captainId, viceId } = useMemo(() => getCaptainIds(displayedTeam), [displayedTeam]);
+  const displayedTeam = useMemo(() => (team ? getDisplayedTeam(team) : undefined), [team]);
+  const { captainId, viceId } = useMemo(
+    () => (displayedTeam ? getCaptainIds(displayedTeam) : { captainId: undefined, viceId: undefined }),
+    [displayedTeam]
+  );
 
   const gwPoints = useMemo(() => {
+    if (!displayedTeam) return 0;
     const points = computeTeamPoints(displayedTeam);
     return Number.isFinite(points) ? round1(points) : 0;
   }, [displayedTeam]);
   const actualGwPoints = useMemo(() => {
+    if (!displayedTeam) return undefined;
     const points = getActualGwPoints(displayedTeam);
     return typeof points === "number" ? round1(points) : undefined;
   }, [displayedTeam]);
   const displayedPoints = recommendationTeam ? gwPoints : actualGwPoints ?? gwPoints;
   const displayedRank = useMemo(() => {
-    if (!("entry_history" in team)) return "—";
+    if (!team || !("entry_history" in team)) return "—";
     const overallRank = team.entry_history?.overall_rank;
     return formatRank(overallRank);
   }, [team]);
 
   const { goalkeeper, defenders, midfielders, forwards } = useMemo(() => {
-    const starting = displayedTeam.starting_xi;
+    const starting = displayedTeam?.starting_xi ?? [];
     return {
       goalkeeper: starting.filter((p) => p.pos === "GKP"),
       defenders: starting.filter((p) => p.pos === "DEF"),
       midfielders: starting.filter((p) => p.pos === "MID"),
       forwards: starting.filter((p) => p.pos === "FWD"),
     };
-  }, [displayedTeam.starting_xi]);
+  }, [displayedTeam]);
 
   const bench = useMemo(() => {
-    return [...displayedTeam.bench].sort((a, b) => a.bench_order - b.bench_order);
-  }, [displayedTeam.bench]);
+    return [...(displayedTeam?.bench ?? [])].sort((a, b) => a.bench_order - b.bench_order);
+  }, [displayedTeam]);
 
   const getFixtureForTeam = (teamShort: string): Player["fixture"] | undefined => {
     const fixtures = fixturesByTeam?.[teamShort];
@@ -365,62 +372,78 @@ export const PitchVisualization = ({
             style={{ background: "hsl(0 0% 100%)" }}
           />
 
-          {/* Goalkeeper */}
-          <div className="flex justify-center mb-10 relative z-10">
-            {goalkeeper.map((player) => (
-              <PlayerCard
-                key={player.player_id}
-                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
-              />
-            ))}
-          </div>
+          {!hasTeam ? (
+            <div className="relative z-10 flex flex-col items-center gap-10 py-4">
+              {[1, 4, 4, 2].map((count, row) => (
+                <div key={row} className="flex justify-center gap-4">
+                  {Array.from({ length: count }).map((_, i) => (
+                    <Skeleton key={i} className="h-20 w-16 rounded-md bg-white/10" />
+                  ))}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Goalkeeper */}
+              <div className="flex justify-center mb-10 relative z-10">
+                {goalkeeper.map((player) => (
+                  <PlayerCard
+                    key={player.player_id}
+                    player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
+                  />
+                ))}
+              </div>
 
-          {/* Defenders */}
-          <div className={`flex justify-center ${getRowGapClass(defenders.length)} mb-12 relative z-10`}>
-            {defenders.map((player) => (
-              <PlayerCard
-                key={player.player_id}
-                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
-              />
-            ))}
-          </div>
+              {/* Defenders */}
+              <div className={`flex justify-center ${getRowGapClass(defenders.length)} mb-12 relative z-10`}>
+                {defenders.map((player) => (
+                  <PlayerCard
+                    key={player.player_id}
+                    player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
+                  />
+                ))}
+              </div>
 
-          {/* Midfielders */}
-          <div className={`flex justify-center ${getRowGapClass(midfielders.length)} mb-12 relative z-10`}>
-            {midfielders.map((player) => (
-              <PlayerCard
-                key={player.player_id}
-                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
-              />
-            ))}
-          </div>
+              {/* Midfielders */}
+              <div className={`flex justify-center ${getRowGapClass(midfielders.length)} mb-12 relative z-10`}>
+                {midfielders.map((player) => (
+                  <PlayerCard
+                    key={player.player_id}
+                    player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
+                  />
+                ))}
+              </div>
 
-          {/* Forwards */}
-          <div className={`flex justify-center ${getRowGapClass(forwards.length)} relative z-10`}>
-            {forwards.map((player) => (
-              <PlayerCard
-                key={player.player_id}
-                player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
-              />
-            ))}
-          </div>
+              {/* Forwards */}
+              <div className={`flex justify-center ${getRowGapClass(forwards.length)} relative z-10`}>
+                {forwards.map((player) => (
+                  <PlayerCard
+                    key={player.player_id}
+                    player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Bench */}
-        <div className="mt-4 p-4 rounded-xl bg-card border border-border">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Substitutes</p>
-            {isLoading && <p className="text-xs text-muted-foreground">Updating…</p>}
+        {hasTeam && (
+          <div className="mt-4 p-4 rounded-xl bg-card border border-border">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Substitutes</p>
+              {isLoading && <p className="text-xs text-muted-foreground">Updating…</p>}
+            </div>
+            <div className="flex flex-wrap justify-center gap-3 sm:gap-8">
+              {bench.map((player) => (
+                <PlayerCard
+                  key={player.player_id}
+                  player={toBenchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
+                />
+              ))}
+            </div>
           </div>
-          <div className="flex flex-wrap justify-center gap-3 sm:gap-8">
-            {bench.map((player) => (
-              <PlayerCard
-                key={player.player_id}
-                player={toBenchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
-              />
-            ))}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
