@@ -13,6 +13,8 @@ import League from "./pages/League";
 import Fixtures from "./pages/Fixtures";
 import NotFound from "./pages/NotFound";
 import AuthConfirm from "./pages/AuthConfirm";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,6 +38,8 @@ const App = () => (
               <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/auth/confirm" element={<AuthConfirm />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
               {/* Legacy redirects so old bookmarks still work */}
               <Route path="/login" element={<Auth />} />
               <Route path="/signup" element={<Auth />} />

@@ -61,67 +61,29 @@ const features = [
     icon: BarChart3,
     title: "League Dashboard",
     description:
-      "Track rank trends, head-to-head stats, and template differentials across all your mini-leagues.",
+      "Mini-league strategy: chase, defend, or hunt differentials against your rivals.",
     color: "text-accent",
     bg: "bg-accent/10",
   },
 ];
 
-/* ─── Pricing tiers ─────────────────────────────────────────────────────────── */
-const plans = [
-  {
-    name: "Free",
-    price: "£0",
-    period: "",
-    description: "Get started — no card needed.",
-    cta: "Get started",
-    featured: false,
-    perks: [
-      "xPts for current GW",
-      "Squad pitch view",
-      "Basic captain pick",
-      "3 transfer suggestions / GW",
-    ],
-  },
-  {
-    name: "Pro",
-    price: "£4.99",
-    period: "/ mo",
-    description: "For managers who play to win.",
-    cta: "Start Pro",
-    featured: true,
-    perks: [
-      "Everything in Free",
-      "Multi-GW xPts horizon",
-      "Wildcard AI drafter",
-      "Full chip strategy",
-      "Unlimited transfer plans",
-      "Priority support",
-    ],
-  },
-  {
-    name: "Elite",
-    price: "£9.99",
-    period: "/ mo",
-    description: "For top-1k contenders.",
-    cta: "Go Elite",
-    featured: false,
-    perks: [
-      "Everything in Pro",
-      "League dashboard",
-      "Differential alerts",
-      "Early GW data access",
-      "API access",
-      "Dedicated onboarding",
-    ],
-  },
+/* ─── Beta perks ───────────────────────────────────────────────────────────── */
+const betaPerks = [
+  "xPts for every player, every GW",
+  "Multi-GW planning horizon",
+  "Wildcard & Free Hit chip drafts",
+  "Transfer suggestions with point gain",
+  "Captain & vice recommendations",
+  "Mini-league strategy dashboard",
 ];
+
+const comingSoon = ["Pro & Elite tiers", "Differential alerts", "API access"];
 
 /* ─── Stats ─────────────────────────────────────────────────────────────────── */
 const stats = [
-  { value: "42,000+", label: "Active managers" },
-  { value: "£4.6m+", label: "Prize money won" },
-  { value: "#1", label: "Rated FPL tool" },
+  { value: "Every player", label: "xPts modelled per GW" },
+  { value: "6 GWs", label: "Planning horizon" },
+  { value: "2026/27", label: "Ready for the new season" },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -278,81 +240,54 @@ export default function Landing() {
             <h2 className="text-3xl sm:text-4xl font-black mb-4">
               Simple, season-aligned plans
             </h2>
-            <p className="text-white/50">Start free. Upgrade when the stakes get real.</p>
+            <p className="text-white/50">Free while we're in beta — paid tiers arrive once the product earns them.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
-            {plans.map((plan) => (
-              <div
-                key={plan.name}
-                className={`rounded-2xl border p-6 flex flex-col gap-5 transition-all duration-200 ${
-                  plan.featured
-                    ? "border-primary bg-primary/10 ring-1 ring-primary/50 scale-[1.03] shadow-lg shadow-primary/20"
-                    : "border-white/10 bg-white/4"
-                }`}
-              >
-                {plan.featured && (
-                  <Badge className="w-fit bg-primary text-white text-xs font-bold">
-                    Most popular
-                  </Badge>
-                )}
-                <div>
-                  <p className="font-bold text-white/80 text-sm mb-1">{plan.name}</p>
-                  <p className="text-4xl font-black text-white">
-                    {plan.price}
-                    <span className="text-lg font-medium text-white/40">{plan.period}</span>
-                  </p>
-                  <p className="text-sm text-white/40 mt-1">{plan.description}</p>
-                </div>
-
-                <ul className="flex flex-col gap-2.5">
-                  {plan.perks.map((perk) => (
-                    <li key={perk} className="flex items-start gap-2 text-sm text-white/70">
-                      <Check className="h-4 w-4 text-accent mt-0.5 shrink-0" />
-                      {perk}
-                    </li>
+          <div className="mx-auto max-w-md">
+            <div className="rounded-2xl border border-primary bg-primary/10 ring-1 ring-primary/50 p-8 flex flex-col gap-5 shadow-lg shadow-primary/20">
+              <Badge className="w-fit bg-primary text-white text-xs font-bold">Beta</Badge>
+              <div>
+                <p className="text-4xl font-black text-white">
+                  Free
+                  <span className="text-lg font-medium text-white/40"> while in beta</span>
+                </p>
+                <p className="text-sm text-white/40 mt-1">
+                  Full access. No card. Help shape the product.
+                </p>
+              </div>
+              <ul className="flex flex-col gap-2.5">
+                {betaPerks.map((perk) => (
+                  <li key={perk} className="flex items-start gap-2 text-sm text-white/70">
+                    <Check className="h-4 w-4 text-accent mt-0.5 shrink-0" />
+                    {perk}
+                  </li>
+                ))}
+              </ul>
+              <div className="border-t border-white/10 pt-4">
+                <p className="text-xs uppercase tracking-widest text-white/30 mb-2">Coming later</p>
+                <ul className="flex flex-col gap-1.5">
+                  {comingSoon.map((item) => (
+                    <li key={item} className="text-sm text-white/35">{item}</li>
                   ))}
                 </ul>
-
-                <Link to="/auth" className="mt-auto">
-                  <Button
-                    className={`w-full font-bold ${
-                      plan.featured
-                        ? "bg-primary hover:bg-primary/90 text-white"
-                        : "bg-white/8 hover:bg-white/15 text-white border border-white/15"
-                    }`}
-                  >
-                    {plan.cta}
-                  </Button>
-                </Link>
               </div>
-            ))}
+              <Link to="/auth" className="mt-auto">
+                <Button className="w-full font-bold bg-primary hover:bg-primary/90 text-white">
+                  Get started free
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Social proof ── */}
-      <section className="py-16 px-4 sm:px-6 border-t border-white/8">
-        <div className="mx-auto max-w-4xl text-center">
-          <div className="flex items-center justify-center gap-1 mb-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-            ))}
-          </div>
-          <blockquote className="text-xl sm:text-2xl font-semibold text-white/80 max-w-2xl mx-auto mb-6 leading-snug">
-            "Jumped 800k ranks in a single GW using the wildcard drafter. It's
-            the only FPL tool I trust now."
-          </blockquote>
-          <p className="text-white/40 text-sm">— Jamie T., Mini-league winner · Overall rank top 5k</p>
-        </div>
-      </section>
 
       {/* ── CTA ── */}
       <section className="py-24 px-4 sm:px-6 bg-white/3 border-t border-white/8">
         <div className="mx-auto max-w-2xl text-center">
           <Trophy className="h-10 w-10 text-primary mx-auto mb-5 opacity-80" />
           <h2 className="text-3xl sm:text-4xl font-black mb-4">
-            Join 42,000+ managers making smarter picks
+            Make smarter picks this season
           </h2>
           <p className="text-white/50 mb-8">
             Free to start. No credit card required. Your first AI recommendation
@@ -381,8 +316,8 @@ export default function Landing() {
           </div>
           <p>© {new Date().getFullYear()} FPLedge. Not affiliated with the Premier League.</p>
           <div className="flex gap-4">
-            <a href="#" className="hover:text-white/60 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-white/60 transition-colors">Terms</a>
+            <Link to="/privacy" className="hover:text-white/60 transition-colors">Privacy</Link>
+            <Link to="/terms" className="hover:text-white/60 transition-colors">Terms</Link>
           </div>
         </div>
       </footer>
