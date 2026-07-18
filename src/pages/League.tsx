@@ -90,8 +90,11 @@ const League = () => {
   // While BETA_ALL_ACCESS is true, this is unreachable.
   if (!canUseLeagueDashboard) {
     return (
-      <div className="min-h-screen bg-background pt-20 pb-8 px-4 text-center">
-        <p className="text-muted-foreground">League strategy is part of a paid tier.</p>
+      <div className="dark min-h-screen bg-background">
+        <Navbar />
+        <div className="pt-20 pb-8 px-4 text-center">
+          <p className="text-muted-foreground">League strategy is part of a paid tier.</p>
+        </div>
       </div>
     );
   }
