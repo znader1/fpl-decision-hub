@@ -31,7 +31,7 @@ type PitchMode = "squad" | "recommendation";
 const clampGw = (gw: number) => Math.min(38, Math.max(1, gw));
 const hasExplicitGwQuery = () => {
   const query = new URLSearchParams(window.location.search);
-  return query.has("gw") || query.has("squad_gw");
+  return query.has("gw");
 };
 
 const getInitialGw = () => {
@@ -43,18 +43,6 @@ const getInitialGw = () => {
 
   // No stored GW — return null so we wait for the next-event API before rendering
   return null;
-};
-
-const getInitialSquadGw = () => {
-  // Deliberately does NOT read the "fpl_squad_gw" localStorage key. Prior to the P0
-  // GW-navigation fix, squadGW could silently diverge from selectedGW and that drifted
-  // value would get persisted — reading it back here would resurrect a stale wedge for
-  // any user who hit the bug before this fix shipped. An explicit ?squad_gw= query
-  // param is still honored for intentional deep links; everything else follows selectedGW.
-  const fromQuery = Number(new URLSearchParams(window.location.search).get("squad_gw"));
-  if (Number.isFinite(fromQuery) && fromQuery >= 1 && fromQuery <= 38) return clampGw(fromQuery);
-
-  return getInitialGw();
 };
 
 const getInitialEntryId = () => {
@@ -123,7 +111,11 @@ const getInitialApplyTransferCount = () => {
 const Index = () => {
   const [entryId, setEntryId] = useState(getInitialEntryId);
   const [selectedGW, setSelectedGW] = useState<number | null>(getInitialGw);
-  const [squadGW, setSquadGW] = useState<number | null>(getInitialSquadGw);
+  // Invariant: squadGW always initializes equal to selectedGW and is only ever
+  // written in lockstep with it (setGwAndReset / setEntryAndReset / next-event default).
+  // It exists as separate state solely so the squad query key is explicit about which
+  // GW's picks it is for. It must never be written from a response (that was the P0 bug).
+  const [squadGW, setSquadGW] = useState<number | null>(getInitialGw);
   const [horizonGws, setHorizonGws] = useState(getInitialHorizon);
   const [chipStrategy, setChipStrategy] = useState<FplChipStrategy>(getInitialChipStrategy);
   const [chipPlayEventId, setChipPlayEventId] = useState<number | undefined>(getInitialChipPlayEventId);
@@ -245,22 +237,32 @@ const Index = () => {
     setDidApplyNextGwDefault(true);
   }, [didApplyNextGwDefault, nextEventQuery.data?.event_id, nextEventQuery.isFetched, recommendationMutation]);
 
-  // Root cause of the GW-navigation wedge (see BACKLOG P0): the backend can silently
-  // substitute a different GW's squad (200 OK) when it can't fetch picks for the
-  // specifically-requested historical event_id — e.g. upstream FPL API hiccup — and
-  // returns whatever GW it fell back to instead of an error. This used to be treated
-  // as authoritative and silently written into squadGW here, desyncing it from
-  // selectedGW: the GW nav kept showing the GW the user picked while the pitch quietly
-  // rendered a different GW's squad, with no indication anything had gone wrong
-  // ("bounce-back"/"wedge"). We now treat a mismatch as an explicit load failure
-  // instead — see squadEventMismatch below and its QueryErrorCard branch in the render.
-  const squadEventMismatch =
+  // Root cause of the GW-navigation wedge (see BACKLOG P0): when the backend can't
+  // fetch picks for the requested event_id (deterministically for future GWs mid-season
+  // — FPL has no picks yet — or transiently for historical GWs on upstream hiccups) it
+  // silently substitutes the nearest available GW's squad (200 OK, different event_id).
+  // A since-removed effect here used to adopt that returned event_id into squadGW while
+  // selectedGW stayed put, desyncing the GW nav from the squad actually rendered with no
+  // indication anything was off ("bounce-back"/"wedge").
+  //
+  // The fix: never mutate GW state from a response. A substitution is detected as a
+  // derived value and surfaced as an informational banner on the pitch (the returned
+  // squad still renders — for future GWs "your latest squad" is the correct planning
+  // basis, which is why the backend substitutes at all). The settled-state guards
+  // (placeholder/fetching) stop the banner flashing mid-navigation while the previous
+  // GW's data is shown as placeholder.
+  const returnedSquadGw = squadQuery.data?.event_id;
+  const squadSubstituted =
+    pitchMode === "squad" &&
     !squadQuery.isPlaceholderData &&
     !squadQuery.isFetching &&
     squadQuery.isSuccess &&
-    typeof squadQuery.data?.event_id === "number" &&
+    typeof returnedSquadGw === "number" &&
     squadGW !== null &&
-    squadQuery.data.event_id !== squadGW;
+    returnedSquadGw !== squadGW;
+  const substitutionNotice = squadSubstituted
+    ? `Showing your latest squad (GW ${returnedSquadGw}) — your GW ${squadGW} picks aren't available yet.`
+    : undefined;
 
   useEffect(() => {
     if (chipStrategy !== "wildcard" && chipPlayEventId !== undefined) {
@@ -272,7 +274,6 @@ const Index = () => {
     try {
       localStorage.setItem("fpl_entry_id", String(entryId));
       if (selectedGW !== null) localStorage.setItem("fpl_selected_gw", String(selectedGW));
-      if (squadGW !== null) localStorage.setItem("fpl_squad_gw", String(squadGW));
       localStorage.setItem("fpl_horizon_gws", String(horizonGws));
       localStorage.setItem("fpl_chip_strategy", chipStrategy);
       localStorage.setItem("fpl_transfer_strategy", chipStrategy);
@@ -286,7 +287,7 @@ const Index = () => {
     } catch {
       // ignore
     }
-  }, [entryId, selectedGW, squadGW, horizonGws, chipStrategy, chipPlayEventId, includeTransfers, appliedTransferCount]);
+  }, [entryId, selectedGW, horizonGws, chipStrategy, chipPlayEventId, includeTransfers, appliedTransferCount]);
 
   useEffect(() => {
     if (!recommendationMutation.data) return;
@@ -361,15 +362,10 @@ const Index = () => {
     };
   }, [appliedTransferCount, recommendationMutation.data]);
 
-  // While the squad response's event_id doesn't match the requested squadGW, the
-  // response describes a different GW than the one the user asked for — don't treat
-  // it as valid squad data (see squadEventMismatch above).
-  const displayableSquad = squadEventMismatch ? undefined : squadQuery.data;
-
   const activeTeam = useMemo(() => {
     if (pitchMode === "recommendation" && activeRecommendation) return activeRecommendation;
-    return displayableSquad;
-  }, [pitchMode, activeRecommendation, displayableSquad]);
+    return squadQuery.data;
+  }, [pitchMode, activeRecommendation, squadQuery.data]);
 
   const activeError =
     pitchMode === "recommendation"
@@ -377,16 +373,10 @@ const Index = () => {
       : squadQuery.error;
 
   const activeErrorMessage = useMemo(() => {
-    if (pitchMode === "squad" && squadEventMismatch) {
-      const returnedGw = squadQuery.data?.event_id;
-      const backendNote = squadQuery.data?.notes?.join(" ");
-      const base = `The server returned squad data for GW${returnedGw} instead of the requested GW${squadGW}.`;
-      return backendNote ? `${base} ${backendNote}` : base;
-    }
     if (!activeError) return undefined;
     if (activeError instanceof Error) return activeError.message;
     return String(activeError);
-  }, [activeError, pitchMode, squadEventMismatch, squadQuery.data?.event_id, squadQuery.data?.notes, squadGW]);
+  }, [activeError]);
 
   const recommendErrorMessage = useMemo(() => {
     const err = recommendationMutation.error;
@@ -509,11 +499,10 @@ const Index = () => {
             </p>
           </div>
         </div>
-      ) : pitchMode === "squad" && ((squadQuery.isError && !squadQuery.data) || squadEventMismatch) ? (
+      ) : pitchMode === "squad" && squadQuery.isError && !squadQuery.data ? (
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="w-full max-w-sm">
             <QueryErrorCard
-              title={squadEventMismatch ? `Couldn't load GW${squadGW}` : undefined}
               message={activeErrorMessage}
               onRetry={() => squadQuery.refetch()}
               retrying={squadQuery.isFetching}
@@ -530,6 +519,7 @@ const Index = () => {
           gwSelectable={canChangeGw}
           isLoading={isLoading}
           errorMessage={activeErrorMessage}
+          substitutionNotice={substitutionNotice}
           fixturesByTeam={fixturesByTeam}
           pitchMode={pitchMode}
           onPitchModeChange={setPitchMode}
@@ -538,7 +528,7 @@ const Index = () => {
         />
       )}
       <RecommendationsPanel
-        squad={displayableSquad}
+        squad={squadQuery.data}
         recommendation={activeRecommendation}
         isRecommending={recommendationMutation.isPending}
         horizonGws={horizonGws}

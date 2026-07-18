@@ -24,6 +24,9 @@ interface PitchVisualizationProps {
   gwSelectable: boolean;
   isLoading?: boolean;
   errorMessage?: string;
+  /** Informational (non-error) notice — e.g. the backend substituted the latest
+   *  available squad because the requested GW's picks don't exist yet. */
+  substitutionNotice?: string;
   fixturesByTeam?: Record<string, FplTeamFixture[]>;
   pitchMode?: "squad" | "recommendation";
   onPitchModeChange?: (mode: "squad" | "recommendation") => void;
@@ -162,6 +165,7 @@ export const PitchVisualization = ({
   gwSelectable,
   isLoading = false,
   errorMessage,
+  substitutionNotice,
   fixturesByTeam,
   pitchMode = "squad",
   onPitchModeChange,
@@ -278,6 +282,12 @@ export const PitchVisualization = ({
           <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             <p>Failed to load from backend. Showing last loaded data.</p>
             <p className="mt-1 text-xs opacity-80">{errorMessage}</p>
+          </div>
+        )}
+
+        {substitutionNotice && (
+          <div className="mb-4 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+            {substitutionNotice}
           </div>
         )}
 
