@@ -11,6 +11,7 @@ import {
   type LeagueStrategyMode,
   type LeagueStrategyResponse,
 } from "@/lib/fplAssistantApi";
+import { useEntitlement } from "@/hooks/useEntitlement";
 
 const getInitialEntryId = (): number => {
   const fromQuery = Number(new URLSearchParams(window.location.search).get("entry_id"));
@@ -58,6 +59,8 @@ const League = () => {
   const [strategyLoading, setStrategyLoading] = useState(false);
   const [strategyError, setStrategyError] = useState<string | null>(null);
 
+  const { canUseLeagueDashboard } = useEntitlement();
+
   useEffect(() => {
     if (!entryId) return;
     let cancelled = false;
@@ -82,6 +85,16 @@ const League = () => {
     () => leagues.find((l) => l.id === selectedLeagueId),
     [leagues, selectedLeagueId]
   );
+
+  // Gate: League strategy is only available to entitled users.
+  // While BETA_ALL_ACCESS is true, this is unreachable.
+  if (!canUseLeagueDashboard) {
+    return (
+      <div className="min-h-screen bg-background pt-20 pb-8 px-4 text-center">
+        <p className="text-muted-foreground">League strategy is part of a paid tier.</p>
+      </div>
+    );
+  }
 
   const runStrategy = async () => {
     if (!entryId || !selectedLeagueId) return;
