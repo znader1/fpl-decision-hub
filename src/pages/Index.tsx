@@ -496,7 +496,7 @@ const Index = () => {
             </p>
           </div>
         </div>
-      ) : squadQuery.isError && !squadQuery.data ? (
+      ) : pitchMode === "squad" && squadQuery.isError && !squadQuery.data ? (
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="w-full max-w-sm">
             <QueryErrorCard
