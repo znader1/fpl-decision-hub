@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ParameterSidebar } from "@/components/ParameterSidebar";
+import { MobileParameterDrawer } from "@/components/MobileParameterDrawer";
 import { PitchVisualization } from "@/components/PitchVisualization";
 import { RecommendationsPanel } from "@/components/RecommendationsPanel";
 import { Navbar } from "@/components/layout/Navbar";
@@ -418,6 +419,32 @@ const Index = () => {
   // Resolved GW for rendering — fall back to SAMPLE_SQUAD.event_id only as last resort
   const resolvedGW = selectedGW ?? SAMPLE_SQUAD.event_id;
 
+  const parameterProps = {
+    entryId,
+    onEntryIdChange: setEntryAndReset,
+    horizonGws,
+    onHorizonGwsChange: setHorizonGws,
+    chipStrategy,
+    onChipStrategyChange: setChipStrategy,
+    includeTransfers,
+    onIncludeTransfersChange: setIncludeTransfers,
+    canRecommend,
+    isRecommending: recommendationMutation.isPending,
+    isLiveGw,
+    maxHorizon: Math.max(1, 38 - resolvedGW + 1),
+    onRecommend: () => {
+      const nextChipPlayEventId = chipStrategy === "wildcard" ? resolvedGW : undefined;
+      if (chipStrategy === "wildcard") {
+        setChipPlayEventId(nextChipPlayEventId);
+      }
+      setAppliedTransferCount(0);
+      recommendationMutation.mutate(
+        buildRecommendationParams(resolvedGW, { chipPlayEventId: nextChipPlayEventId })
+      );
+    },
+    recommendErrorMessage,
+  };
+
   const handleEntryIdSubmit = async (raw: string): Promise<string | null> => {
     const id = parseEntryIdInput(raw);
     if (id === null) {
@@ -440,7 +467,7 @@ const Index = () => {
   return (
     <div className="dark flex flex-col h-screen bg-background">
       <Navbar />
-      <div className="flex flex-1 min-h-0 pt-14">
+      <div className="flex flex-1 min-h-0 pt-14 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
       {!gwResolved ? (
         // Wait for next-event API before showing anything — prevents fallback-squad flash
         <div className="flex flex-1 items-center justify-center text-muted-foreground text-sm">
@@ -448,31 +475,10 @@ const Index = () => {
         </div>
       ) : (
         <>
-      <ParameterSidebar
-        entryId={entryId}
-        onEntryIdChange={setEntryAndReset}
-        horizonGws={horizonGws}
-        onHorizonGwsChange={setHorizonGws}
-        chipStrategy={chipStrategy}
-        onChipStrategyChange={setChipStrategy}
-        includeTransfers={includeTransfers}
-        onIncludeTransfersChange={setIncludeTransfers}
-        canRecommend={canRecommend}
-        isRecommending={recommendationMutation.isPending}
-        isLiveGw={isLiveGw}
-        maxHorizon={Math.max(1, 38 - resolvedGW + 1)}
-        onRecommend={() => {
-          const nextChipPlayEventId = chipStrategy === "wildcard" ? resolvedGW : undefined;
-          if (chipStrategy === "wildcard") {
-            setChipPlayEventId(nextChipPlayEventId);
-          }
-          setAppliedTransferCount(0);
-          recommendationMutation.mutate(
-            buildRecommendationParams(resolvedGW, { chipPlayEventId: nextChipPlayEventId })
-          );
-        }}
-        recommendErrorMessage={recommendErrorMessage}
-      />
+      <div className="hidden lg:flex shrink-0">
+        <ParameterSidebar {...parameterProps} />
+      </div>
+      <MobileParameterDrawer {...parameterProps} />
       <PitchVisualization
         entryId={entryId}
         onEntryIdSubmit={handleEntryIdSubmit}

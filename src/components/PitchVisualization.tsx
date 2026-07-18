@@ -31,12 +31,12 @@ interface PitchVisualizationProps {
 }
 
 const getRowGapClass = (count: number) => {
-  if (count >= 6) return "gap-2";
-  if (count === 5) return "gap-4";
-  if (count === 4) return "gap-6";
-  if (count === 3) return "gap-10";
-  if (count === 2) return "gap-14";
-  return "gap-6";
+  if (count >= 6) return "gap-1 sm:gap-2";
+  if (count === 5) return "gap-2 sm:gap-4";
+  if (count === 4) return "gap-3 sm:gap-6";
+  if (count === 3) return "gap-5 sm:gap-10";
+  if (count === 2) return "gap-8 sm:gap-14";
+  return "gap-3 sm:gap-6";
 };
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
@@ -228,7 +228,7 @@ export const PitchVisualization = ({
   };
 
   return (
-    <div className="flex-1 min-w-0 p-4 overflow-y-auto">
+    <div className="flex-1 min-w-0 p-2 sm:p-4 lg:overflow-y-auto">
       <div className="w-full max-w-3xl mx-auto">
 
         {/* Squad / AI Pick tab bar */}
@@ -288,10 +288,10 @@ export const PitchVisualization = ({
         />
 
         <div
-          className="relative rounded-2xl overflow-hidden px-4 py-8"
+          className="relative rounded-2xl overflow-hidden px-2 py-6 sm:px-4 sm:py-8 min-h-[480px] sm:min-h-[600px]"
           style={{
-            background: `linear-gradient(180deg, 
-              hsl(var(--pitch)) 0%, 
+            background: `linear-gradient(180deg,
+              hsl(var(--pitch)) 0%,
               hsl(var(--pitch-dark)) 25%,
               hsl(var(--pitch)) 25.5%,
               hsl(var(--pitch-dark)) 50%,
@@ -299,7 +299,6 @@ export const PitchVisualization = ({
               hsl(var(--pitch-dark)) 75%,
               hsl(var(--pitch)) 75.5%,
               hsl(var(--pitch-dark)) 100%)`,
-            minHeight: "600px",
           }}
         >
           {/* Entry ID prompt overlay — shown when no valid ID is set */}
@@ -413,7 +412,7 @@ export const PitchVisualization = ({
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Substitutes</p>
             {isLoading && <p className="text-xs text-muted-foreground">Updating…</p>}
           </div>
-          <div className="flex justify-center gap-8">
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-8">
             {bench.map((player) => (
               <PlayerCard
                 key={player.player_id}

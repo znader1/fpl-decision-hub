@@ -444,7 +444,7 @@ export const RecommendationsPanel = ({
   const moveCount = recommendation?.transfers?.moves?.length ?? 0;
 
   return (
-    <aside className="w-[380px] xl:w-[440px] shrink-0 bg-card border-l border-border flex flex-col">
+    <aside className="w-full lg:w-[380px] xl:w-[440px] shrink-0 bg-card border-t lg:border-t-0 lg:border-l border-border flex flex-col">
       {/* Tab bar */}
       <div className="flex border-b border-border shrink-0">
         {tabs.map((tab) => {

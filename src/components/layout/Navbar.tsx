@@ -1,8 +1,14 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { LogOut } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 
 const landingLinks = [
   { label: "Features", href: "/#features" },
@@ -64,16 +70,42 @@ export function Navbar() {
                   </Button>
                 </Link>
               )}
-              {isApp &&
-                appLinks
-                  .filter((l) => l.to !== pathname)
-                  .map((l) => (
-                    <Link key={l.to} to={l.to}>
-                      <Button variant="ghost" size="sm" className="text-white/70 hover:text-white">
-                        {l.label}
-                      </Button>
-                    </Link>
-                  ))}
+              {isApp && (
+                <div className="hidden md:flex items-center gap-2">
+                  {appLinks
+                    .filter((l) => l.to !== pathname)
+                    .map((l) => (
+                      <Link key={l.to} to={l.to}>
+                        <Button variant="ghost" size="sm" className="text-white/70 hover:text-white">
+                          {l.label}
+                        </Button>
+                      </Link>
+                    ))}
+                </div>
+              )}
+              {isApp && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="md:hidden text-white/70 hover:text-white"
+                      aria-label="Open navigation menu"
+                    >
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {appLinks
+                      .filter((l) => l.to !== pathname)
+                      .map((l) => (
+                        <DropdownMenuItem key={l.to} asChild>
+                          <Link to={l.to}>{l.label}</Link>
+                        </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
