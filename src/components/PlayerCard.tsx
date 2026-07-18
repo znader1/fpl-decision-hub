@@ -260,10 +260,6 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
             </div>
           </div>
         )}
-
-        {breakdown?.note && (
-          <p className="text-[11px] text-muted-foreground">{breakdown.note}</p>
-        )}
       </HoverCardContent>
     </HoverCard>
   );
