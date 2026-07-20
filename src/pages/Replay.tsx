@@ -12,9 +12,10 @@ export default function Replay() {
   useEffect(() => {
     const ctrl = new AbortController();
     setErr(null);
+    setRec(null);
     fetchReplayGw(SEASON, gw, ENTRY_ID, ctrl.signal)
-      .then(setRec)
-      .catch((e) => setErr(String(e)));
+      .then((r) => { if (!ctrl.signal.aborted) setRec(r); })
+      .catch((e) => { if (!ctrl.signal.aborted) setErr(String(e)); });
     return () => ctrl.abort();
   }, [gw]);
 
