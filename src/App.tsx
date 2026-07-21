@@ -17,8 +17,10 @@ import AuthConfirm from "./pages/AuthConfirm";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 
-// Lazy + gated so production builds (VITE_REPLAY_MODE unset) drop this page
-// from the bundle entirely. Personal dev-only feature — see .env.example.
+// Lazy + gated on import.meta.env.DEV (statically false in all production
+// builds, regardless of .env) so this page drops from the bundle entirely.
+// Also flag-gated on VITE_REPLAY_MODE for dev-time opt-in. Personal
+// dev-only feature — see .env.example.
 const Replay = /* @__PURE__ */ lazy(() => import("./pages/Replay"));
 
 const queryClient = new QueryClient({
@@ -51,7 +53,7 @@ const App = () => (
               <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/app/league" element={<ProtectedRoute><League /></ProtectedRoute>} />
               <Route path="/app/fixtures" element={<ProtectedRoute><Fixtures /></ProtectedRoute>} />
-              {import.meta.env.VITE_REPLAY_MODE === "1" && (
+              {import.meta.env.DEV && import.meta.env.VITE_REPLAY_MODE === "1" && (
                 <Route path="/replay" element={<Suspense fallback={null}><Replay /></Suspense>} />
               )}
               <Route path="*" element={<NotFound />} />
