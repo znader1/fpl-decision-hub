@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { replayEnabled } from "@/lib/replayApi";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
@@ -20,7 +19,7 @@ import Terms from "./pages/Terms";
 
 // Lazy + gated so production builds (VITE_REPLAY_MODE unset) drop this page
 // from the bundle entirely. Personal dev-only feature — see .env.example.
-const Replay = lazy(() => import("./pages/Replay"));
+const Replay = /* @__PURE__ */ lazy(() => import("./pages/Replay"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,7 +51,7 @@ const App = () => (
               <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/app/league" element={<ProtectedRoute><League /></ProtectedRoute>} />
               <Route path="/app/fixtures" element={<ProtectedRoute><Fixtures /></ProtectedRoute>} />
-              {replayEnabled() && (
+              {import.meta.env.VITE_REPLAY_MODE === "1" && (
                 <Route path="/replay" element={<Suspense fallback={null}><Replay /></Suspense>} />
               )}
               <Route path="*" element={<NotFound />} />
