@@ -15,6 +15,7 @@ const DEFAULTS: SquadBuildParams = {
   horizon_gws: 5, budget_m: 100, objective: "wildcard", projection_basis: "ppg",
   blend_weight: 0.5, minutes_prior_k: 500, include_flagged: false,
   min_chance_of_playing: 0, max_per_team: 3, min_fwd_minutes: 0, formation: "auto",
+  fdr_strength: 1.0,
 };
 
 export default function SquadPicker() {
@@ -83,6 +84,10 @@ export default function SquadPicker() {
         <Field label="Formation">
           <Input value={params.formation} placeholder="auto or 3-4-3"
             onChange={(e) => set("formation", e.target.value)} />
+        </Field>
+        <Field label="FDR strength">
+          <Input type="number" step={0.1} min={0} max={2} value={params.fdr_strength}
+            onChange={(e) => set("fdr_strength", Number(e.target.value))} />
         </Field>
         <Field label="Include flagged (injured)">
           <input type="checkbox" checked={!!params.include_flagged}
@@ -171,6 +176,27 @@ export default function SquadPicker() {
               </tbody>
             </table>
           </Card>
+
+          {res.value_menu && (
+            <Card className="p-4">
+              <div className="text-xs font-semibold mb-2">Value menu — top by 5-GW xPts</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                {(["GKP","DEF","MID","FWD"] as const).map((pos) => (
+                  <div key={pos}>
+                    <div className="font-semibold mb-1">{pos}</div>
+                    <ul className="space-y-0.5">
+                      {(res.value_menu?.[pos] ?? []).map((p) => (
+                        <li key={p.player_id} className="flex justify-between gap-2">
+                          <span>{p.web_name} <span className="text-muted-foreground">{p.team_short}</span></span>
+                          <span className="text-muted-foreground">£{p.price_m?.toFixed(1)} · {p.xpts_horizon?.toFixed(1)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {res.notes?.length > 0 && (
             <Card className="p-4">

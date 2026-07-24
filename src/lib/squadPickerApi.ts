@@ -17,6 +17,7 @@ export interface SquadBuildParams {
   max_per_team?: number;
   min_fwd_minutes?: number;
   formation?: string; // "auto" | "3-4-3" | ...
+  fdr_strength?: number;
 }
 
 export interface SquadPlayer {
