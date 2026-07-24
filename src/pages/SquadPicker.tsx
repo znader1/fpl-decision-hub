@@ -2,12 +2,13 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
-  buildSquad, type SquadBuildParams, type SquadBuildResult, type SquadPlayer,
+  buildSquad, type SquadBuildParams, type SquadBuildResult, type SquadPlayer, type TeamNudge,
 } from "@/lib/squadPickerApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { TeamStrengthGrid } from "@/components/TeamStrengthGrid";
 
 const POS_ORDER: SquadPlayer["pos"][] = ["GKP", "DEF", "MID", "FWD"];
 
@@ -20,6 +21,7 @@ const DEFAULTS: SquadBuildParams = {
 
 export default function SquadPicker() {
   const [params, setParams] = useState<SquadBuildParams>(DEFAULTS);
+  const [teamNudges, setTeamNudges] = useState<TeamNudge[]>([]);
   const mutation = useMutation<SquadBuildResult, Error, SquadBuildParams>({
     mutationFn: buildSquad,
   });
@@ -60,6 +62,9 @@ export default function SquadPicker() {
             <option value="xg">xg</option>
             <option value="blend">blend</option>
           </select>
+          <p className="text-[11px] text-muted-foreground">
+            Team-strength nudges below only affect xg / blend.
+          </p>
         </Field>
         <Field label="Blend weight (xg share)">
           <Input type="number" step={0.05} min={0} max={1} value={params.blend_weight}
@@ -95,11 +100,13 @@ export default function SquadPicker() {
         </Field>
         <div className="flex items-end">
           <Button className="w-full" disabled={mutation.isPending}
-            onClick={() => mutation.mutate(params)}>
+            onClick={() => mutation.mutate({ ...params, team_nudges: teamNudges })}>
             {mutation.isPending ? "Building…" : "Build squad"}
           </Button>
         </div>
       </Card>
+
+      <TeamStrengthGrid onChange={setTeamNudges} />
 
       {mutation.isError && (
         <Card className="p-4 border-destructive">

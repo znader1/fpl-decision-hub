@@ -5,6 +5,12 @@
 export type ProjectionBasis = "ppg" | "xg" | "blend";
 export type Objective = "wildcard" | "free_hit" | "plain";
 
+export interface TeamNudge {
+  team_short: string;
+  attack: number;
+  defense: number;
+}
+
 export interface SquadBuildParams {
   horizon_gws?: number;
   budget_m?: number;
@@ -18,6 +24,7 @@ export interface SquadBuildParams {
   min_fwd_minutes?: number;
   formation?: string; // "auto" | "3-4-3" | ...
   fdr_strength?: number;
+  team_nudges?: TeamNudge[]; // per-team xg/blend attack/defense nudges; [] = no override
 }
 
 export interface SquadPlayer {
