@@ -25,6 +25,7 @@ export interface SquadBuildParams {
   formation?: string; // "auto" | "3-4-3" | ...
   fdr_strength?: number;
   home_away_strength?: number; // scales home 1.06 / away 0.94 swing (1=default, >1 amplifies)
+  xi_objective?: "next_gw" | "horizon" | "per_gw"; // /lineup: which window the XI is optimized for
   max_player_price?: number; // auto-build only: cap price per player (undefined/0 = no cap)
   team_nudges?: TeamNudge[]; // per-team xg/blend attack/defense nudges; [] = no override
 }
@@ -142,7 +143,24 @@ export interface PlayerPool {
   players: PoolPlayer[];
 }
 
-export type LineupResult = SquadBuildResult & { valid: boolean; violations?: string[] };
+export interface PerGwLineup {
+  gw: number;
+  formation: [number, number, number];
+  starting_xi: number[];
+  captain_player_id: number | null;
+  xi_points: number;
+  captain_bonus: number;
+  total: number;
+}
+
+export type LineupResult = SquadBuildResult & {
+  valid: boolean;
+  violations?: string[];
+  xi_objective?: "next_gw" | "horizon" | "per_gw";
+  per_gw_lineups?: PerGwLineup[]; // present only for xi_objective="per_gw"
+  rotation_total?: number;
+  rotation_gain?: number; // per-GW rotation total minus the fixed-XI horizon total
+};
 
 export async function getPlayers(params: SquadBuildParams): Promise<PlayerPool> {
   const res = await fetch(`${apiBase()}/squad-picker/players`, {

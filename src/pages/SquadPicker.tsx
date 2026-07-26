@@ -21,7 +21,7 @@ const DEFAULTS: SquadBuildParams = {
   horizon_gws: 5, budget_m: 100, objective: "wildcard", projection_basis: "blend",
   blend_weight: 0.5, minutes_prior_k: 500, include_flagged: false,
   min_chance_of_playing: 0, max_per_team: 3, min_fwd_minutes: 0, formation: "auto",
-  fdr_strength: 1.0, home_away_strength: 1.0,
+  fdr_strength: 1.0, home_away_strength: 1.0, xi_objective: "horizon",
 };
 
 export default function SquadPicker() {
@@ -64,7 +64,7 @@ export default function SquadPicker() {
     const t = setTimeout(() => lineupMutation.mutate(squadIds), 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [squadIds]);
+  }, [squadIds, params.xi_objective]);
 
   const res = lastGood;
   const xiIds = new Set((res?.starting_xi ?? []).map((p) => p.player_id));
@@ -215,6 +215,20 @@ export default function SquadPicker() {
               <span>Projected GW{res.gw_start}-{(res.gw_start ?? 1) + (res.horizon_gws ?? 1) - 1}
                 {" "}<b>{res.projected_points.horizon_total.toFixed(1)} pts</b></span>
             )}
+            <label className="flex items-center gap-1">Optimize XI:
+              <select value={params.xi_objective ?? "horizon"}
+                onChange={(e) => set("xi_objective", e.target.value as SquadBuildParams["xi_objective"])}
+                className="rounded border bg-background p-1 text-xs">
+                <option value="horizon">First {res.horizon_gws ?? 5} fixtures</option>
+                <option value="next_gw">Next GW only</option>
+                <option value="per_gw">Per-GW (rotate)</option>
+              </select>
+            </label>
+            {res.xi_objective === "per_gw" && typeof res.rotation_gain === "number" && (
+              <span className="text-emerald-600" title="extra points from re-picking the XI each GW vs one fixed XI">
+                rotate +{res.rotation_gain.toFixed(1)} pts
+              </span>
+            )}
             {lineupMutation.isPending && <span className="text-muted-foreground">optimizing…</span>}
           </Card>
 
@@ -233,12 +247,19 @@ export default function SquadPicker() {
             <Card className="p-4">
               <div className="text-xs text-muted-foreground mb-2">
                 Projected points per GW (XI + captain doubled) — directional cold-start estimate; do not compare totals across bases.
+                {res.per_gw_lineups?.length ? " Per-GW rotate: the XI + formation shown maximizes each GW individually." : ""}
               </div>
               <div className="flex gap-3 flex-wrap">
-                {res.projected_points.per_gw.map((g) => (
+                {(res.per_gw_lineups?.length
+                  ? res.per_gw_lineups.map((g) => ({ gw: g.gw, total: g.total, formation: g.formation }))
+                  : res.projected_points.per_gw.map((g) => ({ gw: g.gw, total: g.total, formation: undefined as [number, number, number] | undefined }))
+                ).map((g) => (
                   <div key={g.gw} className="text-center">
                     <div className="text-xs text-muted-foreground">GW{g.gw}</div>
                     <div className="font-semibold">{g.total.toFixed(1)}</div>
+                    {g.formation && (
+                      <div className="text-[10px] text-muted-foreground">{g.formation.join("-")}</div>
+                    )}
                   </div>
                 ))}
               </div>
