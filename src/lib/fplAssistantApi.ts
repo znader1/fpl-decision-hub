@@ -108,6 +108,39 @@ export interface FplTransferPlan {
   transfer_count_built?: number;
 }
 
+// Multi-GW roll/bank plan (additive; the single-GW `transfers` above never
+// sequences GWs). Emitted by build_recommendations as `transfer_plan_horizon`.
+export interface FplTransferPlanMove {
+  position?: string;
+  sell: FplTransferPlayer;
+  buy: FplTransferPlayer;
+  score_gain: number;
+}
+export interface FplTransferPlanGw {
+  gw: number;
+  action: "roll" | "transfer";
+  free_transfers_before: number;
+  free_transfers_after: number;
+  hits: number;
+  hit_cost: number;
+  gw_gain: number;
+  net_gain: number;
+  bank_after: number;
+  moves: FplTransferPlanMove[];
+  note: string;
+}
+export interface FplTransferPlanHorizon {
+  valid?: boolean;
+  gws?: number[];
+  horizon_gws?: number;
+  start_free_transfers?: number;
+  ft_cap?: number;
+  allow_hits?: boolean;
+  total_net_gain?: number;
+  final_bank?: number;
+  plan?: FplTransferPlanGw[];
+}
+
 export interface FplHotPlayer extends FplTransferPlayer {
   pos?: FplPosition;
   xpts?: number;
@@ -269,6 +302,7 @@ export interface FplTeamRecommendation extends FplSquad {
   projected_points_with_captain: number;
   chip_strategy?: FplChipStrategySummary;
   transfers?: FplTransfersRecommendation;
+  transfer_plan_horizon?: FplTransferPlanHorizon;
   transfer_application?: FplTransferApplicationSummary;
   transfer_impact?: FplTransferImpactSummary;
   squad_with_transfers?: FplOptimizedSquad;
