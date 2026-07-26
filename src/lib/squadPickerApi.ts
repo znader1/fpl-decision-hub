@@ -222,6 +222,7 @@ export interface DigestResult {
   proposals: { players: Record<string, PlayerKnowledgeEntry> };
   article_count: number;
   matched_players: number;
+  bootstrap_flags: number; // live FPL injury/suspension flags (Approach A)
 }
 
 export async function digestNews(params: Record<string, unknown> = {}): Promise<DigestResult> {

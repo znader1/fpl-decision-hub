@@ -79,7 +79,7 @@ export function PlayerKnowledgePanel({ pool, todayISO }: { pool: PoolPlayer[]; t
         <Card className="p-2 border-primary/40">
           <div className="flex items-center justify-between mb-1">
             <div className="text-xs font-semibold">
-              {Object.keys(digest.proposals.players).length} proposals · {digest.article_count} articles · {digest.matched_players} players matched
+              {Object.keys(digest.proposals.players).length} proposals · {digest.bootstrap_flags} live injuries · {digest.article_count} articles · {digest.matched_players} matched
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={approveDigest}
@@ -92,6 +92,10 @@ export function PlayerKnowledgePanel({ pool, todayISO }: { pool: PoolPlayer[]; t
             : <ul className="text-xs space-y-0.5">
                 {Object.entries(digest.proposals.players).map(([id, e]) => (
                   <li key={id}>
+                    <span className={`mr-1 px-1 rounded text-[10px] ${e.source === "fpl_bootstrap"
+                      ? "bg-red-700/80 text-white" : "bg-sky-700/70 text-white"}`}>
+                      {e.source === "fpl_bootstrap" ? "injury" : "news"}
+                    </span>
                     <b>{nameById.get(id) ?? id}</b>: avail {e.availability}
                     {e.available_from_gw ? `, from GW${e.available_from_gw}` : ""}
                     {e.minutes_mult !== undefined && e.minutes_mult !== 1 ? `, min×${e.minutes_mult}` : ""}
