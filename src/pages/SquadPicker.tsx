@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card";
 import { TeamStrengthGrid } from "@/components/TeamStrengthGrid";
 import { PlayerListPanel } from "@/components/PlayerListPanel";
 import { PlayerKnowledgePanel } from "@/components/PlayerKnowledgePanel";
+import { TransferPlanPanel } from "@/components/TransferPlanPanel";
 
 const POS_ORDER: SquadPlayer["pos"][] = ["GKP", "DEF", "MID", "FWD"];
 const QUOTA: Record<SquadPlayer["pos"], number> = { GKP: 2, DEF: 5, MID: 5, FWD: 3 };
@@ -264,6 +265,10 @@ export default function SquadPicker() {
                 ))}
               </div>
             </Card>
+          )}
+
+          {squadIds.length === 15 && (
+            <TransferPlanPanel squadIds={squadIds} params={{ ...params, team_nudges: teamNudges }} />
           )}
 
           <div className="grid gap-4 lg:grid-cols-[360px_1fr]">

@@ -26,6 +26,9 @@ export interface SquadBuildParams {
   fdr_strength?: number;
   home_away_strength?: number; // scales home 1.06 / away 0.94 swing (1=default, >1 amplifies)
   xi_objective?: "next_gw" | "horizon" | "per_gw"; // /lineup: which window the XI is optimized for
+  start_free_transfers?: number; // transfer planner: FTs entering the first horizon GW
+  ft_cap?: number;               // transfer planner: max banked free transfers
+  allow_hits?: boolean;          // transfer planner: may take a -4 when the horizon gain beats it
   max_player_price?: number; // auto-build only: cap price per player (undefined/0 = no cap)
   team_nudges?: TeamNudge[]; // per-team xg/blend attack/defense nudges; [] = no override
 }
@@ -204,6 +207,53 @@ export async function getGkPairs(
   });
   if (!res.ok) throw new Error(`GK pairs failed: HTTP ${res.status}`);
   return (await res.json()) as { pairs: GkPair[] };
+}
+
+// --- horizon transfer planner (1 FT/GW, roll/bank, hits) ---
+
+export interface TransferPlanMove {
+  position: string;
+  sell: { id: number; name: string; team: string; price: number };
+  buy: { id: number; name: string; team: string; price: number };
+  score_gain: number; // remaining-horizon xPts gain
+}
+export interface TransferPlanGw {
+  gw: number;
+  action: "roll" | "transfer";
+  free_transfers_before: number;
+  free_transfers_after: number;
+  hits: number;
+  hit_cost: number;
+  gw_gain: number;
+  net_gain: number;
+  bank_after: number;
+  moves: TransferPlanMove[];
+  note: string;
+}
+export interface TransferPlan {
+  ok?: boolean;
+  valid: boolean;
+  violations?: string[];
+  gws?: number[];
+  horizon_gws?: number;
+  start_free_transfers?: number;
+  ft_cap?: number;
+  allow_hits?: boolean;
+  total_net_gain?: number;
+  final_bank?: number;
+  plan?: TransferPlanGw[];
+  gw_start?: number;
+}
+
+export async function getTransferPlan(
+  playerIds: number[], params: SquadBuildParams): Promise<TransferPlan> {
+  const res = await fetch(`${apiBase()}/squad-picker/transfer-plan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ player_ids: playerIds, params: params ?? {} }),
+  });
+  if (!res.ok) throw new Error(`Transfer plan failed: HTTP ${res.status}`);
+  return (await res.json()) as TransferPlan;
 }
 
 // --- player-knowledge (news/injury) rail ---
