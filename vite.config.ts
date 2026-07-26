@@ -18,6 +18,12 @@ export default defineConfig(({ mode }) => ({
       "/squad": {
         target: process.env.VITE_FPL_API_BASE_URL ?? "https://fpl-assistant-api.fly.dev/",
         changeOrigin: true,
+        // The dev-only SquadPicker SPA page also lives at /squad. Let browser
+        // navigations (Accept: text/html) fall through to the SPA; only proxy
+        // real API calls (fetch, Accept: */*) to the backend /squad endpoint.
+        bypass(req) {
+          if (req.headers.accept?.includes("text/html")) return req.url;
+        },
       },
       "/fixtures": {
         target: process.env.VITE_FPL_API_BASE_URL ?? "https://fpl-assistant-api.fly.dev/",

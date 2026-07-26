@@ -24,6 +24,8 @@ export interface SquadBuildParams {
   min_fwd_minutes?: number;
   formation?: string; // "auto" | "3-4-3" | ...
   fdr_strength?: number;
+  home_away_strength?: number; // scales home 1.06 / away 0.94 swing (1=default, >1 amplifies)
+  max_player_price?: number; // auto-build only: cap price per player (undefined/0 = no cap)
   team_nudges?: TeamNudge[]; // per-team xg/blend attack/defense nudges; [] = no override
 }
 
@@ -108,4 +110,126 @@ export async function saveKnowledge(grid: KnowledgeGrid): Promise<KnowledgeGrid>
   });
   if (!res.ok) throw new Error(`Knowledge save failed: HTTP ${res.status}`);
   return (await res.json()) as KnowledgeGrid;
+}
+
+// --- full player pool + manual-swap lineup (dev-only) ---
+
+export interface PoolPlayer {
+  player_id: number;
+  web_name: string;
+  pos: "GKP" | "DEF" | "MID" | "FWD";
+  team_short: string;
+  team_id: number;
+  price_m: number;
+  points_per_game: number;
+  total_points: number;
+  minutes: number;
+  starts: number;
+  selected_by_percent: number;
+  xpts_horizon: number;
+  xpts_per_gw: number[];
+  fixtures: { gw: number; opp: string; home: boolean; diff: number }[];
+  avg_diff: number | null;
+  home_games: number;
+  pk_availability: number | null;
+  pk_note: string | null;
+}
+
+export interface PlayerPool {
+  gw_start: number;
+  horizon_gws: number;
+  projection_basis: string;
+  players: PoolPlayer[];
+}
+
+export type LineupResult = SquadBuildResult & { valid: boolean; violations?: string[] };
+
+export async function getPlayers(params: SquadBuildParams): Promise<PlayerPool> {
+  const res = await fetch(`${apiBase()}/squad-picker/players`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params ?? {}),
+  });
+  if (!res.ok) throw new Error(`Players fetch failed: HTTP ${res.status}`);
+  return (await res.json()) as PlayerPool;
+}
+
+export async function optimizeLineup(
+  playerIds: number[], params: SquadBuildParams): Promise<LineupResult> {
+  const res = await fetch(`${apiBase()}/squad-picker/lineup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ player_ids: playerIds, params: params ?? {} }),
+  });
+  if (!res.ok) throw new Error(`Lineup failed: HTTP ${res.status}`);
+  return (await res.json()) as LineupResult;
+}
+
+export interface GkPair {
+  player_ids: [number, number];
+  names: [string, string];
+  teams: [string, string];
+  prices: [number, number];
+  combined_cost_m: number;
+  rotation_xpts: number;
+  home_weeks: number;
+  gws: number;
+}
+
+export async function getGkPairs(
+  params: SquadBuildParams & { gk_pair_min_minutes?: number; gk_pair_budget?: number },
+): Promise<{ pairs: GkPair[] }> {
+  const res = await fetch(`${apiBase()}/squad-picker/gk-pairs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params ?? {}),
+  });
+  if (!res.ok) throw new Error(`GK pairs failed: HTTP ${res.status}`);
+  return (await res.json()) as { pairs: GkPair[] };
+}
+
+// --- player-knowledge (news/injury) rail ---
+
+export interface PlayerKnowledgeEntry {
+  availability?: number;
+  available_from_gw?: number | null;
+  minutes_mult?: number;
+  note?: string;
+  source?: string;
+}
+export interface PlayerKnowledge {
+  as_of: string | null;
+  players: Record<string, PlayerKnowledgeEntry>;
+}
+
+export async function getPlayerKnowledge(): Promise<PlayerKnowledge> {
+  const res = await fetch(`${apiBase()}/squad-picker/player-knowledge`);
+  if (!res.ok) throw new Error(`Player knowledge fetch failed: HTTP ${res.status}`);
+  return (await res.json()) as PlayerKnowledge;
+}
+
+export async function savePlayerKnowledge(pk: PlayerKnowledge): Promise<PlayerKnowledge> {
+  const res = await fetch(`${apiBase()}/squad-picker/player-knowledge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(pk),
+  });
+  if (!res.ok) throw new Error(`Player knowledge save failed: HTTP ${res.status}`);
+  return (await res.json()) as PlayerKnowledge;
+}
+
+export interface DigestResult {
+  proposals: { players: Record<string, PlayerKnowledgeEntry> };
+  article_count: number;
+  matched_players: number;
+}
+
+export async function digestNews(params: Record<string, unknown> = {}): Promise<DigestResult> {
+  const res = await fetch(`${apiBase()}/squad-picker/digest-news`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) throw new Error(`News digest failed: HTTP ${res.status}`);
+  return (await res.json()) as DigestResult;
 }
