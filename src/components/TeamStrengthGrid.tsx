@@ -9,9 +9,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { getKnowledge, saveKnowledge, type KnowledgeGrid, type TeamNudge } from "@/lib/squadPickerApi";
+import { getKnowledge, saveKnowledge, getTeamNews,
+  type KnowledgeGrid, type TeamNudge, type TeamNewsPlayer } from "@/lib/squadPickerApi";
 
 export type { TeamNudge };
+
+// "out", "75%", optionally "→GW3" once a return is known.
+function flagLabel(p: TeamNewsPlayer): string {
+  const base = p.availability === 0 ? "out" : `${Math.round(p.availability * 100)}%`;
+  return p.available_from_gw ? `${base} →GW${p.available_from_gw}` : base;
+}
+function flagTitle(ps: TeamNewsPlayer[]): string {
+  return ps.map((p) => `${p.web_name} (${flagLabel(p)})${p.note ? ` — ${p.note}` : ""}`).join("\n");
+}
 
 interface TeamStrengthGridProps {
   onChange: (nudges: TeamNudge[]) => void;
@@ -37,6 +47,7 @@ export const TeamStrengthGrid = ({ onChange }: TeamStrengthGridProps) => {
   const [rows, setRows] = useState<Row[]>([]);
   const [newTeam, setNewTeam] = useState("");
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [teamNews, setTeamNews] = useState<Record<string, TeamNewsPlayer[]>>({});
 
   // Seed from the knowledge file on mount.
   useEffect(() => {
@@ -70,6 +81,15 @@ export const TeamStrengthGrid = ({ onChange }: TeamStrengthGridProps) => {
     };
   }, []);
 
+  // Live injuries grouped by team (Level 1 news integration) -- informational.
+  useEffect(() => {
+    let cancelled = false;
+    getTeamNews()
+      .then((res) => { if (!cancelled) setTeamNews(res.teams ?? {}); })
+      .catch(() => { /* non-fatal: the grid still works without news */ });
+    return () => { cancelled = true; };
+  }, []);
+
   // Report only rows the user moved off 1.0/1.0 -- an untouched grid sends [].
   useEffect(() => {
     if (!loaded) return;
@@ -89,14 +109,14 @@ export const TeamStrengthGrid = ({ onChange }: TeamStrengthGridProps) => {
     setRows((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const addTeam = () => {
-    const short = newTeam.trim().toUpperCase();
-    if (!short || rows.some((r) => r.team_short === short)) {
-      setNewTeam("");
-      return;
-    }
+  const addTeamShort = (short: string) => {
+    if (!short || rows.some((r) => r.team_short === short)) return;
     setSaveState("idle");
     setRows((prev) => [...prev, { team_short: short, attack: DEFAULT, defense: DEFAULT }]);
+  };
+
+  const addTeam = () => {
+    addTeamShort(newTeam.trim().toUpperCase());
     setNewTeam("");
   };
 
@@ -141,6 +161,29 @@ export const TeamStrengthGrid = ({ onChange }: TeamStrengthGridProps) => {
         <div className="space-y-3">
           {error && <p className="text-xs text-destructive">Knowledge fetch failed: {error}</p>}
 
+          {Object.keys(teamNews).length > 0 && (
+            <div className="rounded border border-amber-500/30 bg-amber-500/5 p-2 space-y-1">
+              <div className="text-xs font-semibold">
+                Live injuries by team ({Object.values(teamNews).reduce((a, v) => a + v.length, 0)})
+                <span className="ml-1 font-normal text-muted-foreground">— click a team to add it to the grid</span>
+              </div>
+              <div className="max-h-40 overflow-y-auto space-y-0.5">
+                {Object.entries(teamNews)
+                  .sort((a, b) => b[1].length - a[1].length)
+                  .map(([ts, ps]) => (
+                    <div key={ts} className="text-[11px] flex gap-1">
+                      <button type="button" className="font-semibold text-primary hover:underline shrink-0"
+                        title="add to grid" onClick={() => addTeamShort(ts)}>{ts}</button>
+                      <span className="text-muted-foreground shrink-0">×{ps.length}:</span>
+                      <span className="truncate" title={flagTitle(ps)}>
+                        {ps.map((p) => `${p.web_name} (${flagLabel(p)})`).join(", ")}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
           {rows.length > 0 && (
             <div className="grid grid-cols-[4.5rem_1fr_1fr_2rem] gap-2 items-center text-xs text-muted-foreground">
               <span>Team</span>
@@ -151,7 +194,15 @@ export const TeamStrengthGrid = ({ onChange }: TeamStrengthGridProps) => {
           )}
           {rows.map((r, i) => (
             <div key={r.team_short} className="grid grid-cols-[4.5rem_1fr_1fr_2rem] gap-2 items-center">
-              <span className="text-sm font-medium">{r.team_short}</span>
+              <span className="text-sm font-medium flex items-center gap-1">
+                {r.team_short}
+                {teamNews[r.team_short]?.length ? (
+                  <span className="px-1 rounded bg-red-700/80 text-white text-[10px]"
+                    title={flagTitle(teamNews[r.team_short])}>
+                    {teamNews[r.team_short].length}
+                  </span>
+                ) : null}
+              </span>
               <Input
                 type="number"
                 step={0.01}

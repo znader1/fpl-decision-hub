@@ -225,6 +225,30 @@ export interface DigestResult {
   bootstrap_flags: number; // live FPL injury/suspension flags (Approach A)
 }
 
+// --- per-team news rollup (Level 1: surface live injuries in the team check) ---
+
+export interface TeamNewsPlayer {
+  player_id: number;
+  web_name: string;
+  availability: number;
+  available_from_gw: number | null;
+  note: string | null;
+}
+export interface TeamNews {
+  teams: Record<string, TeamNewsPlayer[]>;
+  total: number;
+}
+
+export async function getTeamNews(params: SquadBuildParams = {}): Promise<TeamNews> {
+  const res = await fetch(`${apiBase()}/squad-picker/team-news`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params ?? {}),
+  });
+  if (!res.ok) throw new Error(`Team news fetch failed: HTTP ${res.status}`);
+  return (await res.json()) as TeamNews;
+}
+
 export async function digestNews(params: Record<string, unknown> = {}): Promise<DigestResult> {
   const res = await fetch(`${apiBase()}/squad-picker/digest-news`, {
     method: "POST",
