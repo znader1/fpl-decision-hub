@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ParameterSidebar } from "@/components/ParameterSidebar";
 import { MobileParameterDrawer } from "@/components/MobileParameterDrawer";
 import { PitchVisualization } from "@/components/PitchVisualization";
 import { RecommendationsPanel } from "@/components/RecommendationsPanel";
+import { OptimizeSquadDialog } from "@/components/OptimizeSquadDialog";
 import { Navbar } from "@/components/layout/Navbar";
 import { QueryErrorCard } from "@/components/QueryErrorCard";
 import { parseEntryIdInput } from "@/lib/entryId";
@@ -126,6 +127,7 @@ const Index = () => {
 
   const { profile, saveEntryId } = useProfile();
   const isDesktop = useIsDesktop();
+  const queryClient = useQueryClient();
 
   // Cross-device hydration: profile beats "nothing", localStorage beats profile.
   useEffect(() => {
@@ -427,6 +429,28 @@ const Index = () => {
   // Resolved GW for rendering — pre-resolution placeholder; gwResolved gates rendering
   const resolvedGW = selectedGW ?? 38;
 
+  // "Optimize my squad" is a pre-first-deadline action: only surface it when the
+  // current recommendation reports pre_first_deadline (unlimited free swaps, no hits).
+  const showOptimize =
+    recommendationMutation.data?.pre_first_deadline === true &&
+    Number.isFinite(entryId) &&
+    entryId > 0;
+
+  // After Apply persists the optimized squad server-side, refetch the squad and
+  // re-run the recommendation so the pitch + insights reflect the new squad.
+  const handleOptimizeApplied = () => {
+    void queryClient.invalidateQueries({ queryKey: ["squad", entryId, squadGW] });
+    const nextChipPlayEventId = chipStrategy === "wildcard" ? resolvedGW : undefined;
+    if (chipStrategy === "wildcard") {
+      setChipPlayEventId(nextChipPlayEventId);
+    }
+    setAppliedTransferCount(0);
+    setPitchMode("recommendation");
+    recommendationMutation.mutate(
+      buildRecommendationParams(resolvedGW, { chipPlayEventId: nextChipPlayEventId })
+    );
+  };
+
   const parameterProps = {
     entryId,
     onEntryIdChange: setEntryAndReset,
@@ -528,6 +552,15 @@ const Index = () => {
           onPitchModeChange={setPitchMode}
           hasRecommendation={Boolean(recommendationMutation.data)}
           isLiveGw={isLiveGw}
+          headerAction={
+            showOptimize ? (
+              <OptimizeSquadDialog
+                entryId={entryId}
+                horizonGws={horizonGws}
+                onApplied={handleOptimizeApplied}
+              />
+            ) : undefined
+          }
         />
       )}
       <RecommendationsPanel

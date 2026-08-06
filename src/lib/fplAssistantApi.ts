@@ -296,6 +296,7 @@ export interface FplTeamRecommendation extends FplSquad {
   event_id: number;
   horizon_gws: number;
   squad_source?: string;
+  pre_first_deadline?: boolean;
   formation: [number, number, number];
   captain_player_id: number;
   vice_player_id: number;
@@ -836,6 +837,9 @@ export const getRecommendationUrlTemplate = (): string | undefined =>
 // Backwards-compatible name (older code uses this).
 export const getTeamRecommendationUrlTemplate = getRecommendationUrlTemplate;
 
+export const getOptimizeUrlTemplate = (): string | undefined =>
+  resolveTemplateWithApiBase(getEnvString("VITE_FPL_OPTIMIZE_URL") ?? "/squad/optimize");
+
 const parseJsonMaybe = (raw: unknown): unknown => {
   if (typeof raw !== "string") return raw;
   try {
@@ -1350,4 +1354,87 @@ export const fetchFixtureDifficulty = async (
     throw new Error(`Failed to fetch fixture difficulty (${response.status}): ${body.slice(0, 200)}`);
   }
   return (await response.json()) as FixtureDifficultyResponse;
+};
+
+/* ── Squad optimizer (pre-first-deadline free swaps) ──────────────────────────
+ * POST /squad/optimize — "improve my team" before the first deadline: applies all
+ * beneficial FREE swaps (unlimited transfers, no hits). `min_gain` is the
+ * aggressiveness dial (higher = fewer, higher-conviction swaps). `apply:false`
+ * previews only; `apply:true` persists the optimized squad server-side.
+ */
+
+export interface OptimizeSquadRequest {
+  entry_id: number;
+  horizon_gws?: number;
+  min_gain?: number;
+  max_swaps?: number | null;
+  apply?: boolean;
+}
+
+export interface OptimizeSquadPlayer {
+  id: number;
+  name: string;
+  pos: FplPosition;
+  team: string;
+  price: number;
+  xpts_horizon: number;
+}
+
+export interface OptimizeSquadSwap {
+  position: FplPosition;
+  out: OptimizeSquadPlayer;
+  in: OptimizeSquadPlayer;
+}
+
+export interface OptimizeSquadResponse {
+  entry_id: number;
+  horizon_gws: number;
+  min_gain: number;
+  max_swaps: number | null;
+  rounds: number;
+  num_swaps: number;
+  swaps: OptimizeSquadSwap[];
+  xpts_before: number;
+  xpts_after: number;
+  total_gain: number;
+  remaining_itb: number;
+  optimized_player_ids: number[];
+  suggested_captain_id: number;
+  suggested_vice_id: number;
+  applied: boolean;
+}
+
+const isOptimizeSquadResponse = (value: unknown): value is OptimizeSquadResponse => {
+  if (!isRecord(value)) return false;
+  if (typeof value.entry_id !== "number") return false;
+  if (typeof value.num_swaps !== "number") return false;
+  if (!Array.isArray(value.swaps)) return false;
+  if (typeof value.xpts_before !== "number") return false;
+  if (typeof value.xpts_after !== "number") return false;
+  if (typeof value.total_gain !== "number") return false;
+  if (typeof value.applied !== "boolean") return false;
+  return true;
+};
+
+export const optimizeSquad = async (
+  params: OptimizeSquadRequest,
+  signal?: AbortSignal
+): Promise<OptimizeSquadResponse> => {
+  const url = getOptimizeUrlTemplate() ?? "/squad/optimize";
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+    signal,
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Failed to optimize squad (${response.status}): ${body.slice(0, 200)}`);
+  }
+
+  const data: unknown = await parseJsonResponse(response, url, "optimize endpoint");
+  if (!isOptimizeSquadResponse(data)) {
+    throw new Error("Invalid optimize squad response");
+  }
+  return data;
 };

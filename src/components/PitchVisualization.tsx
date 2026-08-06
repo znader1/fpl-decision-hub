@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { PlayerCard, type Player } from "./PlayerCard";
 import { GameweekNav } from "./GameweekNav";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,8 @@ interface PitchVisualizationProps {
   onPitchModeChange?: (mode: "squad" | "recommendation") => void;
   hasRecommendation?: boolean;
   isLiveGw?: boolean;
+  /** Optional action rendered next to the Squad / ZN Pick tabs (e.g. Optimize my squad). */
+  headerAction?: ReactNode;
 }
 
 const getRowGapClass = (count: number) => {
@@ -171,6 +173,7 @@ export const PitchVisualization = ({
   onPitchModeChange,
   hasRecommendation = false,
   isLiveGw = false,
+  headerAction,
 }: PitchVisualizationProps) => {
   const [draftId, setDraftId] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -242,9 +245,11 @@ export const PitchVisualization = ({
     <div className="flex-1 min-w-0 p-2 sm:p-4 lg:overflow-y-auto">
       <div className="w-full max-w-3xl mx-auto">
 
-        {/* Squad / AI Pick tab bar */}
-        {onPitchModeChange && (
-          <div className="flex items-center gap-1 mb-4 bg-card border border-border rounded-xl p-1 w-fit">
+        {/* Squad / AI Pick tab bar + optional header action (e.g. Optimize my squad) */}
+        {(onPitchModeChange || headerAction) && (
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          {onPitchModeChange ? (
+          <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 w-fit">
             <button
               onClick={() => onPitchModeChange("squad")}
               className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
@@ -275,6 +280,11 @@ export const PitchVisualization = ({
                 {chipName}
               </span>
             )}
+          </div>
+          ) : (
+            <div />
+          )}
+          {headerAction}
           </div>
         )}
 
