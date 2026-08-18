@@ -25,6 +25,7 @@ import { PlayerListPanel } from "@/components/PlayerListPanel";
 import { PlayerKnowledgePanel } from "@/components/PlayerKnowledgePanel";
 import { TransferPlanPanel } from "@/components/TransferPlanPanel";
 import { SquadHandoffPanel } from "@/components/SquadHandoffPanel";
+import { DraftPitch } from "@/components/DraftPitch";
 import { Navbar } from "@/components/layout/Navbar";
 
 const STYLE_OPTIONS: { value: SquadStyle; label: string; hint: string }[] = [
@@ -33,7 +34,6 @@ const STYLE_OPTIONS: { value: SquadStyle; label: string; hint: string }[] = [
   { value: "safe", label: "Safe picks", hint: "fit, nailed starters on proven form" },
 ];
 
-const POS_ORDER: SquadPlayer["pos"][] = ["GKP", "DEF", "MID", "FWD"];
 const QUOTA: Record<SquadPlayer["pos"], number> = { GKP: 2, DEF: 5, MID: 5, FWD: 3 };
 
 const DEFAULTS: SquadBuildParams = {
@@ -148,16 +148,17 @@ export default function SquadPicker() {
 
   const invalid = lineupMutation.data && !lineupMutation.data.valid ? lineupMutation.data : null;
 
-  // Players for the handoff card: prefer the live pool (reflects manual swaps),
-  // fall back to the built squad for hydrated drafts whose pool hasn't loaded.
-  const handoffSquad = useMemo(() => {
-    if (squadIds.length !== 15) return null;
+  // Squad players resolved for display: prefer the live pool (reflects manual
+  // swaps and has fixtures), fall back to the built squad for hydrated drafts
+  // whose pool hasn't loaded.
+  const pitchSquad = useMemo(() => {
     const fromRes = new Map((res?.squad ?? []).map((p) => [p.player_id, p]));
-    const players = squadIds
+    return squadIds
       .map((id) => byId.get(id) ?? fromRes.get(id))
       .filter(Boolean) as (PoolPlayer | SquadPlayer)[];
-    return players.length === 15 ? players : null;
   }, [squadIds, byId, res]);
+
+  const handoffSquad = pitchSquad.length === 15 ? pitchSquad : null;
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">
@@ -390,39 +391,12 @@ export default function SquadPicker() {
                 canAdd={canAdd} onAdd={addPlayer} onRemove={removePlayer} />
             </div>
 
-            <Card className="p-2 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-left text-xs text-muted-foreground">
-                  <tr><th className="p-2"></th><th className="p-2">Player</th><th>Pos</th><th>Team</th>
-                    <th className="text-right">£m</th><th className="text-right">ppg</th>
-                    <th className="text-right">5GW xPts</th><th>Role</th><th></th></tr>
-                </thead>
-                <tbody>
-                  {POS_ORDER.flatMap((pos) =>
-                    res.squad.filter((p) => p.pos === pos)
-                      .sort((a, b) => (b.xpts_horizon ?? 0) - (a.xpts_horizon ?? 0))
-                      .map((p) => {
-                        const cap = p.player_id === res.captain_player_id;
-                        const vice = p.player_id === res.vice_player_id;
-                        return (
-                          <tr key={p.player_id} className="border-t">
-                            <td className="p-2 w-8 font-bold">{cap ? "C" : vice ? "V" : ""}</td>
-                            <td className="p-2">{p.web_name}</td><td>{p.pos}</td><td>{p.team_short}</td>
-                            <td className="text-right">{p.price_m?.toFixed(1)}</td>
-                            <td className="text-right">{p.points_per_game?.toFixed(1) ?? "-"}</td>
-                            <td className="text-right">{p.xpts_horizon?.toFixed(1) ?? "-"}</td>
-                            <td>{xiIds.has(p.player_id) ? "XI" : "bench"}</td>
-                            <td className="p-1 w-8">
-                              <Button size="sm" variant="ghost" title="Remove"
-                                onClick={() => removePlayer(p.player_id)}>×</Button>
-                            </td>
-                          </tr>
-                        );
-                      }),
-                  )}
-                </tbody>
-              </table>
-            </Card>
+            <DraftPitch
+              squad={pitchSquad}
+              xiIds={xiIds}
+              captainId={res.captain_player_id ?? null}
+              viceId={res.vice_player_id ?? null}
+            />
           </div>
 
           {res.value_menu && (

@@ -37,7 +37,7 @@ interface PitchVisualizationProps {
   headerAction?: ReactNode;
 }
 
-const getRowGapClass = (count: number) => {
+export const getRowGapClass = (count: number) => {
   if (count >= 6) return "gap-1 sm:gap-2";
   if (count === 5) return "gap-2 sm:gap-4";
   if (count === 4) return "gap-3 sm:gap-6";
