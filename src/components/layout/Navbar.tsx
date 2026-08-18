@@ -17,6 +17,7 @@ const landingLinks = [
 
 const appLinks = [
   { label: "Squad", to: "/app" },
+  { label: "Draft squad", to: "/app/squad-picker" },
   { label: "Mini-league", to: "/app/league" },
   { label: "Fixtures", to: "/app/fixtures" },
 ];

@@ -1,19 +1,37 @@
-// Dev-only squad picker. Route is DEV+VITE_SQUAD_PICKER gated in App.tsx.
+// Squad drafter: simple style-first form on top, expert knobs under the
+// Advanced collapse. Live at /app/squad-picker; backend routes need
+// SQUAD_PICKER_MODE=1.
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { ChevronDown } from "lucide-react";
 import {
   buildSquad, getPlayers, optimizeLineup, getGkPairs,
   type SquadBuildParams, type SquadBuildResult, type SquadPlayer, type TeamNudge,
   type PoolPlayer, type LineupResult, type GkPair,
 } from "@/lib/squadPickerApi";
+import { applyStyle, detectStyle, type SquadStyle } from "@/lib/squadPresets";
+import { DRAFT_STORAGE_KEY, parseDraft, serializeDraft } from "@/lib/squadDraft";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { TeamStrengthGrid } from "@/components/TeamStrengthGrid";
 import { PlayerListPanel } from "@/components/PlayerListPanel";
 import { PlayerKnowledgePanel } from "@/components/PlayerKnowledgePanel";
 import { TransferPlanPanel } from "@/components/TransferPlanPanel";
+import { SquadHandoffPanel } from "@/components/SquadHandoffPanel";
+import { Navbar } from "@/components/layout/Navbar";
+
+const STYLE_OPTIONS: { value: SquadStyle; label: string; hint: string }[] = [
+  { value: "balanced", label: "Balanced", hint: "even mix of form and underlying xG" },
+  { value: "attacking", label: "Attacking", hint: "chase xG upside, accept variance" },
+  { value: "safe", label: "Safe picks", hint: "fit, nailed starters on proven form" },
+];
 
 const POS_ORDER: SquadPlayer["pos"][] = ["GKP", "DEF", "MID", "FWD"];
 const QUOTA: Record<SquadPlayer["pos"], number> = { GKP: 2, DEF: 5, MID: 5, FWD: 3 };
@@ -26,12 +44,27 @@ const DEFAULTS: SquadBuildParams = {
 };
 
 export default function SquadPicker() {
-  const [params, setParams] = useState<SquadBuildParams>(DEFAULTS);
-  const [teamNudges, setTeamNudges] = useState<TeamNudge[]>([]);
-  const [squadIds, setSquadIds] = useState<number[]>([]);
+  // Draft survives reloads: hydrate once from localStorage, save on change below.
+  const [storedDraft] = useState(() =>
+    parseDraft(localStorage.getItem(DRAFT_STORAGE_KEY))
+  );
+  const [params, setParams] = useState<SquadBuildParams>(() => ({
+    ...DEFAULTS,
+    ...(storedDraft?.params ?? {}),
+  }));
+  const [teamNudges, setTeamNudges] = useState<TeamNudge[]>(
+    () => storedDraft?.teamNudges ?? []
+  );
+  const [squadIds, setSquadIds] = useState<number[]>(
+    () => storedDraft?.squadIds ?? []
+  );
   // Last legal result drives the display; an illegal edit shows violations but
   // keeps the last valid squad/XI on screen until it's legal again.
-  const [lastGood, setLastGood] = useState<SquadBuildResult | null>(null);
+  const [lastGood, setLastGood] = useState<SquadBuildResult | null>(
+    () => storedDraft?.lastGood ?? null
+  );
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const style = detectStyle(params);
 
   const poolQuery = useQuery({
     queryKey: ["squad-pool", params, teamNudges],
@@ -67,6 +100,21 @@ export default function SquadPicker() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [squadIds, params.xi_objective]);
 
+  // Persist the draft so a page reload (or the FPL-site round-trip) keeps it.
+  useEffect(() => {
+    if (squadIds.length === 0 && !lastGood) return;
+    localStorage.setItem(
+      DRAFT_STORAGE_KEY,
+      serializeDraft({ params, teamNudges, squadIds, lastGood })
+    );
+  }, [params, teamNudges, squadIds, lastGood]);
+
+  // A hydrated draft needs the player pool for the swap list.
+  useEffect(() => {
+    if (storedDraft && storedDraft.squadIds.length > 0) poolQuery.refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const res = lastGood;
   const xiIds = new Set((res?.starting_xi ?? []).map((p) => p.player_id));
 
@@ -90,7 +138,7 @@ export default function SquadPicker() {
   const addPlayer = (id: number) =>
     setSquadIds((s) => (s.length < 15 && !s.includes(id) ? [...s, id] : s));
   const removePlayer = (id: number) => setSquadIds((s) => s.filter((x) => x !== id));
-  const usePair = (pair: GkPair) => {
+  const applyGkPair = (pair: GkPair) => {
     const gkIds = current.filter((p) => p.pos === "GKP").map((p) => p.player_id);
     setSquadIds((s) => [...s.filter((id) => !gkIds.includes(id)), ...pair.player_ids]);
   };
@@ -100,20 +148,85 @@ export default function SquadPicker() {
 
   const invalid = lineupMutation.data && !lineupMutation.data.valid ? lineupMutation.data : null;
 
+  // Players for the handoff card: prefer the live pool (reflects manual swaps),
+  // fall back to the built squad for hydrated drafts whose pool hasn't loaded.
+  const handoffSquad = useMemo(() => {
+    if (squadIds.length !== 15) return null;
+    const fromRes = new Map((res?.squad ?? []).map((p) => [p.player_id, p]));
+    const players = squadIds
+      .map((id) => byId.get(id) ?? fromRes.get(id))
+      .filter(Boolean) as (PoolPlayer | SquadPlayer)[];
+    return players.length === 15 ? players : null;
+  }, [squadIds, byId, res]);
+
   return (
-    <div className="mx-auto max-w-6xl p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Squad Picker <span className="text-xs text-muted-foreground">(dev)</span></h1>
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="mx-auto max-w-6xl p-4 pt-20 space-y-4">
+      <div>
+        <h1 className="text-xl font-bold">Draft your squad</h1>
+        <p className="text-sm text-muted-foreground">
+          Auto-pick a 15 for your budget and style, then tweak it player by player.
+        </p>
       </div>
 
+      <Card className="p-4 space-y-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <Field label="Budget (£m)">
+            <Input type="number" step={0.1} className="w-28" value={params.budget_m}
+              onChange={(e) => set("budget_m", Number(e.target.value))} />
+          </Field>
+          <div className="space-y-1">
+            <Label className="text-xs">Style</Label>
+            <div className="flex flex-wrap gap-2">
+              {STYLE_OPTIONS.map((o) => (
+                <Button
+                  key={o.value}
+                  type="button"
+                  size="sm"
+                  variant={style === o.value ? "default" : "outline"}
+                  title={o.hint}
+                  onClick={() => setParams((p) => applyStyle(p, o.value))}
+                >
+                  {o.label}
+                </Button>
+              ))}
+              {style === "custom" && (
+                <span className="self-center text-xs text-muted-foreground">
+                  Custom — advanced settings edited
+                </span>
+              )}
+            </div>
+          </div>
+          <Button
+            className="ml-auto"
+            disabled={mutation.isPending}
+            onClick={() => mutation.mutate({ ...params, team_nudges: teamNudges })}
+          >
+            {mutation.isPending ? "Drafting…" : "⚡ Draft my squad"}
+          </Button>
+        </div>
+        {style !== "custom" && (
+          <p className="text-xs text-muted-foreground">
+            {STYLE_OPTIONS.find((o) => o.value === style)?.hint}
+          </p>
+        )}
+      </Card>
+
+      <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen} className="space-y-4">
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="text-muted-foreground">
+            <ChevronDown
+              className={`h-4 w-4 mr-1 transition-transform ${advancedOpen ? "rotate-180" : ""}`}
+            />
+            Advanced settings
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-4">
       <Card className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
         <Field label="Horizon (GWs)">
           <Input type="number" min={1} max={8} value={params.horizon_gws}
             onChange={(e) => set("horizon_gws", Number(e.target.value))} />
-        </Field>
-        <Field label="Budget (£m)">
-          <Input type="number" step={0.1} value={params.budget_m}
-            onChange={(e) => set("budget_m", Number(e.target.value))} />
         </Field>
         <Field label="Objective">
           <select className="w-full rounded-md border bg-background p-2 text-sm" value={params.objective}
@@ -175,32 +288,27 @@ export default function SquadPicker() {
           <input type="checkbox" checked={!!params.include_flagged}
             onChange={(e) => set("include_flagged", e.target.checked)} />
         </Field>
-        <div className="flex items-end">
-          <Button className="w-full" disabled={mutation.isPending}
-            onClick={() => mutation.mutate({ ...params, team_nudges: teamNudges })}>
-            {mutation.isPending ? "Building…" : "Build squad"}
-          </Button>
-        </div>
       </Card>
 
       <TeamStrengthGrid onChange={setTeamNudges} />
 
       <PlayerKnowledgePanel pool={pool} todayISO={new Date().toISOString().slice(0, 10)} />
+        </CollapsibleContent>
+      </Collapsible>
 
       {mutation.isError && (
         <Card className="p-4 border-destructive">
           <p className="text-sm text-destructive">{mutation.error.message}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Ensure the backend runs with <code>SQUAD_PICKER_MODE=1</code> and
-            <code> VITE_FPL_API_BASE_URL</code> points at it.
+            The drafting service may be waking up — try again in a few seconds.
           </p>
         </Card>
       )}
 
       {!res && !mutation.isPending && !mutation.isError && (
         <Card className="p-4 text-sm text-muted-foreground">
-          Set params and press <b>Build squad</b>. Requires the backend running with
-          <code> SQUAD_PICKER_MODE=1</code> and <code>VITE_FPL_API_BASE_URL</code> set.
+          Pick a style and press <b>⚡ Draft my squad</b> — you'll get a full 15
+          with captain, bench and projected points, ready to tweak.
         </Card>
       )}
 
@@ -232,6 +340,8 @@ export default function SquadPicker() {
             )}
             {lineupMutation.isPending && <span className="text-muted-foreground">optimizing…</span>}
           </Card>
+
+          {handoffSquad && <SquadHandoffPanel squad={handoffSquad} />}
 
           {invalid && (
             <Card className="p-3 border-destructive">
@@ -355,7 +465,7 @@ export default function SquadPicker() {
                         {" · "}£{pr.combined_cost_m}m · rot {pr.rotation_xpts} · home {pr.home_weeks}/{pr.gws}
                       </span>
                     </span>
-                    <Button size="sm" variant="ghost" onClick={() => usePair(pr)}>Use</Button>
+                    <Button size="sm" variant="ghost" onClick={() => applyGkPair(pr)}>Use</Button>
                   </li>
                 ))}
               </ul>
@@ -372,6 +482,7 @@ export default function SquadPicker() {
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

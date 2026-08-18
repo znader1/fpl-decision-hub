@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { PlayerCard, type Player } from "./PlayerCard";
 import { GameweekNav } from "./GameweekNav";
 import { Button } from "@/components/ui/button";
@@ -373,6 +374,14 @@ export const PitchVisualization = ({
                 {submitError && (
                   <p className="mt-3 text-xs text-destructive">{submitError}</p>
                 )}
+                <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="h-px flex-1 bg-border" />
+                  or
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/app/squad-picker">No team yet? Draft my squad →</Link>
+                </Button>
               </div>
             </div>
           )}

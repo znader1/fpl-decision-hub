@@ -1,6 +1,6 @@
-// Dev-only squad-picker client. Talks to the SQUAD_PICKER_MODE-gated backend
-// (POST /squad-picker/build, GET/POST /squad-picker/knowledge). Never used in
-// production (the route is DEV+flag gated in App.tsx).
+// Squad-picker client (POST /squad-picker/build, GET/POST /squad-picker/knowledge,
+// …). The backend mounts these routes only when SQUAD_PICKER_MODE=1 — required
+// in production too (Fly secret), not just dev.
 
 export type ProjectionBasis = "ppg" | "xg" | "blend";
 export type Objective = "wildcard" | "free_hit" | "plain";

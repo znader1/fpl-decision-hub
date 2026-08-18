@@ -23,10 +23,9 @@ import Terms from "./pages/Terms";
 // dev-only feature — see .env.example.
 const Replay = /* @__PURE__ */ lazy(() => import("./pages/Replay"));
 
-// Same gating strategy as Replay above: DEV-only + explicit flag opt-in,
-// so production builds fully tree-shake this page. Personal dev-only
-// feature — see .env.example.
-const SquadPicker = /* @__PURE__ */ lazy(() => import("./pages/SquadPicker"));
+// Lazy so the picker's panels stay out of the initial bundle; loaded on
+// first visit to /app/squad-picker.
+const SquadPicker = lazy(() => import("./pages/SquadPicker"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +60,17 @@ const App = () => (
               {import.meta.env.DEV && import.meta.env.VITE_REPLAY_MODE === "1" && (
                 <Route path="/replay" element={<Suspense fallback={null}><Replay /></Suspense>} />
               )}
+              <Route
+                path="/app/squad-picker"
+                element={
+                  <ProtectedRoute>
+                    <Suspense fallback={null}>
+                      <SquadPicker />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              {/* Old dev bookmark */}
               {import.meta.env.DEV && import.meta.env.VITE_SQUAD_PICKER === "1" && (
                 <Route path="/squad" element={<Suspense fallback={null}><SquadPicker /></Suspense>} />
               )}
