@@ -140,11 +140,6 @@ export default function SquadPicker() {
   const addPlayer = (id: number) =>
     setSquadIds((s) => (s.length < 15 && !s.includes(id) ? [...s, id] : s));
   const removePlayer = (id: number) => setSquadIds((s) => s.filter((x) => x !== id));
-  const applyGkPair = (pair: GkPair) => {
-    const gkIds = current.filter((p) => p.pos === "GKP").map((p) => p.player_id);
-    setSquadIds((s) => [...s.filter((id) => !gkIds.includes(id)), ...pair.player_ids]);
-  };
-
   const set = <K extends keyof SquadBuildParams>(k: K, v: SquadBuildParams[K]) =>
     setParams((p) => ({ ...p, [k]: v }));
 
@@ -167,6 +162,19 @@ export default function SquadPicker() {
     () => pitchSquad.filter((p) => p.pos !== "GKP").reduce((s, p) => s + p.price_m, 0),
     [pitchSquad]
   );
+
+  // Uses pitchSquad (not the pool) so hydrated drafts still find the old GKs,
+  // and re-checks affordability so a stale render can't apply an over-budget pair.
+  const applyGkPair = (pair: GkPair) => {
+    if (pairBudgetGap(pair.combined_cost_m, outfieldCostM, params.budget_m ?? 100) > 0) return;
+    const gkIds = pitchSquad.filter((p) => p.pos === "GKP").map((p) => p.player_id);
+    setSquadIds((s) => [...s.filter((id) => !gkIds.includes(id)), ...pair.player_ids]);
+  };
+
+  const revertToLastValid = () => {
+    if (!lastGood?.squad?.length) return;
+    setSquadIds(lastGood.squad.map((p) => p.player_id));
+  };
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">
@@ -359,12 +367,21 @@ export default function SquadPicker() {
 
           {invalid && (
             <Card className="p-3 border-destructive">
-              <div className="text-xs font-semibold text-destructive mb-1">
-                Squad not valid — showing last valid lineup
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="text-xs font-semibold text-destructive mb-1">
+                    Squad not valid — showing last valid lineup
+                  </div>
+                  <ul className="text-xs text-destructive list-disc pl-4 space-y-0.5">
+                    {invalid.violations?.map((v, i) => <li key={i}>{v}</li>)}
+                  </ul>
+                </div>
+                {lastGood?.squad?.length ? (
+                  <Button size="sm" variant="outline" className="shrink-0" onClick={revertToLastValid}>
+                    Revert to last valid squad
+                  </Button>
+                ) : null}
               </div>
-              <ul className="text-xs text-destructive list-disc pl-4 space-y-0.5">
-                {invalid.violations?.map((v, i) => <li key={i}>{v}</li>)}
-              </ul>
             </Card>
           )}
 
