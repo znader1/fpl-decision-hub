@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitXiBench, toPitchPlayer, type DraftPitchPlayer } from "../draftPitch";
+import { pairBudgetGap, splitXiBench, toPitchPlayer, type DraftPitchPlayer } from "../draftPitch";
 
 const p = (over: Partial<DraftPitchPlayer>): DraftPitchPlayer => ({
   player_id: 1,
@@ -78,5 +78,20 @@ describe("toPitchPlayer", () => {
   it("omits the fixture chip when no fixtures", () => {
     const out = toPitchPlayer(p({}), { captainId: null, viceId: null });
     expect(out.fixture).toBeUndefined();
+  });
+});
+
+describe("pairBudgetGap", () => {
+  it("returns 0 when the pair fits the remaining budget", () => {
+    // 13 outfielders cost 90, budget 100 -> 10 available; pair costs 9.5
+    expect(pairBudgetGap(9.5, 90, 100)).toBe(0);
+  });
+
+  it("returns the shortfall when the pair is too expensive", () => {
+    expect(pairBudgetGap(11.5, 90, 100)).toBeCloseTo(1.5);
+  });
+
+  it("rounds away float noise", () => {
+    expect(pairBudgetGap(10.1, 89.9, 100)).toBe(0);
   });
 });

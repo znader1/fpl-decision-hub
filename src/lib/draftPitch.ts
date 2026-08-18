@@ -27,6 +27,17 @@ export function splitXiBench(
   return { rows, bench };
 }
 
+/** How much a GK pair overshoots the budget left after the 13 outfielders.
+ *  0 = affordable. Rounded to 0.1m to absorb float noise. */
+export function pairBudgetGap(
+  pairCostM: number,
+  outfieldCostM: number,
+  budgetM: number
+): number {
+  const gap = pairCostM + outfieldCostM - budgetM;
+  return Math.max(0, Math.round(gap * 10) / 10);
+}
+
 export function toPitchPlayer(
   p: DraftPitchPlayer,
   ids: { captainId: number | null; viceId: number | null }

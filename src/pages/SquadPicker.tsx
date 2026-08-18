@@ -10,6 +10,7 @@ import {
   type PoolPlayer, type LineupResult, type GkPair,
 } from "@/lib/squadPickerApi";
 import { applyStyle, detectStyle, type SquadStyle } from "@/lib/squadPresets";
+import { pairBudgetGap } from "@/lib/draftPitch";
 import { DRAFT_STORAGE_KEY, parseDraft, serializeDraft } from "@/lib/squadDraft";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TeamStrengthGrid } from "@/components/TeamStrengthGrid";
 import { PlayerListPanel } from "@/components/PlayerListPanel";
 import { PlayerKnowledgePanel } from "@/components/PlayerKnowledgePanel";
@@ -159,6 +161,12 @@ export default function SquadPicker() {
   }, [squadIds, byId, res]);
 
   const handoffSquad = pitchSquad.length === 15 ? pitchSquad : null;
+
+  // Budget left for the two GKs = budget minus the current 13 outfielders.
+  const outfieldCostM = useMemo(
+    () => pitchSquad.filter((p) => p.pos !== "GKP").reduce((s, p) => s + p.price_m, 0),
+    [pitchSquad]
+  );
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">
@@ -342,7 +350,12 @@ export default function SquadPicker() {
             {lineupMutation.isPending && <span className="text-muted-foreground">optimizing…</span>}
           </Card>
 
-          {handoffSquad && <SquadHandoffPanel squad={handoffSquad} />}
+          <Tabs defaultValue="squad">
+            <TabsList>
+              <TabsTrigger value="squad">Squad</TabsTrigger>
+              <TabsTrigger value="strategy">Strategy</TabsTrigger>
+            </TabsList>
+            <TabsContent value="squad" className="mt-4 space-y-4">
 
           {invalid && (
             <Card className="p-3 border-destructive">
@@ -353,6 +366,32 @@ export default function SquadPicker() {
                 {invalid.violations?.map((v, i) => <li key={i}>{v}</li>)}
               </ul>
             </Card>
+          )}
+
+          {handoffSquad && <SquadHandoffPanel squad={handoffSquad} />}
+
+          <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
+            <div>
+              <div className="text-xs font-semibold mb-1">
+                All players {poolQuery.isFetching && <span className="text-muted-foreground">(loading…)</span>}
+              </div>
+              <PlayerListPanel players={pool} squadIds={squadIds}
+                canAdd={canAdd} onAdd={addPlayer} onRemove={removePlayer} />
+            </div>
+
+            <DraftPitch
+              squad={pitchSquad}
+              xiIds={xiIds}
+              captainId={res.captain_player_id ?? null}
+              viceId={res.vice_player_id ?? null}
+            />
+          </div>
+
+            </TabsContent>
+            <TabsContent value="strategy" className="mt-4 space-y-4">
+
+          {squadIds.length === 15 && (
+            <TransferPlanPanel squadIds={squadIds} params={{ ...params, team_nudges: teamNudges }} />
           )}
 
           {res.projected_points && (
@@ -377,27 +416,6 @@ export default function SquadPicker() {
               </div>
             </Card>
           )}
-
-          {squadIds.length === 15 && (
-            <TransferPlanPanel squadIds={squadIds} params={{ ...params, team_nudges: teamNudges }} />
-          )}
-
-          <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
-            <div>
-              <div className="text-xs font-semibold mb-1">
-                All players {poolQuery.isFetching && <span className="text-muted-foreground">(loading…)</span>}
-              </div>
-              <PlayerListPanel players={pool} squadIds={squadIds}
-                canAdd={canAdd} onAdd={addPlayer} onRemove={removePlayer} />
-            </div>
-
-            <DraftPitch
-              squad={pitchSquad}
-              xiIds={xiIds}
-              captainId={res.captain_player_id ?? null}
-              viceId={res.vice_player_id ?? null}
-            />
-          </div>
 
           {res.value_menu && (
             <Card className="p-4">
@@ -430,18 +448,27 @@ export default function SquadPicker() {
             </div>
             {gkPairsMutation.data && (
               <ul className="text-xs space-y-1">
-                {gkPairsMutation.data.pairs.map((pr, i) => (
-                  <li key={i} className="flex items-center justify-between gap-2 border-t pt-1">
-                    <span>
-                      {pr.names[0]} <span className="text-muted-foreground">({pr.teams[0]})</span>
-                      {" + "}{pr.names[1]} <span className="text-muted-foreground">({pr.teams[1]})</span>
-                      <span className="text-muted-foreground">
-                        {" · "}£{pr.combined_cost_m}m · rot {pr.rotation_xpts} · home {pr.home_weeks}/{pr.gws}
+                {gkPairsMutation.data.pairs.map((pr, i) => {
+                  const gap = pairBudgetGap(pr.combined_cost_m, outfieldCostM, params.budget_m ?? 100);
+                  return (
+                    <li key={i} className="flex items-center justify-between gap-2 border-t pt-1">
+                      <span>
+                        {pr.names[0]} <span className="text-muted-foreground">({pr.teams[0]})</span>
+                        {" + "}{pr.names[1]} <span className="text-muted-foreground">({pr.teams[1]})</span>
+                        <span className="text-muted-foreground">
+                          {" · "}£{pr.combined_cost_m}m · rot {pr.rotation_xpts} · home {pr.home_weeks}/{pr.gws}
+                        </span>
                       </span>
-                    </span>
-                    <Button size="sm" variant="ghost" onClick={() => applyGkPair(pr)}>Use</Button>
-                  </li>
-                ))}
+                      {gap > 0 ? (
+                        <span className="text-muted-foreground shrink-0" title="This pair doesn't fit the current budget — free up funds among the outfielders first.">
+                          needs £{gap.toFixed(1)}m
+                        </span>
+                      ) : (
+                        <Button size="sm" variant="ghost" onClick={() => applyGkPair(pr)}>Use</Button>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Card>
@@ -454,6 +481,9 @@ export default function SquadPicker() {
               </ul>
             </Card>
           )}
+
+            </TabsContent>
+          </Tabs>
         </>
       )}
       </div>
