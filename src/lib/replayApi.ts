@@ -32,6 +32,7 @@ export interface ReplayGwRecord {
   suggested_transfer: { sell: number; buy: number; expected_gain: number } | null;
   sp2_candidates: ReplaySp2Candidate[];
   your: ReplayYourSide | null;
+  names?: Record<string, string>;
 }
 
 export function replayEnabled(): boolean {
