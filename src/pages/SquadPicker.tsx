@@ -11,6 +11,7 @@ import {
 } from "@/lib/squadPickerApi";
 import { applyStyle, detectStyle, type SquadStyle } from "@/lib/squadPresets";
 import { pairBudgetGap } from "@/lib/draftPitch";
+import { findGems } from "@/lib/gems";
 import { DRAFT_STORAGE_KEY, parseDraft, serializeDraft } from "@/lib/squadDraft";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -156,6 +157,8 @@ export default function SquadPicker() {
   }, [squadIds, byId, res]);
 
   const handoffSquad = pitchSquad.length === 15 ? pitchSquad : null;
+
+  const gems = useMemo(() => findGems(pool), [pool]);
 
   // Budget left for the two GKs = budget minus the current 13 outfielders.
   const outfieldCostM = useMemo(
@@ -493,6 +496,26 @@ export default function SquadPicker() {
               </ul>
             )}
           </Card>
+
+          {gems.length > 0 && (
+            <Card className="p-4">
+              <div className="text-xs font-semibold mb-2">
+                Gems — under 10% ownership, ranked by projected points per £m
+              </div>
+              <ul className="text-xs space-y-1">
+                {gems.map((g) => (
+                  <li key={g.player_id} className="flex items-center justify-between gap-2 border-t pt-1">
+                    <span>
+                      {g.web_name} <span className="text-muted-foreground">({g.team_short} · {g.pos})</span>
+                    </span>
+                    <span className="text-muted-foreground">
+                      £{g.price_m.toFixed(1)} · {g.xpts_horizon.toFixed(1)} pts · {g.value.toFixed(1)}/£m · {g.selected_by_percent}% owned
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
 
           {res.notes?.length > 0 && (
             <Card className="p-4">
