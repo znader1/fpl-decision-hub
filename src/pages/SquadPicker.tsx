@@ -3,7 +3,8 @@
 // SQUAD_PICKER_MODE=1.
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   buildSquad, getPlayers, optimizeLineup, getGkPairs,
   type SquadBuildParams, type SquadBuildResult, type SquadPlayer, type TeamNudge,
@@ -30,6 +31,8 @@ import { TransferPlanPanel } from "@/components/TransferPlanPanel";
 import { SquadHandoffPanel } from "@/components/SquadHandoffPanel";
 import { DraftPitch } from "@/components/DraftPitch";
 import { Navbar } from "@/components/layout/Navbar";
+
+const FORMATIONS = ["3-4-3", "3-5-2", "4-3-3", "4-4-2", "4-5-1", "5-2-3", "5-3-2", "5-4-1"];
 
 const STYLE_OPTIONS: { value: SquadStyle; label: string; hint: string }[] = [
   { value: "balanced", label: "Balanced", hint: "even mix of form and underlying xG" },
@@ -218,6 +221,15 @@ export default function SquadPicker() {
               )}
             </div>
           </div>
+          <Field label="Formation"
+            hint="Auto lets the optimizer pick the best legal shape for your 15 (usually strongest). Fix a formation only if you have a strong preference — it can cost projected points.">
+            <select className="w-32 rounded-md border bg-background p-2 text-sm"
+              value={params.formation ?? "auto"}
+              onChange={(e) => set("formation", e.target.value)}>
+              <option value="auto">Auto (best)</option>
+              {FORMATIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </Field>
           <Button
             className="ml-auto"
             disabled={mutation.isPending}
@@ -243,75 +255,95 @@ export default function SquadPicker() {
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="space-y-4">
-      <Card className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Field label="Horizon (GWs)">
-          <Input type="number" min={1} max={8} value={params.horizon_gws}
-            onChange={(e) => set("horizon_gws", Number(e.target.value))} />
-        </Field>
-        <Field label="Objective">
-          <select className="w-full rounded-md border bg-background p-2 text-sm" value={params.objective}
-            onChange={(e) => set("objective", e.target.value as SquadBuildParams["objective"])}>
-            <option value="wildcard">wildcard</option>
-            <option value="free_hit">free_hit</option>
-            <option value="plain">plain</option>
-          </select>
-        </Field>
-        <Field label="Projection basis">
-          <select className="w-full rounded-md border bg-background p-2 text-sm" value={params.projection_basis}
-            onChange={(e) => set("projection_basis", e.target.value as SquadBuildParams["projection_basis"])}>
-            <option value="ppg">ppg</option>
-            <option value="xg">xg</option>
-            <option value="blend">blend</option>
-          </select>
-          <p className="text-[11px] text-muted-foreground">
-            Team-strength nudges below only affect xg / blend.
-          </p>
-        </Field>
-        <Field label="Blend weight (xg share)">
-          <Input type="number" step={0.05} min={0} max={1} value={params.blend_weight}
-            onChange={(e) => set("blend_weight", Number(e.target.value))} />
-        </Field>
-        <Field label="Minutes prior K">
-          <Input type="number" value={params.minutes_prior_k}
-            onChange={(e) => set("minutes_prior_k", Number(e.target.value))} />
-        </Field>
-        <Field label="Max per team">
-          <Input type="number" min={1} max={3} value={params.max_per_team}
-            onChange={(e) => set("max_per_team", Number(e.target.value))} />
-        </Field>
-        <Field label="Min FWD minutes">
-          <Input type="number" value={params.min_fwd_minutes}
-            onChange={(e) => set("min_fwd_minutes", Number(e.target.value))} />
-        </Field>
-        <Field label="Min minutes last season (outfield)">
-          <Input type="number" min={0} max={3420} step={30} value={params.min_minutes ?? 0}
-            onChange={(e) => set("min_minutes", Number(e.target.value))} />
-        </Field>
-        <Field label="Min chance of playing %">
-          <Input type="number" min={0} max={100} value={params.min_chance_of_playing}
-            onChange={(e) => set("min_chance_of_playing", Number(e.target.value))} />
-        </Field>
-        <Field label="Formation">
-          <Input value={params.formation} placeholder="auto or 3-4-3"
-            onChange={(e) => set("formation", e.target.value)} />
-        </Field>
-        <Field label="FDR strength">
-          <Input type="number" step={0.1} min={0} max={3} value={params.fdr_strength}
-            onChange={(e) => set("fdr_strength", Number(e.target.value))} />
-        </Field>
-        <Field label="Home/away strength">
-          <Input type="number" step={0.1} min={0} max={4} value={params.home_away_strength}
-            onChange={(e) => set("home_away_strength", Number(e.target.value))} />
-        </Field>
-        <Field label="Max player £m (blank=off)">
-          <Input type="number" step={0.5} min={4} placeholder="no cap"
-            value={params.max_player_price ?? ""}
-            onChange={(e) => set("max_player_price", e.target.value === "" ? undefined : Number(e.target.value))} />
-        </Field>
-        <Field label="Include flagged (injured)">
-          <input type="checkbox" checked={!!params.include_flagged}
-            onChange={(e) => set("include_flagged", e.target.checked)} />
-        </Field>
+      <Card className="p-4 space-y-4">
+        <div>
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            Draft rules
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Field label="Horizon (GWs)"
+              hint="How many upcoming gameweeks the draft optimizes for. Short (3) chases immediate fixtures; long (8) favours season-keepers.">
+              <Input type="number" min={1} max={8} value={params.horizon_gws}
+                onChange={(e) => set("horizon_gws", Number(e.target.value))} />
+            </Field>
+            <Field label="Objective"
+              hint="wildcard = balanced multi-GW squad (default). free_hit = maximize next GW only. plain = raw projected points, no captaincy/premium structure bonuses.">
+              <select className="w-full rounded-md border bg-background p-2 text-sm" value={params.objective}
+                onChange={(e) => set("objective", e.target.value as SquadBuildParams["objective"])}>
+                <option value="wildcard">wildcard</option>
+                <option value="free_hit">free_hit</option>
+                <option value="plain">plain</option>
+              </select>
+            </Field>
+            <Field label="Max per team"
+              hint="FPL allows at most 3 players from one club. Lower it to force more spread across teams.">
+              <Input type="number" min={1} max={3} value={params.max_per_team}
+                onChange={(e) => set("max_per_team", Number(e.target.value))} />
+            </Field>
+            <Field label="Min chance of playing %"
+              hint="Drops players the FPL medical flag rates below this. 75 = only fit or near-fit players.">
+              <Input type="number" min={0} max={100} value={params.min_chance_of_playing}
+                onChange={(e) => set("min_chance_of_playing", Number(e.target.value))} />
+            </Field>
+            <Field label="Min minutes last season (outfield)"
+              hint="Excludes fringe players below this many minutes (3420 = every minute). Styles set 600 (Balanced/Attacking) or 1200 (Safe). GKs exempt — a cheap backup keeper is fine.">
+              <Input type="number" min={0} max={3420} step={30} value={params.min_minutes ?? 0}
+                onChange={(e) => set("min_minutes", Number(e.target.value))} />
+            </Field>
+            <Field label="Min FWD minutes"
+              hint="Stricter minutes floor for forwards only, on top of the general one. Use if you want only nailed strikers.">
+              <Input type="number" value={params.min_fwd_minutes}
+                onChange={(e) => set("min_fwd_minutes", Number(e.target.value))} />
+            </Field>
+            <Field label="Max player £m (blank=off)"
+              hint="Caps any single player's price — forces a spread squad with no premiums.">
+              <Input type="number" step={0.5} min={4} placeholder="no cap"
+                value={params.max_player_price ?? ""}
+                onChange={(e) => set("max_player_price", e.target.value === "" ? undefined : Number(e.target.value))} />
+            </Field>
+            <Field label="Include flagged (injured)"
+              hint="Ticked = injured/doubtful players stay in the pool (their points are already discounted). Off = they're excluded entirely.">
+              <input type="checkbox" checked={!!params.include_flagged}
+                onChange={(e) => set("include_flagged", e.target.checked)} />
+            </Field>
+          </div>
+        </div>
+        <div>
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            Model tuning
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Field label="Projection basis"
+              hint="ppg = last season's points per game. xg = underlying expected-goals model (includes clean sheets). blend = mix of both (recommended). Team-strength nudges below only affect xg/blend.">
+              <select className="w-full rounded-md border bg-background p-2 text-sm" value={params.projection_basis}
+                onChange={(e) => set("projection_basis", e.target.value as SquadBuildParams["projection_basis"])}>
+                <option value="ppg">ppg</option>
+                <option value="xg">xg</option>
+                <option value="blend">blend</option>
+              </select>
+            </Field>
+            <Field label="Blend weight (xg share)"
+              hint="0 = trust last season's points fully; 1 = trust underlying xG fully. Push up if you believe stats over reputation.">
+              <Input type="number" step={0.05} min={0} max={1} value={params.blend_weight}
+                onChange={(e) => set("blend_weight", Number(e.target.value))} />
+            </Field>
+            <Field label="Minutes prior K"
+              hint="Shrinks part-timers' per-game numbers toward zero: a player's ppg is scaled by minutes/(minutes+K). Higher K punishes small samples harder.">
+              <Input type="number" value={params.minutes_prior_k}
+                onChange={(e) => set("minutes_prior_k", Number(e.target.value))} />
+            </Field>
+            <Field label="FDR strength"
+              hint="How hard fixture difficulty swings projections. 1 = normal, 2 = fixtures matter double, 0 = ignore fixtures.">
+              <Input type="number" step={0.1} min={0} max={3} value={params.fdr_strength}
+                onChange={(e) => set("fdr_strength", Number(e.target.value))} />
+            </Field>
+            <Field label="Home/away strength"
+              hint="Scales the home boost / away penalty. Raise it to prefer players with home-heavy fixture runs.">
+              <Input type="number" step={0.1} min={0} max={4} value={params.home_away_strength}
+                onChange={(e) => set("home_away_strength", Number(e.target.value))} />
+            </Field>
+          </div>
+        </div>
       </Card>
 
       <TeamStrengthGrid onChange={setTeamNudges} />
@@ -535,10 +567,22 @@ export default function SquadPicker() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
+      <Label className="text-xs flex items-center gap-1">
+        {label}
+        {hint && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-3 w-3 text-muted-foreground cursor-help shrink-0" />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-64 text-xs leading-snug">
+              {hint}
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </Label>
       {children}
     </div>
   );
