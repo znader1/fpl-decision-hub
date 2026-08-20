@@ -33,6 +33,12 @@ describe("applyStyle", () => {
     expect(safe.blend_weight!).toBeLessThan(applyStyle(BASE, "balanced").blend_weight!);
   });
 
+  it("every style filters out never-played fringe; safe demands regulars", () => {
+    expect(applyStyle(BASE, "balanced").min_minutes).toBe(600);
+    expect(applyStyle(BASE, "attacking").min_minutes).toBe(600);
+    expect(applyStyle(BASE, "safe").min_minutes).toBe(1200);
+  });
+
   it("preserves user's budget and horizon untouched", () => {
     const params = { ...BASE, budget_m: 98.5, horizon_gws: 8 };
     for (const style of ["balanced", "attacking", "safe"] as SquadStyle[]) {

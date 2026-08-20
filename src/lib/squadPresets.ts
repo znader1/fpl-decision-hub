@@ -14,6 +14,7 @@ export const STYLE_PRESETS: Record<SquadStyle, Partial<SquadBuildParams>> = {
     minutes_prior_k: 500,
     include_flagged: false,
     min_chance_of_playing: 0,
+    min_minutes: 600,
   },
   attacking: {
     projection_basis: "blend",
@@ -21,6 +22,7 @@ export const STYLE_PRESETS: Record<SquadStyle, Partial<SquadBuildParams>> = {
     minutes_prior_k: 500,
     include_flagged: false,
     min_chance_of_playing: 0,
+    min_minutes: 600,
   },
   safe: {
     projection_basis: "blend",
@@ -28,6 +30,7 @@ export const STYLE_PRESETS: Record<SquadStyle, Partial<SquadBuildParams>> = {
     minutes_prior_k: 800,
     include_flagged: false,
     min_chance_of_playing: 75,
+    min_minutes: 1200,
   },
 };
 

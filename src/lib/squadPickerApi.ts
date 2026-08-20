@@ -22,6 +22,7 @@ export interface SquadBuildParams {
   min_chance_of_playing?: number;
   max_per_team?: number;
   min_fwd_minutes?: number;
+  min_minutes?: number; // historical-minutes floor for all outfield positions (GKP exempt)
   formation?: string; // "auto" | "3-4-3" | ...
   fdr_strength?: number;
   home_away_strength?: number; // scales home 1.06 / away 0.94 swing (1=default, >1 amplifies)

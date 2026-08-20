@@ -41,8 +41,8 @@ const QUOTA: Record<SquadPlayer["pos"], number> = { GKP: 2, DEF: 5, MID: 5, FWD:
 const DEFAULTS: SquadBuildParams = {
   horizon_gws: 5, budget_m: 100, objective: "wildcard", projection_basis: "blend",
   blend_weight: 0.5, minutes_prior_k: 500, include_flagged: false,
-  min_chance_of_playing: 0, max_per_team: 3, min_fwd_minutes: 0, formation: "auto",
-  fdr_strength: 1.0, home_away_strength: 1.0, xi_objective: "horizon",
+  min_chance_of_playing: 0, max_per_team: 3, min_fwd_minutes: 0, min_minutes: 600,
+  formation: "auto", fdr_strength: 1.0, home_away_strength: 1.0, xi_objective: "horizon",
 };
 
 export default function SquadPicker() {
@@ -279,6 +279,10 @@ export default function SquadPicker() {
         <Field label="Min FWD minutes">
           <Input type="number" value={params.min_fwd_minutes}
             onChange={(e) => set("min_fwd_minutes", Number(e.target.value))} />
+        </Field>
+        <Field label="Min minutes last season (outfield)">
+          <Input type="number" min={0} max={3420} step={30} value={params.min_minutes ?? 0}
+            onChange={(e) => set("min_minutes", Number(e.target.value))} />
         </Field>
         <Field label="Min chance of playing %">
           <Input type="number" min={0} max={100} value={params.min_chance_of_playing}
