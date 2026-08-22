@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AlertCircle, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
 
 function GoogleButton({ loading, onClick }: { loading: boolean; onClick: () => void }) {
   return (
@@ -272,13 +272,15 @@ export default function Auth() {
           </div>
         </Tabs>
 
-        {/* Skip */}
+        {/* No anonymous mode: /app is behind ProtectedRoute and the API now
+            requires a signed-in session, so the old "Continue without account"
+            link bounced straight back here. Offer the way out that works. */}
         <Link
-          to="/app"
+          to="/"
           className="mt-5 flex items-center justify-center gap-1.5 text-sm text-white/35 hover:text-white/60 transition-colors group"
         >
-          Continue without account
-          <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+          <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          Back to home
         </Link>
       </div>
     </div>

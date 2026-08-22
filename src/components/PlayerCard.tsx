@@ -129,11 +129,14 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
               </div>
             )}
           </div>
-          <div className="bg-card/95 backdrop-blur-sm rounded-md px-2 py-1 text-center shadow-sm border border-border min-w-[80px]">
-            <p className="text-xs font-bold text-foreground truncate">{player.name}</p>
+          {/* Width is responsive because the pitch clips: a five-defender row
+              needs 5 cards plus 4 gaps to fit ~343px of usable width on a
+              375px viewport, so 80px cards cut the outermost players in half. */}
+          <div className="bg-card/95 backdrop-blur-sm rounded-md px-1 sm:px-2 py-1 text-center shadow-sm border border-border w-[58px] sm:w-auto sm:min-w-[80px] max-w-full">
+            <p className="text-[10px] sm:text-xs font-bold text-foreground truncate">{player.name}</p>
             {fixtureShort && (
               <span
-                className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-medium max-w-[92px] truncate ${getDifficultyClass(fixtureDifficulty)}`}
+                className={`inline-block px-1 sm:px-1.5 py-0.5 rounded-full text-[9px] font-medium max-w-full truncate ${getDifficultyClass(fixtureDifficulty)}`}
                 title={fixtureDifficulty ? `FDR ${fixtureDifficulty}` : undefined}
               >
                 {fixtureShort}
