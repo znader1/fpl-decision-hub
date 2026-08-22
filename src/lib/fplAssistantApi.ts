@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 export type FplPosition = "GKP" | "DEF" | "MID" | "FWD";
 
 export interface FplTeamRecommendationPlayer {
@@ -913,7 +914,7 @@ export const fetchSquad = async (params: SquadParams, signal?: AbortSignal): Pro
   const url = interpolateSquadUrl(template, params);
   let response: Response;
   try {
-    response = await fetch(url, { signal });
+    response = await authFetch(url, { signal });
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     if (typeof err === "object" && err !== null && "name" in err && err.name === "AbortError") throw err;
@@ -950,7 +951,7 @@ export const fetchFixtures = async (params: FixturesParams, signal?: AbortSignal
   const url = interpolateFixturesUrl(template, params);
   let response: Response;
   try {
-    response = await fetch(url, { signal });
+    response = await authFetch(url, { signal });
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     if (typeof err === "object" && err !== null && "name" in err && err.name === "AbortError") throw err;
@@ -1000,7 +1001,7 @@ export const fetchNextEvent = async (signal?: AbortSignal): Promise<FplNextEvent
 
   let response: Response;
   try {
-    response = await fetch(template, { signal });
+    response = await authFetch(template, { signal });
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     if (typeof err === "object" && err !== null && "name" in err && err.name === "AbortError") throw err;
@@ -1040,7 +1041,7 @@ export const fetchTeamRecommendation = async (
   const url = interpolateTeamRecommendationUrl(template, params);
   let response: Response;
   try {
-    response = await fetch(url, { signal });
+    response = await authFetch(url, { signal });
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     if (typeof err === "object" && err !== null && "name" in err && err.name === "AbortError") throw err;
@@ -1096,7 +1097,7 @@ export const fetchExplanation = async (
 ): Promise<ExplainResponse> => {
   const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
   const url = apiBase ? new URL("/explain", apiBase).toString() : "/explain";
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ recommendations }),
@@ -1130,7 +1131,7 @@ export const fetchChatAnswer = async (
 ): Promise<ChatResponse> => {
   const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
   const url = apiBase ? new URL("/chat", apiBase).toString() : "/chat";
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
@@ -1161,7 +1162,7 @@ export const fetchSpecialistAnswer = async (
   const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
   const path = `/chat/${specialist}`;
   const url = apiBase ? new URL(path, apiBase).toString() : path;
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
@@ -1191,7 +1192,7 @@ export const fetchUserLeagues = async (
   const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
   const path = `/league/list?entry_id=${encodeURIComponent(entryId)}`;
   const url = apiBase ? new URL(path, apiBase).toString() : path;
-  const response = await fetch(url, { signal });
+  const response = await authFetch(url, { signal });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     throw new Error(`Failed to fetch leagues (${response.status}): ${body.slice(0, 200)}`);
@@ -1277,7 +1278,7 @@ export const fetchLeagueStrategy = async (
 ): Promise<LeagueStrategyResponse> => {
   const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
   const url = apiBase ? new URL("/league/strategy", apiBase).toString() : "/league/strategy";
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
@@ -1348,7 +1349,7 @@ export const fetchFixtureDifficulty = async (
   if (params.horizon_gws) search.set("horizon_gws", String(params.horizon_gws));
   const path = `/fixtures/difficulty${search.size ? `?${search.toString()}` : ""}`;
   const url = apiBase ? new URL(path, apiBase).toString() : path;
-  const response = await fetch(url, { signal });
+  const response = await authFetch(url, { signal });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     throw new Error(`Failed to fetch fixture difficulty (${response.status}): ${body.slice(0, 200)}`);
@@ -1421,7 +1422,7 @@ export const optimizeSquad = async (
   signal?: AbortSignal
 ): Promise<OptimizeSquadResponse> => {
   const url = getOptimizeUrlTemplate() ?? "/squad/optimize";
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
