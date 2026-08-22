@@ -3,7 +3,7 @@
 // SQUAD_PICKER_MODE=1.
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ChevronDown, Info } from "lucide-react";
+import { ChevronDown, Info, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   buildSquad, getPlayers, optimizeLineup, getGkPairs,
@@ -373,6 +373,35 @@ export default function SquadPicker() {
         <Card className="p-4 text-sm text-muted-foreground">
           Pick a style and press <b>⚡ Draft my squad</b> — you'll get a full 15
           with captain, bench and projected points, ready to tweak.
+        </Card>
+      )}
+
+      {/* The first draft is optimizer-bound and slow; without this everything
+          below the form vanished while it ran, leaving only the button label
+          as feedback. */}
+      {mutation.isPending && !res && (
+        <Card className="p-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Drafting your squad — optimising 15 picks across your fixture horizon…
+          </div>
+          <div className="mt-4 space-y-2" aria-hidden="true">
+            <div className="h-24 rounded-md bg-muted/50 animate-pulse" />
+            <div className="h-4 w-2/3 rounded bg-muted/50 animate-pulse" />
+            <div className="h-4 w-1/2 rounded bg-muted/50 animate-pulse" />
+          </div>
+        </Card>
+      )}
+
+      {/* These three failed silently: an empty swap table, an XI that quietly
+          stopped re-optimising, and a "Find pairs" button that just went idle. */}
+      {(poolQuery.isError || lineupMutation.isError || gkPairsMutation.isError) && (
+        <Card className="p-4 border-destructive">
+          <p className="text-sm text-destructive">
+            {poolQuery.error?.message ??
+              lineupMutation.error?.message ??
+              gkPairsMutation.error?.message}
+          </p>
         </Card>
       )}
 

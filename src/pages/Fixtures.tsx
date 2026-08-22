@@ -97,7 +97,7 @@ const Fixtures = () => {
             <button
               key={h}
               onClick={() => setHorizon(h)}
-              className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+              className={`rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
                 horizon === h
                   ? "bg-primary text-white"
                   : "bg-white/5 text-white/60 hover:bg-white/10"
@@ -130,9 +130,9 @@ const Fixtures = () => {
           <>
             <Card className="p-0 overflow-x-auto">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-card">
                   <tr className="border-b border-white/10 text-xs text-muted-foreground">
-                    <th className="px-3 py-2 text-left font-medium sticky left-0 bg-card">Team</th>
+                    <th className="px-3 py-2 text-left font-medium sticky left-0 z-20 bg-card">Team</th>
                     {data.gws.map((gw) => (
                       <th key={gw} className="px-1 py-2 text-center font-medium">GW{gw}</th>
                     ))}
