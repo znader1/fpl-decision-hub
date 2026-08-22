@@ -91,7 +91,7 @@ function StatCard({
   accent?: boolean;
 }) {
   return (
-    <div className={`rounded-xl border p-3 flex flex-col gap-0.5 ${accent ? "border-primary/30 bg-primary/8" : "border-border bg-card"}`}>
+    <div className={`rounded-xl border p-3 flex flex-col gap-0.5 ${accent ? "border-primary/30 bg-primary/[0.08]" : "border-border bg-card"}`}>
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={`text-lg font-black leading-none ${accent ? "text-primary" : "text-foreground"}`}>{value}</p>
       {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
@@ -146,7 +146,7 @@ function SummaryTab({
   return (
     <div className="flex flex-col gap-3">
       {/* Projected xPts hero */}
-      <div className="rounded-xl border border-primary/30 bg-primary/8 p-4 flex items-center justify-between">
+      <div className="rounded-xl border border-primary/30 bg-primary/[0.08] p-4 flex items-center justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-primary/70 mb-0.5">Projected xPts</p>
           <p className="text-4xl font-black text-primary leading-none">
@@ -193,7 +193,7 @@ function SummaryTab({
           value={`${horizonGws ?? recommendation.horizon_gws}GW`}
         />
         {chip ? (
-          <div className="rounded-xl border border-accent/30 bg-accent/8 p-3 flex flex-col gap-0.5">
+          <div className="rounded-xl border border-accent/30 bg-accent/[0.08] p-3 flex flex-col gap-0.5">
             <p className="text-[10px] font-bold uppercase tracking-wider text-accent/70">Chip</p>
             <p className="text-sm font-black text-accent leading-tight">{chip}</p>
           </div>
@@ -445,7 +445,7 @@ function WatchlistTab({
           {insights.map((item, i) => {
             const tone =
               item.severity === "high"
-                ? "border-destructive/30 bg-destructive/8 text-destructive"
+                ? "border-destructive/30 bg-destructive/[0.08] text-destructive"
                 : item.severity === "medium"
                 ? "border-amber-500/30 bg-amber-500/8 text-amber-400"
                 : "border-border bg-muted/10 text-muted-foreground";
@@ -465,7 +465,7 @@ function WatchlistTab({
       {(scoringHeadline || scoringBullets.length > 0) && (
         <div className="flex flex-col gap-2">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">How Scoring Works</p>
-          <div className="rounded-xl border border-accent/20 bg-accent/6 p-3 flex flex-col gap-1.5">
+          <div className="rounded-xl border border-accent/20 bg-accent/[0.06] p-3 flex flex-col gap-1.5">
             {scoringHeadline && (
               <p className="text-xs font-semibold text-foreground">{scoringHeadline}</p>
             )}

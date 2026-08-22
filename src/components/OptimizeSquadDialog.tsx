@@ -221,7 +221,7 @@ export const OptimizeSquadDialog = ({ entryId, horizonGws, onApplied }: Optimize
               ) : (
                 <>
                   {/* Projected points hero */}
-                  <Card className="border-primary/30 bg-primary/8 p-4 shadow-none">
+                  <Card className="border-primary/30 bg-primary/[0.08] p-4 shadow-none">
                     <div className="flex items-center justify-between gap-4">
                       <div className="min-w-0">
                         <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary/70">

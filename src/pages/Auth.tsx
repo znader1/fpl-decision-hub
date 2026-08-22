@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ function GoogleButton({ loading, onClick }: { loading: boolean; onClick: () => v
       variant="outline"
       onClick={onClick}
       disabled={loading}
-      className="w-full border-white/15 bg-white/6 text-white hover:bg-white/12 h-10"
+      className="w-full border-white/15 bg-white/[0.06] text-white hover:bg-white/[0.12] h-10"
     >
       {loading ? (
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -46,11 +46,14 @@ function ErrorBanner({ message }: { message: string }) {
 /* ── Login tab ─────────────────────────────────────────────────────────────── */
 function LoginForm() {
   const navigate = useNavigate();
+  const location = useLocation() as { state?: { from?: string } };
+  const destination = location.state?.from ?? "/app";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [resetNotice, setResetNotice] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,20 +62,50 @@ function LoginForm() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) setError(error.message);
-    else navigate("/app");
+    else navigate(destination);
+  };
+
+  // /auth/confirm already accepts the "recovery" OTP type, so the emailed link
+  // completes the round trip and signs the user back in.
+  const handleForgot = async () => {
+    setError(null);
+    setResetNotice(null);
+    if (!email) {
+      setError("Enter your email address first, then choose Forgot.");
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/confirm`,
+    });
+    if (error) setError(error.message);
+    else setResetNotice(`Password reset link sent to ${email}.`);
   };
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
-    await supabase.auth.signInWithOAuth({
+    setError(null);
+    // On success the browser navigates away, so this only matters when the
+    // call fails (popup blocked, provider misconfigured) — without it the
+    // button spins forever with no explanation.
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/app` },
     });
+    if (error) {
+      setGoogleLoading(false);
+      setError(error.message);
+    }
   };
 
   return (
     <div className="flex flex-col gap-4">
       {error && <ErrorBanner message={error} />}
+      {resetNotice && (
+        <div className="flex items-start gap-2 rounded-lg bg-accent/10 border border-accent/30 text-accent px-3 py-2.5 text-sm">
+          <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+          {resetNotice}
+        </div>
+      )}
 
       <GoogleButton loading={googleLoading} onClick={handleGoogle} />
 
@@ -100,9 +133,13 @@ function LoginForm() {
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="login-password" className="text-white/70 text-sm">Password</Label>
-            <a href="#" className="text-xs text-primary hover:text-primary/80 transition-colors">
+            <button
+              type="button"
+              onClick={handleForgot}
+              className="text-xs text-primary hover:text-primary/80 transition-colors"
+            >
               Forgot?
-            </a>
+            </button>
           </div>
           <Input
             id="login-password"
@@ -131,6 +168,8 @@ function LoginForm() {
 /* ── Signup tab ────────────────────────────────────────────────────────────── */
 function SignupForm() {
   const navigate = useNavigate();
+  const location = useLocation() as { state?: { from?: string } };
+  const destination = location.state?.from ?? "/app";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -146,16 +185,24 @@ function SignupForm() {
     const { error, data } = await supabase.auth.signUp({ email, password });
     setLoading(false);
     if (error) { setError(error.message); return; }
-    if (data.session) navigate("/app");
+    if (data.session) navigate(destination);
     else setSuccess(true);
   };
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
-    await supabase.auth.signInWithOAuth({
+    setError(null);
+    // On success the browser navigates away, so this only matters when the
+    // call fails (popup blocked, provider misconfigured) — without it the
+    // button spins forever with no explanation.
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/app` },
     });
+    if (error) {
+      setGoogleLoading(false);
+      setError(error.message);
+    }
   };
 
   if (success) {
@@ -223,8 +270,8 @@ function SignupForm() {
 
       <p className="text-xs text-white/25 text-center">
         By signing up you agree to our{" "}
-        <a href="#" className="underline hover:text-white/50">Terms</a> &amp;{" "}
-        <a href="#" className="underline hover:text-white/50">Privacy</a>.
+        <Link to="/terms" className="underline hover:text-white/50">Terms</Link> &amp;{" "}
+        <Link to="/privacy" className="underline hover:text-white/50">Privacy</Link>.
       </p>
     </div>
   );
@@ -247,7 +294,7 @@ export default function Auth() {
 
       <div className="w-full max-w-sm">
         <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="w-full mb-6 bg-white/6 border border-white/10 p-1 rounded-xl">
+          <TabsList className="w-full mb-6 bg-white/[0.06] border border-white/10 p-1 rounded-xl">
             <TabsTrigger
               value="signup"
               className="flex-1 rounded-lg text-white/50 data-[state=active]:bg-primary data-[state=active]:text-white font-semibold transition-all"
@@ -262,7 +309,7 @@ export default function Auth() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="rounded-2xl border border-white/10 bg-white/4 p-6">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
             <TabsContent value="signup" className="mt-0">
               <SignupForm />
             </TabsContent>
