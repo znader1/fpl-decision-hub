@@ -126,7 +126,9 @@ export const TransferPlanner = ({
 }: TransferPlannerProps) => {
   const moves = Array.isArray(transfers?.moves) ? transfers.moves : [];
   const transferPlan = transfers?.transfer_plan;
-  const transfersRecord = transfers as Record<string, unknown> | undefined;
+  // The API may carry fields the type doesn't declare (e.g. itb_m); going via
+  // unknown is the sound way to spell that deliberate widening.
+  const transfersRecord = transfers as unknown as Record<string, unknown> | undefined;
   const remainingItb = readPrice(transfers?.remaining_itb ?? transfersRecord?.itb_m);
   const movesUsed =
     typeof transferPlan?.transfer_count_built === "number"
@@ -245,8 +247,8 @@ export const TransferPlanner = ({
         {moves.map((move, idx) => (
           <div key={`${move.sell.id}-${move.buy.id}-${idx}`} className="rounded-lg border border-border p-3">
             {(() => {
-              const sellRow = move.sell as Record<string, unknown>;
-              const buyRow = move.buy as Record<string, unknown>;
+              const sellRow = move.sell as unknown as Record<string, unknown>;
+              const buyRow = move.buy as unknown as Record<string, unknown>;
               const sellName = readPlayerName(move.sell, move.sell.id, playerNameById);
               const buyName = readPlayerName(move.buy, move.buy.id, playerNameById);
               const sellTeam = readTeamShort(move.sell, move.sell.id, playerTeamById);

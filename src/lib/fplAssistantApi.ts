@@ -819,8 +819,14 @@ const resolveTemplateWithApiBase = (template: string | undefined): string | unde
   }
 };
 
+// Defaults to the backend's own route so the app works with only
+// VITE_FPL_API_BASE_URL set — .env.production defines the base and nothing
+// else, and without a default this resolved to undefined, which used to mean
+// "silently serve the demo squad".
 export const getSquadUrlTemplate = (): string | undefined =>
-  resolveTemplateWithApiBase(getEnvString("VITE_FPL_SQUAD_URL"));
+  resolveTemplateWithApiBase(
+    getEnvString("VITE_FPL_SQUAD_URL") ?? "/squad?entry_id={entry_id}&event_id={event_id}",
+  );
 
 export const getFixturesUrlTemplate = (): string | undefined =>
   resolveTemplateWithApiBase(getEnvString("VITE_FPL_FIXTURES_URL"));
@@ -913,7 +919,15 @@ const normalizeTeamFixture = (value: FixtureRecord): FplTeamFixture => {
 
 export const fetchSquad = async (params: SquadParams, signal?: AbortSignal): Promise<FplSquad> => {
   const template = getSquadUrlTemplate();
-  if (!template) return SAMPLE_SQUAD;
+  // Returning SAMPLE_SQUAD here used to make a misconfigured deployment look
+  // like a working one: this function also validates the entry ID during
+  // onboarding, so any ID was accepted and demo players rendered as the
+  // user's real squad. Fail loudly instead.
+  if (!template) {
+    throw new Error(
+      "The app is not configured to reach the FPL API (VITE_FPL_SQUAD_URL is unset).",
+    );
+  }
 
   const url = interpolateSquadUrl(template, params);
   let response: Response;
@@ -997,10 +1011,12 @@ export const fetchFixtures = async (params: FixturesParams, signal?: AbortSignal
 
 export const fetchNextEvent = async (signal?: AbortSignal): Promise<FplNextEventSummary> => {
   const template = getNextEventUrlTemplate();
+  // Same reasoning as fetchSquad: a demo gameweek number silently standing in
+  // for the real one is worse than an explicit configuration error.
   if (!template) {
-    return {
-      event_id: SAMPLE_SQUAD.event_id,
-    };
+    throw new Error(
+      "The app is not configured to reach the FPL API (VITE_FPL_API_BASE_URL is unset).",
+    );
   }
 
   let response: Response;
