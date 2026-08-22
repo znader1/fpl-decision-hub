@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { isUnauthorized } from "@/lib/authFetch";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Landing from "./pages/Landing";
@@ -31,7 +32,10 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       // Fly.io cold starts: retry twice with exponential backoff before failing.
-      retry: 2,
+      // An expired session is not worth retrying — it fails identically each
+      // time, and the backoff would leave the user watching a spinner for ~11s
+      // before the sign-in prompt appears.
+      retry: (failureCount, error) => !isUnauthorized(error) && failureCount < 2,
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
     },
   },

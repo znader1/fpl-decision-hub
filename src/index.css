@@ -91,7 +91,9 @@ input:-webkit-autofill:active {
     --accent: 172 65% 42%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62% 30%;
+    /* Lightness must stay high on the near-black dark background: at 30% this
+       renders error text at ~1.8:1 contrast, which is effectively invisible. */
+    --destructive: 0 72% 62%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 248 15% 18%;

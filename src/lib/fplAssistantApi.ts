@@ -850,13 +850,17 @@ const parseJsonMaybe = (raw: unknown): unknown => {
   }
 };
 
+// The diagnostic detail (CORS setup, mixed content, env vars) is for whoever is
+// running the app, not the person using it — log it and show a short message.
 const formatNetworkHint = (url: string) => {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const protocol = typeof window !== "undefined" ? window.location.protocol : "";
   const isMixedContent = protocol === "https:" && url.startsWith("http://");
-  return isMixedContent
-    ? "Your page is HTTPS but the API URL is HTTP (mixed-content is blocked). Use HTTPS for the API or run the frontend over HTTP."
-    : `If this URL works in a tab but fails in fetch, it's usually CORS. Option A: allow Origin ${origin || "<your-frontend-origin>"} in FastAPI CORSMiddleware. Option B (Vite dev): use relative URLs like /squad and /recommendations with a Vite proxy. Option C (production): set VITE_FPL_API_BASE_URL and keep relative templates.`;
+  const diagnostic = isMixedContent
+    ? `Mixed content: the page is HTTPS but the API URL (${url}) is HTTP. Serve the API over HTTPS.`
+    : `Request to ${url} failed before a response. Usually CORS: allow Origin ${origin || "<your-frontend-origin>"} in FPL_API_CORS_ORIGINS, or check VITE_FPL_API_BASE_URL.`;
+  if (typeof console !== "undefined") console.warn(diagnostic);
+  return "Couldn't reach the server. Check your connection and try again.";
 };
 
 const parseJsonResponse = async (response: Response, url: string, endpointLabel: string): Promise<unknown> => {
