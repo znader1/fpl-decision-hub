@@ -90,4 +90,21 @@ describe("HorizonTransferPlan verdict banner", () => {
     const { container } = render(<HorizonTransferPlan plan={undefined} />);
     expect(container.querySelector('[data-testid="plan-verdict-banner"]')).toBeNull();
   });
+
+  it("renders the banner alone when plan.plan is empty (e.g. a forced-injury verdict issued before a walk exists)", () => {
+    render(
+      <HorizonTransferPlan
+        plan={{
+          verdict: "spend_forced_injury",
+          reasoning: "Flagged player is a doubt — replace now.",
+          plan: [],
+        }}
+      />
+    );
+    const banner = screen.getByTestId("plan-verdict-banner");
+    expect(banner.textContent).toMatch(/injury: act now/i);
+    expect(screen.getByText(/flagged player/i)).toBeTruthy();
+    // the detailed multi-GW plan card must not render when there's no plan walk
+    expect(screen.queryByText(/multi-gw plan/i)).toBeNull();
+  });
 });
