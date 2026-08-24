@@ -300,65 +300,106 @@ function TransfersTab({
   );
 }
 
-/* ── Multi-GW roll/bank plan (additive) ───────────────────────────────────── */
-function HorizonTransferPlan({ plan }: { plan?: FplTransferPlanHorizon }) {
-  if (!plan?.plan?.length) return null;
-  const allRoll = plan.plan.every((g) => g.action === "roll");
+/* ── Verdict banner (additive) ───────────────────────────────────────────── */
+const VERDICT_LABEL: Record<NonNullable<FplTransferPlanHorizon["verdict"]>, string> = {
+  roll: "Roll it",
+  spend: "Make the move",
+  spend_forced_injury: "Injury: act now",
+};
+
+const VERDICT_TONE: Record<NonNullable<FplTransferPlanHorizon["verdict"]>, string> = {
+  roll: "border-border bg-muted/10 text-muted-foreground",
+  spend: "border-emerald-600/30 bg-emerald-600/[0.08] text-emerald-700",
+  spend_forced_injury: "border-destructive/30 bg-destructive/[0.08] text-destructive",
+};
+
+function VerdictBanner({ plan }: { plan: FplTransferPlanHorizon }) {
+  if (!plan.verdict) return null;
+  const showFt =
+    typeof plan.first_gw_ft_before === "number" && typeof plan.first_gw_ft_after === "number";
   return (
-    <div className="rounded-lg border bg-card p-3 space-y-2">
+    <div
+      data-testid="plan-verdict-banner"
+      className={`rounded-lg border p-3 flex flex-col gap-1 ${VERDICT_TONE[plan.verdict]}`}
+    >
       <div className="flex items-center gap-2">
-        <CalendarClock className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-semibold">Multi-GW plan (1 FT/GW, roll or bank)</span>
-        {typeof plan.total_net_gain === "number" && (
-          <span className="ml-auto text-xs">
-            Net over {plan.horizon_gws} GWs{" "}
-            <b className={plan.total_net_gain >= 0 ? "text-emerald-600" : "text-red-600"}>
-              {plan.total_net_gain >= 0 ? "+" : ""}{plan.total_net_gain.toFixed(1)} pts
-            </b>
+        <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider">
+          {VERDICT_LABEL[plan.verdict]}
+        </Badge>
+        {showFt && (
+          <span className="ml-auto text-xs text-muted-foreground">
+            FT {plan.first_gw_ft_before}→{plan.first_gw_ft_after}
           </span>
         )}
       </div>
-      {allRoll && (
-        <div className="text-[11px] text-muted-foreground">
-          No transfer clears the bar over this horizon — roll and bank the free transfers.
-        </div>
-      )}
-      {plan.plan.map((g) => (
-        <div key={g.gw} className="border-t pt-2">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="font-semibold w-12">GW{g.gw}</span>
-            <span className={`px-1.5 rounded text-[10px] ${g.action === "roll"
-              ? "bg-muted text-muted-foreground"
-              : g.hits > 0 ? "bg-orange-600/80 text-white" : "bg-emerald-600/80 text-white"}`}>
-              {g.action === "roll" ? "roll" : g.hits > 0 ? `transfer +${g.hits} hit` : "transfer"}
+      {plan.reasoning && <p className="text-xs leading-relaxed">{plan.reasoning}</p>}
+    </div>
+  );
+}
+
+/* ── Multi-GW roll/bank plan (additive) ───────────────────────────────────── */
+export function HorizonTransferPlan({ plan }: { plan?: FplTransferPlanHorizon }) {
+  const verdictBanner = plan?.verdict ? <VerdictBanner plan={plan} /> : null;
+  if (!plan?.plan?.length) return verdictBanner;
+  const allRoll = plan.plan.every((g) => g.action === "roll");
+  return (
+    <>
+      {verdictBanner}
+      <div className="rounded-lg border bg-card p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <CalendarClock className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-semibold">Multi-GW plan (1 FT/GW, roll or bank)</span>
+          {typeof plan.total_net_gain === "number" && (
+            <span className="ml-auto text-xs">
+              Net over {plan.horizon_gws} GWs{" "}
+              <b className={plan.total_net_gain >= 0 ? "text-emerald-600" : "text-red-600"}>
+                {plan.total_net_gain >= 0 ? "+" : ""}{plan.total_net_gain.toFixed(1)} pts
+              </b>
             </span>
-            <span className="text-muted-foreground">FT {g.free_transfers_before}→{g.free_transfers_after}</span>
-            {g.action === "transfer" && (
-              <span className={`ml-auto ${g.net_gain >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                net {g.net_gain >= 0 ? "+" : ""}{g.net_gain.toFixed(1)}
-                {g.hits > 0 && <span className="text-muted-foreground"> (−{g.hit_cost} hit)</span>}
-              </span>
-            )}
-          </div>
-          {g.action === "roll" ? (
-            <div className="text-[11px] text-muted-foreground mt-1">{g.note}</div>
-          ) : (
-            <ul className="text-[11px] mt-1 space-y-0.5">
-              {g.moves.map((m, i) => (
-                <li key={i} className="flex gap-1 flex-wrap">
-                  <span className="text-red-600">{m.sell.name}</span>
-                  <span className="text-muted-foreground">({m.sell.team} £{m.sell.price})</span>
-                  <span>→</span>
-                  <span className="text-emerald-700 font-medium">{m.buy.name}</span>
-                  <span className="text-muted-foreground">({m.buy.team} £{m.buy.price})</span>
-                  <span className="ml-auto text-emerald-600">+{m.score_gain.toFixed(1)}</span>
-                </li>
-              ))}
-            </ul>
           )}
         </div>
-      ))}
-    </div>
+        {allRoll && (
+          <div className="text-[11px] text-muted-foreground">
+            No transfer clears the bar over this horizon — roll and bank the free transfers.
+          </div>
+        )}
+        {plan.plan.map((g) => (
+          <div key={g.gw} className="border-t pt-2">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="font-semibold w-12">GW{g.gw}</span>
+              <span className={`px-1.5 rounded text-[10px] ${g.action === "roll"
+                ? "bg-muted text-muted-foreground"
+                : g.hits > 0 ? "bg-orange-600/80 text-white" : "bg-emerald-600/80 text-white"}`}>
+                {g.action === "roll" ? "roll" : g.hits > 0 ? `transfer +${g.hits} hit` : "transfer"}
+              </span>
+              <span className="text-muted-foreground">FT {g.free_transfers_before}→{g.free_transfers_after}</span>
+              {g.action === "transfer" && (
+                <span className={`ml-auto ${g.net_gain >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                  net {g.net_gain >= 0 ? "+" : ""}{g.net_gain.toFixed(1)}
+                  {g.hits > 0 && <span className="text-muted-foreground"> (−{g.hit_cost} hit)</span>}
+                </span>
+              )}
+            </div>
+            {g.action === "roll" ? (
+              <div className="text-[11px] text-muted-foreground mt-1">{g.note}</div>
+            ) : (
+              <ul className="text-[11px] mt-1 space-y-0.5">
+                {g.moves.map((m, i) => (
+                  <li key={i} className="flex gap-1 flex-wrap">
+                    <span className="text-red-600">{m.sell.name}</span>
+                    <span className="text-muted-foreground">({m.sell.team} £{m.sell.price})</span>
+                    <span>→</span>
+                    <span className="text-emerald-700 font-medium">{m.buy.name}</span>
+                    <span className="text-muted-foreground">({m.buy.team} £{m.buy.price})</span>
+                    <span className="ml-auto text-emerald-600">+{m.score_gain.toFixed(1)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 

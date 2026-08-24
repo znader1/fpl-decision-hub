@@ -140,6 +140,10 @@ export interface FplTransferPlanHorizon {
   total_net_gain?: number;
   final_bank?: number;
   plan?: FplTransferPlanGw[];
+  verdict?: "roll" | "spend" | "spend_forced_injury";
+  reasoning?: string;
+  first_gw_ft_before?: number;
+  first_gw_ft_after?: number;
 }
 
 export interface FplHotPlayer extends FplTransferPlayer {
