@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ArrowRightLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { JerseyIcon } from "./JerseyIcon";
@@ -7,6 +8,7 @@ import type { FplPosition, FplTransfersRecommendation } from "@/lib/fplAssistant
 
 interface TransferPlannerProps {
   transfers?: FplTransfersRecommendation;
+  planSlot?: ReactNode;
   isLoading?: boolean;
   targetGw?: number;
   playerNameById?: Record<number, string>;
@@ -113,6 +115,7 @@ const toDebugValue = (value: unknown) => {
 
 export const TransferPlanner = ({
   transfers,
+  planSlot,
   isLoading = false,
   targetGw,
   playerNameById,
@@ -345,6 +348,8 @@ export const TransferPlanner = ({
           </div>
         </div>
       )}
+
+      {planSlot}
 
       {hotRows.length > 0 && (
         <div className="space-y-2">

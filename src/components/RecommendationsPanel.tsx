@@ -294,8 +294,8 @@ function TransfersTab({
         onApplyNextTransfer={onApplyNextTransfer}
         onResetAppliedTransfers={onResetAppliedTransfers}
         onApplyTransferAtIndex={onApplyTransferAtIndex}
+        planSlot={<HorizonTransferPlan plan={recommendation.transfer_plan_horizon} />}
       />
-      <HorizonTransferPlan plan={recommendation.transfer_plan_horizon} />
     </div>
   );
 }
