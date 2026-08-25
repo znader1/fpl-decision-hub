@@ -277,6 +277,9 @@ export const TransferPlanner = ({
                       {sellName}
                     </p>
                     <p className="text-xs text-muted-foreground whitespace-nowrap">{sellMeta}</p>
+                    {move.sell.next_fixture && (
+                      <p className="text-[10px] text-muted-foreground/80 whitespace-nowrap">{move.sell.next_fixture}</p>
+                    )}
                   </div>
                 </div>
 
@@ -292,6 +295,9 @@ export const TransferPlanner = ({
                       {buyName}
                     </p>
                     <p className="text-xs text-muted-foreground whitespace-nowrap">{buyMeta}</p>
+                    {move.buy.next_fixture && (
+                      <p className="text-[10px] text-muted-foreground/80 whitespace-nowrap">{move.buy.next_fixture}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -368,6 +374,7 @@ export const TransferPlanner = ({
                         <p className="text-xs font-semibold text-foreground truncate">{player.name}</p>
                         <p className="text-[11px] text-muted-foreground">
                           {player.team} · {formatMoney(player.price)}
+                          {player.next_fixture ? ` · ${player.next_fixture}` : ""}
                         </p>
                       </div>
                       <div className="text-right shrink-0">

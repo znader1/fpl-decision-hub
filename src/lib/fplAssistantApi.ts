@@ -90,6 +90,8 @@ export interface FplTransferPlayer {
   name: string;
   team: string;
   price: number;
+  /** Next fixture for the target GW, e.g. "BOU (H)"; absent on a blank GW. */
+  next_fixture?: string;
 }
 
 export interface FplTransferMove {
