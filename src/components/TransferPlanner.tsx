@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ArrowRightLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { JerseyIcon } from "./JerseyIcon";
@@ -7,6 +8,7 @@ import type { FplPosition, FplTransfersRecommendation } from "@/lib/fplAssistant
 
 interface TransferPlannerProps {
   transfers?: FplTransfersRecommendation;
+  planSlot?: ReactNode;
   isLoading?: boolean;
   targetGw?: number;
   playerNameById?: Record<number, string>;
@@ -113,6 +115,7 @@ const toDebugValue = (value: unknown) => {
 
 export const TransferPlanner = ({
   transfers,
+  planSlot,
   isLoading = false,
   targetGw,
   playerNameById,
@@ -126,7 +129,9 @@ export const TransferPlanner = ({
 }: TransferPlannerProps) => {
   const moves = Array.isArray(transfers?.moves) ? transfers.moves : [];
   const transferPlan = transfers?.transfer_plan;
-  const transfersRecord = transfers as Record<string, unknown> | undefined;
+  // The API may carry fields the type doesn't declare (e.g. itb_m); going via
+  // unknown is the sound way to spell that deliberate widening.
+  const transfersRecord = transfers as unknown as Record<string, unknown> | undefined;
   const remainingItb = readPrice(transfers?.remaining_itb ?? transfersRecord?.itb_m);
   const movesUsed =
     typeof transferPlan?.transfer_count_built === "number"
@@ -245,8 +250,8 @@ export const TransferPlanner = ({
         {moves.map((move, idx) => (
           <div key={`${move.sell.id}-${move.buy.id}-${idx}`} className="rounded-lg border border-border p-3">
             {(() => {
-              const sellRow = move.sell as Record<string, unknown>;
-              const buyRow = move.buy as Record<string, unknown>;
+              const sellRow = move.sell as unknown as Record<string, unknown>;
+              const buyRow = move.buy as unknown as Record<string, unknown>;
               const sellName = readPlayerName(move.sell, move.sell.id, playerNameById);
               const buyName = readPlayerName(move.buy, move.buy.id, playerNameById);
               const sellTeam = readTeamShort(move.sell, move.sell.id, playerTeamById);
@@ -272,6 +277,9 @@ export const TransferPlanner = ({
                       {sellName}
                     </p>
                     <p className="text-xs text-muted-foreground whitespace-nowrap">{sellMeta}</p>
+                    {move.sell.next_fixture && (
+                      <p className="text-[10px] text-muted-foreground/80 whitespace-nowrap">{move.sell.next_fixture}</p>
+                    )}
                   </div>
                 </div>
 
@@ -287,6 +295,9 @@ export const TransferPlanner = ({
                       {buyName}
                     </p>
                     <p className="text-xs text-muted-foreground whitespace-nowrap">{buyMeta}</p>
+                    {move.buy.next_fixture && (
+                      <p className="text-[10px] text-muted-foreground/80 whitespace-nowrap">{move.buy.next_fixture}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -344,6 +355,8 @@ export const TransferPlanner = ({
         </div>
       )}
 
+      {planSlot}
+
       {hotRows.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Hot Targets</p>
@@ -361,6 +374,7 @@ export const TransferPlanner = ({
                         <p className="text-xs font-semibold text-foreground truncate">{player.name}</p>
                         <p className="text-[11px] text-muted-foreground">
                           {player.team} · {formatMoney(player.price)}
+                          {player.next_fixture ? ` · ${player.next_fixture}` : ""}
                         </p>
                       </div>
                       <div className="text-right shrink-0">

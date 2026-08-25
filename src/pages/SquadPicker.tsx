@@ -3,7 +3,7 @@
 // SQUAD_PICKER_MODE=1.
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ChevronDown, Info } from "lucide-react";
+import { ChevronDown, Info, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   buildSquad, getPlayers, optimizeLineup, getGkPairs,
@@ -49,6 +49,10 @@ const DEFAULTS: SquadBuildParams = {
   formation: "auto", fdr_strength: 1.0, home_away_strength: 1.0, xi_objective: "horizon",
 };
 
+/** A build result that may also carry the fields only /squad-picker/lineup returns. */
+type DraftResult = SquadBuildResult &
+  Partial<Omit<LineupResult, keyof SquadBuildResult>>;
+
 export default function SquadPicker() {
   // Draft survives reloads: hydrate once from localStorage, save on change below.
   const [storedDraft] = useState(() =>
@@ -66,7 +70,11 @@ export default function SquadPicker() {
   );
   // Last legal result drives the display; an illegal edit shows violations but
   // keeps the last valid squad/XI on screen until it's legal again.
-  const [lastGood, setLastGood] = useState<SquadBuildResult | null>(
+  // lineupMutation writes a LineupResult into this state while the build
+  // mutation writes a SquadBuildResult, so it holds a build result that may
+  // additionally carry the lineup-only fields. A plain union doesn't work
+  // (reading an optional field off a union requires it on every member).
+  const [lastGood, setLastGood] = useState<DraftResult | null>(
     () => storedDraft?.lastGood ?? null
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -197,7 +205,7 @@ export default function SquadPicker() {
         <div className="flex flex-wrap items-end gap-4">
           <Field label="Budget (£m)">
             <Input type="number" step={0.1} className="w-28" value={params.budget_m}
-              onChange={(e) => set("budget_m", Number(e.target.value))} />
+              onChange={(e) => set("budget_m", e.target.value === "" ? undefined : Number(e.target.value))} />
           </Field>
           <div className="space-y-1">
             <Label className="text-xs">Style</Label>
@@ -264,7 +272,7 @@ export default function SquadPicker() {
             <Field label="Horizon (GWs)"
               hint="How many upcoming gameweeks the draft optimizes for. Short (3) chases immediate fixtures; long (8) favours season-keepers.">
               <Input type="number" min={1} max={8} value={params.horizon_gws}
-                onChange={(e) => set("horizon_gws", Number(e.target.value))} />
+                onChange={(e) => set("horizon_gws", e.target.value === "" ? undefined : Number(e.target.value))} />
             </Field>
             <Field label="Objective"
               hint="wildcard = balanced multi-GW squad (default). free_hit = maximize next GW only. plain = raw projected points, no captaincy/premium structure bonuses.">
@@ -278,22 +286,22 @@ export default function SquadPicker() {
             <Field label="Max per team"
               hint="FPL allows at most 3 players from one club. Lower it to force more spread across teams.">
               <Input type="number" min={1} max={3} value={params.max_per_team}
-                onChange={(e) => set("max_per_team", Number(e.target.value))} />
+                onChange={(e) => set("max_per_team", e.target.value === "" ? undefined : Number(e.target.value))} />
             </Field>
             <Field label="Min chance of playing %"
               hint="Drops players the FPL medical flag rates below this. 75 = only fit or near-fit players.">
               <Input type="number" min={0} max={100} value={params.min_chance_of_playing}
-                onChange={(e) => set("min_chance_of_playing", Number(e.target.value))} />
+                onChange={(e) => set("min_chance_of_playing", e.target.value === "" ? undefined : Number(e.target.value))} />
             </Field>
             <Field label="Min minutes last season (outfield)"
               hint="Excludes fringe players below this many minutes (3420 = every minute). Styles set 600 (Balanced/Attacking) or 1200 (Safe). GKs exempt — a cheap backup keeper is fine.">
               <Input type="number" min={0} max={3420} step={30} value={params.min_minutes ?? 0}
-                onChange={(e) => set("min_minutes", Number(e.target.value))} />
+                onChange={(e) => set("min_minutes", e.target.value === "" ? undefined : Number(e.target.value))} />
             </Field>
             <Field label="Min FWD minutes"
               hint="Stricter minutes floor for forwards only, on top of the general one. Use if you want only nailed strikers.">
               <Input type="number" value={params.min_fwd_minutes}
-                onChange={(e) => set("min_fwd_minutes", Number(e.target.value))} />
+                onChange={(e) => set("min_fwd_minutes", e.target.value === "" ? undefined : Number(e.target.value))} />
             </Field>
             <Field label="Max player £m (blank=off)"
               hint="Caps any single player's price — forces a spread squad with no premiums.">
@@ -325,22 +333,22 @@ export default function SquadPicker() {
             <Field label="Blend weight (xg share)"
               hint="0 = trust last season's points fully; 1 = trust underlying xG fully. Push up if you believe stats over reputation.">
               <Input type="number" step={0.05} min={0} max={1} value={params.blend_weight}
-                onChange={(e) => set("blend_weight", Number(e.target.value))} />
+                onChange={(e) => set("blend_weight", e.target.value === "" ? undefined : Number(e.target.value))} />
             </Field>
             <Field label="Minutes prior K"
               hint="Shrinks part-timers' per-game numbers toward zero: a player's ppg is scaled by minutes/(minutes+K). Higher K punishes small samples harder.">
               <Input type="number" value={params.minutes_prior_k}
-                onChange={(e) => set("minutes_prior_k", Number(e.target.value))} />
+                onChange={(e) => set("minutes_prior_k", e.target.value === "" ? undefined : Number(e.target.value))} />
             </Field>
             <Field label="FDR strength"
               hint="How hard fixture difficulty swings projections. 1 = normal, 2 = fixtures matter double, 0 = ignore fixtures.">
               <Input type="number" step={0.1} min={0} max={3} value={params.fdr_strength}
-                onChange={(e) => set("fdr_strength", Number(e.target.value))} />
+                onChange={(e) => set("fdr_strength", e.target.value === "" ? undefined : Number(e.target.value))} />
             </Field>
             <Field label="Home/away strength"
               hint="Scales the home boost / away penalty. Raise it to prefer players with home-heavy fixture runs.">
               <Input type="number" step={0.1} min={0} max={4} value={params.home_away_strength}
-                onChange={(e) => set("home_away_strength", Number(e.target.value))} />
+                onChange={(e) => set("home_away_strength", e.target.value === "" ? undefined : Number(e.target.value))} />
             </Field>
           </div>
         </div>
@@ -365,6 +373,35 @@ export default function SquadPicker() {
         <Card className="p-4 text-sm text-muted-foreground">
           Pick a style and press <b>⚡ Draft my squad</b> — you'll get a full 15
           with captain, bench and projected points, ready to tweak.
+        </Card>
+      )}
+
+      {/* The first draft is optimizer-bound and slow; without this everything
+          below the form vanished while it ran, leaving only the button label
+          as feedback. */}
+      {mutation.isPending && !res && (
+        <Card className="p-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Drafting your squad — optimising 15 picks across your fixture horizon…
+          </div>
+          <div className="mt-4 space-y-2" aria-hidden="true">
+            <div className="h-24 rounded-md bg-muted/50 animate-pulse" />
+            <div className="h-4 w-2/3 rounded bg-muted/50 animate-pulse" />
+            <div className="h-4 w-1/2 rounded bg-muted/50 animate-pulse" />
+          </div>
+        </Card>
+      )}
+
+      {/* These three failed silently: an empty swap table, an XI that quietly
+          stopped re-optimising, and a "Find pairs" button that just went idle. */}
+      {(poolQuery.isError || lineupMutation.isError || gkPairsMutation.isError) && (
+        <Card className="p-4 border-destructive">
+          <p className="text-sm text-destructive">
+            {poolQuery.error?.message ??
+              lineupMutation.error?.message ??
+              gkPairsMutation.error?.message}
+          </p>
         </Card>
       )}
 

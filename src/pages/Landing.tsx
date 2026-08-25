@@ -174,7 +174,7 @@ export default function Landing() {
               return (
                 <div
                   key={f.title}
-                  className="rounded-2xl border border-white/8 bg-white/4 p-6 hover:bg-white/7 hover:border-white/14 transition-all duration-200 group"
+                  className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 hover:bg-white/[0.07] hover:border-white/[0.14] transition-all duration-200 group"
                 >
                   <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${f.bg} mb-4`}>
                     <Icon className={`h-5 w-5 ${f.color}`} />
@@ -189,7 +189,7 @@ export default function Landing() {
       </section>
 
       {/* ── Pitch preview strip ── */}
-      <section className="py-16 px-4 sm:px-6 bg-white/3 border-y border-white/8">
+      <section className="py-16 px-4 sm:px-6 bg-white/[0.03] border-y border-white/[0.08]">
         <div className="mx-auto max-w-6xl flex flex-col md:flex-row items-center gap-10">
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold uppercase tracking-widest text-accent mb-3">
@@ -283,7 +283,7 @@ export default function Landing() {
 
 
       {/* ── CTA ── */}
-      <section className="py-24 px-4 sm:px-6 bg-white/3 border-t border-white/8">
+      <section className="py-24 px-4 sm:px-6 bg-white/[0.03] border-t border-white/[0.08]">
         <div className="mx-auto max-w-2xl text-center">
           <Trophy className="h-10 w-10 text-primary mx-auto mb-5 opacity-80" />
           <h2 className="text-3xl sm:text-4xl font-black mb-4">
@@ -306,7 +306,7 @@ export default function Landing() {
       </section>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-white/8 py-8 px-4 sm:px-6">
+      <footer className="border-t border-white/[0.08] py-8 px-4 sm:px-6">
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-white/30">
           <div className="flex items-center gap-2 font-bold text-white/60">
             <span className="flex h-6 w-6 items-center justify-center rounded bg-primary text-[10px] font-black text-white">

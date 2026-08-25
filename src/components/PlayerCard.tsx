@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { JerseyIcon } from "./JerseyIcon";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import type { FplPlayerAlert, FplPlayerScoreBreakdown } from "@/lib/fplAssistantApi";
@@ -79,6 +80,7 @@ const getObjectiveLabel = (objectiveScoreCol?: string | null) => {
 };
 
 export const PlayerCard = ({ player }: PlayerCardProps) => {
+  const [open, setOpen] = useState(false);
   const fixture = player.fixture;
   const alerts = Array.isArray(player.alerts) ? player.alerts.filter((item) => item.text) : [];
   const hasLivePoints = player.isLiveGw && typeof player.livePoints === "number" && Number.isFinite(player.livePoints);
@@ -108,9 +110,25 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
     : undefined;
 
   return (
-    <HoverCard openDelay={120}>
+    // Controlled so a tap can open it: HoverCard only responds to pointer
+    // hover, which touch devices never fire, leaving the whole score
+    // breakdown unreachable on a phone despite the cursor-pointer affordance.
+    <HoverCard openDelay={120} open={open} onOpenChange={setOpen}>
       <HoverCardTrigger asChild>
-        <div className="flex flex-col items-center gap-1 group cursor-pointer">
+        <div
+          className="flex flex-col items-center gap-1 group cursor-pointer"
+          role="button"
+          tabIndex={0}
+          aria-expanded={open}
+          aria-label={`${player.name} — score breakdown`}
+          onClick={() => setOpen((prev) => !prev)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setOpen((prev) => !prev);
+            }
+          }}
+        >
           <div className="relative transition-transform group-hover:scale-110">
             <JerseyIcon
               team={player.team}
@@ -129,11 +147,14 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
               </div>
             )}
           </div>
-          <div className="bg-card/95 backdrop-blur-sm rounded-md px-2 py-1 text-center shadow-sm border border-border min-w-[80px]">
-            <p className="text-xs font-bold text-foreground truncate">{player.name}</p>
+          {/* Width is responsive because the pitch clips: a five-defender row
+              needs 5 cards plus 4 gaps to fit ~343px of usable width on a
+              375px viewport, so 80px cards cut the outermost players in half. */}
+          <div className="bg-card/95 backdrop-blur-sm rounded-md px-1 sm:px-2 py-1 text-center shadow-sm border border-border w-[58px] sm:w-auto sm:min-w-[80px] max-w-full">
+            <p className="text-[10px] sm:text-xs font-bold text-foreground truncate">{player.name}</p>
             {fixtureShort && (
               <span
-                className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-medium max-w-[92px] truncate ${getDifficultyClass(fixtureDifficulty)}`}
+                className={`inline-block px-1 sm:px-1.5 py-0.5 rounded-full text-[9px] font-medium max-w-full truncate ${getDifficultyClass(fixtureDifficulty)}`}
                 title={fixtureDifficulty ? `FDR ${fixtureDifficulty}` : undefined}
               >
                 {fixtureShort}

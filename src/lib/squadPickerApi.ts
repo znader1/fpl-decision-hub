@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 // Squad-picker client (POST /squad-picker/build, GET/POST /squad-picker/knowledge,
 // …). The backend mounts these routes only when SQUAD_PICKER_MODE=1 — required
 // in production too (Fly secret), not just dev.
@@ -88,7 +89,7 @@ export function squadPickerEnabled(): boolean {
 }
 
 export async function buildSquad(params: SquadBuildParams): Promise<SquadBuildResult> {
-  const res = await fetch(`${apiBase()}/squad-picker/build`, {
+  const res = await authFetch(`${apiBase()}/squad-picker/build`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params ?? {}),
@@ -102,13 +103,13 @@ export async function buildSquad(params: SquadBuildParams): Promise<SquadBuildRe
 }
 
 export async function getKnowledge(): Promise<KnowledgeGrid> {
-  const res = await fetch(`${apiBase()}/squad-picker/knowledge`);
+  const res = await authFetch(`${apiBase()}/squad-picker/knowledge`);
   if (!res.ok) throw new Error(`Knowledge fetch failed: HTTP ${res.status}`);
   return (await res.json()) as KnowledgeGrid;
 }
 
 export async function saveKnowledge(grid: KnowledgeGrid): Promise<KnowledgeGrid> {
-  const res = await fetch(`${apiBase()}/squad-picker/knowledge`, {
+  const res = await authFetch(`${apiBase()}/squad-picker/knowledge`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(grid),
@@ -167,7 +168,7 @@ export type LineupResult = SquadBuildResult & {
 };
 
 export async function getPlayers(params: SquadBuildParams): Promise<PlayerPool> {
-  const res = await fetch(`${apiBase()}/squad-picker/players`, {
+  const res = await authFetch(`${apiBase()}/squad-picker/players`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params ?? {}),
@@ -178,7 +179,7 @@ export async function getPlayers(params: SquadBuildParams): Promise<PlayerPool> 
 
 export async function optimizeLineup(
   playerIds: number[], params: SquadBuildParams): Promise<LineupResult> {
-  const res = await fetch(`${apiBase()}/squad-picker/lineup`, {
+  const res = await authFetch(`${apiBase()}/squad-picker/lineup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ player_ids: playerIds, params: params ?? {} }),
@@ -201,7 +202,7 @@ export interface GkPair {
 export async function getGkPairs(
   params: SquadBuildParams & { gk_pair_min_minutes?: number; gk_pair_budget?: number },
 ): Promise<{ pairs: GkPair[] }> {
-  const res = await fetch(`${apiBase()}/squad-picker/gk-pairs`, {
+  const res = await authFetch(`${apiBase()}/squad-picker/gk-pairs`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params ?? {}),
@@ -248,7 +249,7 @@ export interface TransferPlan {
 
 export async function getTransferPlan(
   playerIds: number[], params: SquadBuildParams): Promise<TransferPlan> {
-  const res = await fetch(`${apiBase()}/squad-picker/transfer-plan`, {
+  const res = await authFetch(`${apiBase()}/squad-picker/transfer-plan`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ player_ids: playerIds, params: params ?? {} }),
@@ -272,13 +273,13 @@ export interface PlayerKnowledge {
 }
 
 export async function getPlayerKnowledge(): Promise<PlayerKnowledge> {
-  const res = await fetch(`${apiBase()}/squad-picker/player-knowledge`);
+  const res = await authFetch(`${apiBase()}/squad-picker/player-knowledge`);
   if (!res.ok) throw new Error(`Player knowledge fetch failed: HTTP ${res.status}`);
   return (await res.json()) as PlayerKnowledge;
 }
 
 export async function savePlayerKnowledge(pk: PlayerKnowledge): Promise<PlayerKnowledge> {
-  const res = await fetch(`${apiBase()}/squad-picker/player-knowledge`, {
+  const res = await authFetch(`${apiBase()}/squad-picker/player-knowledge`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(pk),
@@ -309,7 +310,7 @@ export interface TeamNews {
 }
 
 export async function getTeamNews(params: SquadBuildParams = {}): Promise<TeamNews> {
-  const res = await fetch(`${apiBase()}/squad-picker/team-news`, {
+  const res = await authFetch(`${apiBase()}/squad-picker/team-news`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params ?? {}),
@@ -319,7 +320,7 @@ export async function getTeamNews(params: SquadBuildParams = {}): Promise<TeamNe
 }
 
 export async function digestNews(params: Record<string, unknown> = {}): Promise<DigestResult> {
-  const res = await fetch(`${apiBase()}/squad-picker/digest-news`, {
+  const res = await authFetch(`${apiBase()}/squad-picker/digest-news`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),

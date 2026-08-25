@@ -158,6 +158,13 @@ export const ParameterForm = (props: ParameterFormProps) => {
           className="w-full bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 font-bold shadow-md"
           onClick={onRecommend}
           disabled={recommendDisabled}
+          title={
+            isLiveGw
+              ? "The gameweek is in progress — switch to a future GW to plan transfers."
+              : !Number.isFinite(entryId) || entryId <= 0
+                ? "Enter your FPL team ID first."
+                : undefined
+          }
         >
           <Zap className="h-4 w-4 mr-2" />
           {isRecommending ? "Computing…" : chipActive ? "Build Chip Draft" : "Recommend Squad"}

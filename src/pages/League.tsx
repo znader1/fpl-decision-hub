@@ -152,6 +152,7 @@ const League = () => {
             <form onSubmit={submitEntry} className="flex gap-2">
               <input
                 type="number"
+                aria-label="FPL team ID"
                 value={entryInput}
                 onChange={(e) => setEntryInput(e.target.value)}
                 placeholder="e.g. 588004"
@@ -167,7 +168,25 @@ const League = () => {
             <Card className="p-6 mb-6">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-semibold">Your leagues</h2>
-                <Badge variant="secondary" className="text-xs">Entry #{entryId}</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-xs">Entry #{entryId}</Badge>
+                  {/* The form above only renders when no ID is stored, so a
+                      typo previously stranded the user on a failing fetch with
+                      no way to correct it short of clearing localStorage. */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEntryInput(String(entryId));
+                      setEntryId(0);
+                      setSelectedLeagueId(null);
+                      setStrategy(null);
+                      localStorage.removeItem("fpl_entry_id");
+                    }}
+                    className="text-xs text-primary underline hover:text-primary/80"
+                  >
+                    Change
+                  </button>
+                </div>
               </div>
               {leaguesLoading && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -176,6 +195,14 @@ const League = () => {
               )}
               {leaguesError && (
                 <p className="text-sm text-destructive">{leaguesError}</p>
+              )}
+              {/* Without this the card rendered as a bare heading, leaving no
+                  way to tell "no leagues" apart from a silent failure. */}
+              {!leaguesLoading && !leaguesError && leagues.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No classic leagues found for this team ID. Join a mini-league in the
+                  FPL app, or use Change above if the ID is wrong.
+                </p>
               )}
               {!leaguesLoading && !leaguesError && leagues.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

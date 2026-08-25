@@ -512,7 +512,20 @@ const Index = () => {
           <ParameterSidebar {...parameterProps} />
         </div>
       ) : (
-        <MobileParameterDrawer {...parameterProps} />
+        <>
+          <MobileParameterDrawer {...parameterProps} />
+          {/* The drawer closes before the request resolves, and the only other
+              place this renders is inside it — so on a phone a failed
+              recommendation produced no feedback at all. */}
+          {recommendErrorMessage && (
+            <div
+              role="alert"
+              className="lg:hidden mx-3 mt-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive break-words"
+            >
+              {recommendErrorMessage}
+            </div>
+          )}
+        </>
       )}
       {/* entryId <= 0 falls through to the pitch so the onboarding overlay stays
           reachable during pre-season — otherwise first-run signups in the launch

@@ -36,13 +36,14 @@ export const GameweekNav = ({
   const stateLabel = isLiveGw ? "Live" : "Planning";
   const stateDotClass = isLiveGw ? "bg-rose-500 animate-pulse" : "bg-emerald-500";
   return (
-    <div className="flex items-center gap-3 mb-5 bg-card border border-border rounded-xl px-4 py-2.5">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-5 bg-card border border-border rounded-xl px-4 py-2.5">
       {/* GW navigation */}
       <div className="flex items-center gap-1.5 shrink-0">
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+          className="h-9 w-9 text-muted-foreground hover:text-foreground"
+          aria-label="Previous gameweek"
           onClick={onPrev}
           disabled={!navEnabled || currentGW <= 1}
         >
@@ -75,7 +76,8 @@ export const GameweekNav = ({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+          className="h-9 w-9 text-muted-foreground hover:text-foreground"
+          aria-label="Next gameweek"
           onClick={onNext}
           disabled={!navEnabled || currentGW >= totalGW}
         >

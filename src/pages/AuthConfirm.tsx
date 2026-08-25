@@ -44,7 +44,7 @@ export default function AuthConfirm() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="dark min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4 p-8 max-w-md">
           <p className="text-lg font-semibold text-foreground">Confirmation failed</p>
           <p className="text-sm text-destructive">{error}</p>
@@ -57,7 +57,7 @@ export default function AuthConfirm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="dark min-h-screen flex items-center justify-center bg-background">
       <div className="text-center space-y-2">
         <p className="text-foreground font-medium">Confirming your account…</p>
         <p className="text-muted-foreground text-sm">You'll be redirected shortly.</p>

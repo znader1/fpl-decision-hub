@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 export type FplPosition = "GKP" | "DEF" | "MID" | "FWD";
 
 export interface FplTeamRecommendationPlayer {
@@ -89,6 +90,8 @@ export interface FplTransferPlayer {
   name: string;
   team: string;
   price: number;
+  /** Next fixture for the target GW, e.g. "BOU (H)"; absent on a blank GW. */
+  next_fixture?: string;
 }
 
 export interface FplTransferMove {
@@ -139,6 +142,10 @@ export interface FplTransferPlanHorizon {
   total_net_gain?: number;
   final_bank?: number;
   plan?: FplTransferPlanGw[];
+  verdict?: "roll" | "spend" | "spend_forced_injury";
+  reasoning?: string;
+  first_gw_ft_before?: number;
+  first_gw_ft_after?: number;
 }
 
 export interface FplHotPlayer extends FplTransferPlayer {
@@ -818,8 +825,14 @@ const resolveTemplateWithApiBase = (template: string | undefined): string | unde
   }
 };
 
+// Defaults to the backend's own route so the app works with only
+// VITE_FPL_API_BASE_URL set — .env.production defines the base and nothing
+// else, and without a default this resolved to undefined, which used to mean
+// "silently serve the demo squad".
 export const getSquadUrlTemplate = (): string | undefined =>
-  resolveTemplateWithApiBase(getEnvString("VITE_FPL_SQUAD_URL"));
+  resolveTemplateWithApiBase(
+    getEnvString("VITE_FPL_SQUAD_URL") ?? "/squad?entry_id={entry_id}&event_id={event_id}",
+  );
 
 export const getFixturesUrlTemplate = (): string | undefined =>
   resolveTemplateWithApiBase(getEnvString("VITE_FPL_FIXTURES_URL"));
@@ -849,13 +862,17 @@ const parseJsonMaybe = (raw: unknown): unknown => {
   }
 };
 
+// The diagnostic detail (CORS setup, mixed content, env vars) is for whoever is
+// running the app, not the person using it — log it and show a short message.
 const formatNetworkHint = (url: string) => {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const protocol = typeof window !== "undefined" ? window.location.protocol : "";
   const isMixedContent = protocol === "https:" && url.startsWith("http://");
-  return isMixedContent
-    ? "Your page is HTTPS but the API URL is HTTP (mixed-content is blocked). Use HTTPS for the API or run the frontend over HTTP."
-    : `If this URL works in a tab but fails in fetch, it's usually CORS. Option A: allow Origin ${origin || "<your-frontend-origin>"} in FastAPI CORSMiddleware. Option B (Vite dev): use relative URLs like /squad and /recommendations with a Vite proxy. Option C (production): set VITE_FPL_API_BASE_URL and keep relative templates.`;
+  const diagnostic = isMixedContent
+    ? `Mixed content: the page is HTTPS but the API URL (${url}) is HTTP. Serve the API over HTTPS.`
+    : `Request to ${url} failed before a response. Usually CORS: allow Origin ${origin || "<your-frontend-origin>"} in FPL_API_CORS_ORIGINS, or check VITE_FPL_API_BASE_URL.`;
+  if (typeof console !== "undefined") console.warn(diagnostic);
+  return "Couldn't reach the server. Check your connection and try again.";
 };
 
 const parseJsonResponse = async (response: Response, url: string, endpointLabel: string): Promise<unknown> => {
@@ -908,12 +925,20 @@ const normalizeTeamFixture = (value: FixtureRecord): FplTeamFixture => {
 
 export const fetchSquad = async (params: SquadParams, signal?: AbortSignal): Promise<FplSquad> => {
   const template = getSquadUrlTemplate();
-  if (!template) return SAMPLE_SQUAD;
+  // Returning SAMPLE_SQUAD here used to make a misconfigured deployment look
+  // like a working one: this function also validates the entry ID during
+  // onboarding, so any ID was accepted and demo players rendered as the
+  // user's real squad. Fail loudly instead.
+  if (!template) {
+    throw new Error(
+      "The app is not configured to reach the FPL API (VITE_FPL_SQUAD_URL is unset).",
+    );
+  }
 
   const url = interpolateSquadUrl(template, params);
   let response: Response;
   try {
-    response = await fetch(url, { signal });
+    response = await authFetch(url, { signal });
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     if (typeof err === "object" && err !== null && "name" in err && err.name === "AbortError") throw err;
@@ -950,7 +975,7 @@ export const fetchFixtures = async (params: FixturesParams, signal?: AbortSignal
   const url = interpolateFixturesUrl(template, params);
   let response: Response;
   try {
-    response = await fetch(url, { signal });
+    response = await authFetch(url, { signal });
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     if (typeof err === "object" && err !== null && "name" in err && err.name === "AbortError") throw err;
@@ -992,15 +1017,17 @@ export const fetchFixtures = async (params: FixturesParams, signal?: AbortSignal
 
 export const fetchNextEvent = async (signal?: AbortSignal): Promise<FplNextEventSummary> => {
   const template = getNextEventUrlTemplate();
+  // Same reasoning as fetchSquad: a demo gameweek number silently standing in
+  // for the real one is worse than an explicit configuration error.
   if (!template) {
-    return {
-      event_id: SAMPLE_SQUAD.event_id,
-    };
+    throw new Error(
+      "The app is not configured to reach the FPL API (VITE_FPL_API_BASE_URL is unset).",
+    );
   }
 
   let response: Response;
   try {
-    response = await fetch(template, { signal });
+    response = await authFetch(template, { signal });
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     if (typeof err === "object" && err !== null && "name" in err && err.name === "AbortError") throw err;
@@ -1040,7 +1067,7 @@ export const fetchTeamRecommendation = async (
   const url = interpolateTeamRecommendationUrl(template, params);
   let response: Response;
   try {
-    response = await fetch(url, { signal });
+    response = await authFetch(url, { signal });
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     if (typeof err === "object" && err !== null && "name" in err && err.name === "AbortError") throw err;
@@ -1096,7 +1123,7 @@ export const fetchExplanation = async (
 ): Promise<ExplainResponse> => {
   const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
   const url = apiBase ? new URL("/explain", apiBase).toString() : "/explain";
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ recommendations }),
@@ -1130,7 +1157,7 @@ export const fetchChatAnswer = async (
 ): Promise<ChatResponse> => {
   const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
   const url = apiBase ? new URL("/chat", apiBase).toString() : "/chat";
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
@@ -1161,7 +1188,7 @@ export const fetchSpecialistAnswer = async (
   const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
   const path = `/chat/${specialist}`;
   const url = apiBase ? new URL(path, apiBase).toString() : path;
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
@@ -1191,7 +1218,7 @@ export const fetchUserLeagues = async (
   const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
   const path = `/league/list?entry_id=${encodeURIComponent(entryId)}`;
   const url = apiBase ? new URL(path, apiBase).toString() : path;
-  const response = await fetch(url, { signal });
+  const response = await authFetch(url, { signal });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     throw new Error(`Failed to fetch leagues (${response.status}): ${body.slice(0, 200)}`);
@@ -1277,7 +1304,7 @@ export const fetchLeagueStrategy = async (
 ): Promise<LeagueStrategyResponse> => {
   const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
   const url = apiBase ? new URL("/league/strategy", apiBase).toString() : "/league/strategy";
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
@@ -1348,7 +1375,7 @@ export const fetchFixtureDifficulty = async (
   if (params.horizon_gws) search.set("horizon_gws", String(params.horizon_gws));
   const path = `/fixtures/difficulty${search.size ? `?${search.toString()}` : ""}`;
   const url = apiBase ? new URL(path, apiBase).toString() : path;
-  const response = await fetch(url, { signal });
+  const response = await authFetch(url, { signal });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     throw new Error(`Failed to fetch fixture difficulty (${response.status}): ${body.slice(0, 200)}`);
@@ -1421,7 +1448,7 @@ export const optimizeSquad = async (
   signal?: AbortSignal
 ): Promise<OptimizeSquadResponse> => {
   const url = getOptimizeUrlTemplate() ?? "/squad/optimize";
-  const response = await fetch(url, {
+  const response = await authFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
