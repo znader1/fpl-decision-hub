@@ -550,8 +550,18 @@ export const RecommendationsPanel = ({
 
   const moveCount = recommendation?.transfers?.moves?.length ?? 0;
 
+  // With nothing to show, this panel reserved 440px on a 1512px screen to
+  // display one sentence of placeholder text — squeezing the pitch for no
+  // return. Narrow it until it has real content; the tab bar stays so the
+  // panel doesn't vanish and reappear.
+  const hasContent = Boolean(recommendation) || Boolean(isRecommending);
+
   return (
-    <aside className="w-full lg:w-[380px] xl:w-[440px] shrink-0 bg-card border-t lg:border-t-0 lg:border-l border-border flex flex-col">
+    <aside
+      className={`w-full shrink-0 bg-card border-t lg:border-t-0 lg:border-l border-border flex flex-col transition-[width] duration-200 ${
+        hasContent ? "lg:w-[380px] xl:w-[440px]" : "lg:w-[248px] xl:w-[280px]"
+      }`}
+    >
       {/* Tab bar */}
       <div className="flex border-b border-border shrink-0">
         {tabs.map((tab) => {

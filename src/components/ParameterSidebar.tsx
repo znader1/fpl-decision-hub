@@ -44,7 +44,8 @@ export const ParameterSidebar = (props: ParameterSidebarProps) => {
   } = props;
   const [collapsed, setCollapsed] = useState(false);
 
-  const recommendDisabled = !canRecommend || !Number.isFinite(entryId) || entryId <= 0 || isRecommending || isLiveGw;
+  // A live GW no longer blocks the action — the handler plans the next GW instead.
+  const recommendDisabled = !canRecommend || !Number.isFinite(entryId) || entryId <= 0 || isRecommending;
   const chipActive = chipStrategy === "wildcard" || chipStrategy === "free_hit";
   const effectiveHorizonLabel = chipStrategy === "free_hit" ? "1 GW (Free Hit)" : `${horizonGws} GWs`;
   const chipLabel = chipActive

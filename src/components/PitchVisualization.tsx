@@ -249,49 +249,10 @@ export const PitchVisualization = ({
     <div className="flex-1 min-w-0 p-2 sm:p-4 lg:overflow-y-auto">
       <div className="w-full max-w-3xl mx-auto">
 
-        {/* Squad / AI Pick tab bar + optional header action (e.g. Optimize my squad) */}
-        {(onPitchModeChange || headerAction) && (
-          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-          {onPitchModeChange ? (
-          <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 w-fit">
-            <button
-              onClick={() => onPitchModeChange("squad")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                pitchMode === "squad"
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Squad
-            </button>
-            <button
-              onClick={() => hasRecommendation && onPitchModeChange("recommendation")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                pitchMode === "recommendation"
-                  ? "bg-primary text-white shadow-sm"
-                  : hasRecommendation
-                  ? "text-muted-foreground hover:text-foreground"
-                  : "text-muted-foreground/30 cursor-not-allowed"
-              }`}
-            >
-              ZN Pick
-              {!hasRecommendation && (
-                <span className="ml-1.5 text-[10px] font-normal opacity-60">run first</span>
-              )}
-            </button>
-            {chipInfo?.is_active && chipName && (
-              <span className="ml-2 px-2 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-semibold">
-                {chipName}
-              </span>
-            )}
-          </div>
-          ) : (
-            <div />
-          )}
-          {headerAction}
-          </div>
-        )}
-
+        {/* Squad / ZN Pick toggle. Rendered inside the gameweek bar rather than
+            above it: two stacked control strips cost ~60px of vertical space,
+            which is the difference between the bench being on screen or not on
+            a 14" laptop. */}
         {errorMessage && (
           <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             <p>Failed to load from backend. Showing last loaded data.</p>
@@ -306,6 +267,41 @@ export const PitchVisualization = ({
         )}
 
         <GameweekNav
+          leading={
+            onPitchModeChange ? (
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => onPitchModeChange("squad")}
+                  className={`px-3 py-1 rounded-lg text-sm font-semibold transition-all ${
+                    pitchMode === "squad"
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Squad
+                </button>
+                <button
+                  onClick={() => hasRecommendation && onPitchModeChange("recommendation")}
+                  disabled={!hasRecommendation}
+                  className={`px-3 py-1 rounded-lg text-sm font-semibold transition-all ${
+                    pitchMode === "recommendation"
+                      ? "bg-primary text-white shadow-sm"
+                      : hasRecommendation
+                        ? "text-muted-foreground hover:text-foreground"
+                        : "text-muted-foreground/30 cursor-not-allowed"
+                  }`}
+                >
+                  ZN Pick
+                </button>
+                {chipInfo?.is_active && chipName && (
+                  <span className="ml-1 px-2 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-semibold">
+                    {chipName}
+                  </span>
+                )}
+              </div>
+            ) : undefined
+          }
+          action={headerAction}
           currentGW={requestedGw}
           totalGW={38}
           points={displayedPoints}
@@ -319,20 +315,44 @@ export const PitchVisualization = ({
           updatedAt={updatedAt}
         />
 
+        {/* Pitch height follows the viewport instead of a fixed 600px. On a 14"
+            laptop the fixed height pushed the bench below the fold; on a large
+            monitor it left the pitch stranded at 600px with dead space around
+            it. The clamp keeps it playable at both ends. */}
         <div
-          className="relative rounded-2xl overflow-hidden px-2 py-6 sm:px-4 sm:py-8 min-h-[480px] sm:min-h-[600px]"
+          className="relative rounded-2xl overflow-hidden px-2 py-5 sm:px-4 sm:py-6
+                     min-h-[clamp(400px,52vh,640px)] flex flex-col justify-between"
           style={{
-            background: `linear-gradient(180deg,
-              hsl(var(--pitch)) 0%,
-              hsl(var(--pitch-dark)) 25%,
-              hsl(var(--pitch)) 25.5%,
-              hsl(var(--pitch-dark)) 50%,
-              hsl(var(--pitch)) 50.5%,
-              hsl(var(--pitch-dark)) 75%,
-              hsl(var(--pitch)) 75.5%,
-              hsl(var(--pitch-dark)) 100%)`,
+            // Mown stripes: eight bands rather than four, and a horizontal
+            // lighting gradient over the top so it reads as turf under
+            // floodlights rather than a flat CSS gradient.
+            backgroundImage: `linear-gradient(90deg,
+                hsl(0 0% 0% / 0.18) 0%,
+                hsl(0 0% 0% / 0) 25%,
+                hsl(0 0% 100% / 0.04) 50%,
+                hsl(0 0% 0% / 0) 75%,
+                hsl(0 0% 0% / 0.18) 100%),
+              repeating-linear-gradient(180deg,
+                hsl(var(--pitch)) 0,
+                hsl(var(--pitch)) 12.5%,
+                hsl(var(--pitch-dark)) 12.5%,
+                hsl(var(--pitch-dark)) 25%)`,
           }}
         >
+          {/* Pitch markings. Purely decorative, so hidden from assistive tech
+              and pinned behind the players. */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
+            {/* Touchlines */}
+            <div className="absolute inset-2 sm:inset-3 rounded-lg border-2 border-white/15" />
+            {/* Penalty area + six-yard box, top and bottom */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-2 sm:top-3 h-[16%] w-[58%] border-2 border-t-0 border-white/15 rounded-b-sm" />
+            <div className="absolute left-1/2 -translate-x-1/2 top-2 sm:top-3 h-[7%] w-[30%] border-2 border-t-0 border-white/15 rounded-b-sm" />
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-2 sm:bottom-3 h-[16%] w-[58%] border-2 border-b-0 border-white/15 rounded-t-sm" />
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-2 sm:bottom-3 h-[7%] w-[30%] border-2 border-b-0 border-white/15 rounded-t-sm" />
+            {/* Penalty spots */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-[13%] h-1 w-1 rounded-full bg-white/25" />
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-[13%] h-1 w-1 rounded-full bg-white/25" />
+          </div>
           {/* Entry ID prompt overlay — shown when no valid ID is set */}
           {onEntryIdSubmit && (!entryId || entryId <= 0) && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm rounded-2xl">
@@ -390,23 +410,15 @@ export const PitchVisualization = ({
             </div>
           )}
 
-          {/* Center circle */}
-          <div
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 opacity-20"
-            style={{
-              width: "120px",
-              height: "120px",
-              borderColor: "hsl(0 0% 100%)",
-            }}
-          />
-          {/* Center line */}
-          <div
-            className="absolute left-0 right-0 top-1/2 h-[2px] opacity-15"
-            style={{ background: "hsl(0 0% 100%)" }}
-          />
+          {/* Centre circle, spot and halfway line */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
+            <div className="absolute left-2 right-2 sm:left-3 sm:right-3 top-1/2 h-[2px] bg-white/15" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[18%] aspect-square rounded-full border-2 border-white/15" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-white/25" />
+          </div>
 
           {!hasTeam ? (
-            <div className="relative z-10 flex flex-col items-center gap-10 py-4">
+            <div className="relative z-10 flex flex-1 flex-col items-center justify-between py-4">
               {[1, 4, 4, 2].map((count, row) => (
                 <div key={row} className="flex justify-center gap-4">
                   {Array.from({ length: count }).map((_, i) => (
@@ -418,7 +430,7 @@ export const PitchVisualization = ({
           ) : (
             <>
               {/* Goalkeeper */}
-              <div className="flex justify-center mb-10 relative z-10">
+              <div className="flex justify-center relative z-10">
                 {goalkeeper.map((player) => (
                   <PlayerCard
                     key={player.player_id}
@@ -428,7 +440,7 @@ export const PitchVisualization = ({
               </div>
 
               {/* Defenders */}
-              <div className={`flex justify-center ${getRowGapClass(defenders.length)} mb-12 relative z-10`}>
+              <div className={`flex justify-center ${getRowGapClass(defenders.length)} relative z-10`}>
                 {defenders.map((player) => (
                   <PlayerCard
                     key={player.player_id}
@@ -438,7 +450,7 @@ export const PitchVisualization = ({
               </div>
 
               {/* Midfielders */}
-              <div className={`flex justify-center ${getRowGapClass(midfielders.length)} mb-12 relative z-10`}>
+              <div className={`flex justify-center ${getRowGapClass(midfielders.length)} relative z-10`}>
                 {midfielders.map((player) => (
                   <PlayerCard
                     key={player.player_id}

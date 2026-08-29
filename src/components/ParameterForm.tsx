@@ -32,6 +32,8 @@ export interface ParameterFormProps {
   onRecommend: () => void;
   recommendErrorMessage?: string;
   isLiveGw?: boolean;
+  /** GW the recommendation will run for. Differs from the viewed GW while one is live. */
+  planGw?: number;
   maxHorizon?: number;
 }
 
@@ -40,11 +42,11 @@ export const ParameterForm = (props: ParameterFormProps) => {
     entryId, onEntryIdChange, horizonGws, onHorizonGwsChange,
     chipStrategy, onChipStrategyChange, includeTransfers, onIncludeTransfersChange,
     canRecommend, isRecommending, onRecommend, recommendErrorMessage,
-    isLiveGw = false, maxHorizon = 6,
+    isLiveGw = false, planGw, maxHorizon = 6,
   } = props;
 
   const recommendDisabled =
-    !canRecommend || !Number.isFinite(entryId) || entryId <= 0 || isRecommending || isLiveGw;
+    !canRecommend || !Number.isFinite(entryId) || entryId <= 0 || isRecommending;
   const cappedHorizonOptions = Array.from(
     { length: Math.max(1, Math.min(6, maxHorizon)) },
     (_, i) => i + 1
@@ -152,26 +154,32 @@ export const ParameterForm = (props: ParameterFormProps) => {
 
       </div>
 
-      {/* Recommend CTA — pinned to bottom */}
-      <div className="p-4 border-t border-sidebar-border space-y-2">
+      {/* Recommend CTA — pinned to bottom. Hidden on desktop, where the single
+          entry point lives in the gameweek bar; kept here for narrow viewports
+          where that bar has no room for it. */}
+      <div className="p-4 border-t border-sidebar-border space-y-2 lg:hidden">
         <Button
           className="w-full bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 font-bold shadow-md"
           onClick={onRecommend}
           disabled={recommendDisabled}
           title={
-            isLiveGw
-              ? "The gameweek is in progress — switch to a future GW to plan transfers."
-              : !Number.isFinite(entryId) || entryId <= 0
-                ? "Enter your FPL team ID first."
-                : undefined
+            !Number.isFinite(entryId) || entryId <= 0
+              ? "Enter your FPL team ID first."
+              : undefined
           }
         >
           <Zap className="h-4 w-4 mr-2" />
-          {isRecommending ? "Computing…" : chipActive ? "Build Chip Draft" : "Recommend Squad"}
+          {isRecommending
+            ? "Computing…"
+            : chipActive
+              ? "Build Chip Draft"
+              : isLiveGw && planGw
+                ? `Plan GW${planGw}`
+                : "Recommend Squad"}
         </Button>
-        {isLiveGw && (
+        {isLiveGw && planGw && (
           <p className="text-xs text-muted-foreground">
-            GW in progress — switch to a future GW to plan transfers.
+            GW in progress — this plans GW{planGw}.
           </p>
         )}
         {recommendErrorMessage && (

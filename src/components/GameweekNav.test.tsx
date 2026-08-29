@@ -34,3 +34,24 @@ describe("live-gameweek indicator", () => {
     expect(screen.queryByTitle("Last refreshed")).toBeNull();
   });
 });
+
+describe("control-bar slots", () => {
+  it("renders the squad toggle inside the gameweek bar", () => {
+    // Merged into one bar so the two control strips cost one band of vertical
+    // space — the difference between the bench being on screen or not.
+    render(
+      <GameweekNav {...base} leading={<button type="button">Squad</button>} />,
+    );
+    expect(screen.getByRole("button", { name: "Squad" })).toBeTruthy();
+  });
+
+  it("renders the primary action in the same bar", () => {
+    render(<GameweekNav {...base} action={<button type="button">Plan GW3</button>} />);
+    expect(screen.getByRole("button", { name: "Plan GW3" })).toBeTruthy();
+  });
+
+  it("renders without either slot", () => {
+    render(<GameweekNav {...base} />);
+    expect(screen.getByText("Planning")).toBeTruthy();
+  });
+});

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Trophy, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,11 @@ interface GameweekNavProps {
   isLiveGw?: boolean;
   /** `Date.now()`-style timestamp of the last successful squad fetch. */
   updatedAt?: number | null;
+  /** Squad / ZN Pick toggle. Lives here rather than in its own row so the two
+   *  control strips cost one band of vertical space instead of two. */
+  leading?: ReactNode;
+  /** Primary call to action, right-aligned. */
+  action?: ReactNode;
 }
 
 export const GameweekNav = ({
@@ -35,6 +41,8 @@ export const GameweekNav = ({
   isRecommendation = false,
   isLiveGw = false,
   updatedAt = null,
+  leading,
+  action,
 }: GameweekNavProps) => {
   const stateLabel = isLiveGw ? "Live" : "Planning";
   const stateDotClass = isLiveGw ? "bg-rose-500 animate-pulse" : "bg-emerald-500";
@@ -45,7 +53,9 @@ export const GameweekNav = ({
       ? new Date(updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       : null;
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-5 bg-card border border-border rounded-xl px-4 py-2.5">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-3 bg-card border border-border rounded-xl px-3 py-2">
+      {leading}
+      {leading && <span className="hidden sm:block h-6 w-px bg-border" />}
       {/* GW navigation */}
       <div className="flex items-center gap-1.5 shrink-0">
         <Button
@@ -129,6 +139,8 @@ export const GameweekNav = ({
           </>
         )}
       </div>
+
+      {action && <div className="flex items-center gap-2 shrink-0">{action}</div>}
     </div>
   );
 };
