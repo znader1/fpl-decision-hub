@@ -347,6 +347,11 @@ export function HorizonTransferPlan({ plan }: { plan?: FplTransferPlanHorizon })
   const verdictBanner = plan?.verdict ? <VerdictBanner plan={plan} /> : null;
   if (!plan?.plan?.length) return verdictBanner;
   const allRoll = plan.plan.every((g) => g.action === "roll");
+  // The header used to read "1 FT/GW, roll or bank" even when every gameweek in
+  // the plan was taking a hit, which flatly contradicted the rows beneath it.
+  const totalHits = plan.plan.reduce((sum, g) => sum + (g.hits ?? 0), 0);
+  const totalHitCost = plan.plan.reduce((sum, g) => sum + (g.hit_cost ?? 0), 0);
+  const totalMoves = plan.plan.reduce((sum, g) => sum + (g.moves?.length ?? 0), 0);
   return (
     <>
       {verdictBanner}
@@ -354,7 +359,9 @@ export function HorizonTransferPlan({ plan }: { plan?: FplTransferPlanHorizon })
         <div className="flex items-center gap-2">
           <CalendarClock className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-semibold">
-            Multi-GW plan (1 FT/GW, roll or bank)
+            {totalHits > 0
+              ? `Multi-GW plan (${totalMoves} moves, ${totalHits} hit${totalHits === 1 ? "" : "s"})`
+              : "Multi-GW plan (free transfers only)"}
           </span>
           {typeof plan.total_net_gain === "number" && (
             <span className="ml-auto text-xs">
@@ -368,6 +375,14 @@ export function HorizonTransferPlan({ plan }: { plan?: FplTransferPlanHorizon })
         {allRoll && (
           <div className="text-[11px] text-muted-foreground">
             No transfer clears the bar over this horizon — roll and bank the free transfers.
+          </div>
+        )}
+        {totalHits > 0 && (
+          // Hits are the expensive part of any plan and were only visible per
+          // row. State the bill once, up front.
+          <div className="text-[11px] text-muted-foreground">
+            Costs {totalHitCost} pts in hits across {plan.horizon_gws} GWs. The net figure above
+            is after that cost.
           </div>
         )}
         {plan.plan.map((g) => (
