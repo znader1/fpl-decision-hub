@@ -135,7 +135,7 @@ export const ParameterSidebar = (props: ParameterSidebarProps) => {
 
   /* ── Expanded sidebar ────────────────────────────────────────────────────── */
   return (
-    <aside className="w-72 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col overflow-y-auto">
+    <aside className="w-56 xl:w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col overflow-y-auto">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-sidebar-border">
         <div className="flex items-center gap-2">

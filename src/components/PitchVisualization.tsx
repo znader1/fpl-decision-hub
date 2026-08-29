@@ -328,7 +328,7 @@ export const PitchVisualization = ({
             monitor it left the pitch stranded at 600px with dead space around
             it. The clamp keeps it playable at both ends. */}
         <div
-          className="relative mx-auto w-full max-w-[660px] rounded-2xl overflow-hidden
+          className="relative mx-auto w-full max-w-[700px] rounded-2xl overflow-hidden
                      px-2 py-3 sm:px-3 sm:py-4
                      min-h-[clamp(420px,56vh,680px)] flex flex-col justify-between gap-2"
           style={{
@@ -352,13 +352,14 @@ export const PitchVisualization = ({
               and pinned behind the players. */}
           <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
             {/* Touchlines */}
-            <div className="absolute inset-2 sm:inset-3 rounded-lg border border-white/12" />
-            {/* Penalty area + six-yard box, top and bottom. Real-pitch proportions:
-                the penalty area is ~65% of the width and ~16% of the length. */}
-            <div className="absolute left-1/2 -translate-x-1/2 top-2 sm:top-3 h-[13%] w-[64%] border border-t-0 border-white/12" />
-            <div className="absolute left-1/2 -translate-x-1/2 top-2 sm:top-3 h-[5.5%] w-[30%] border border-t-0 border-white/12" />
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-2 sm:bottom-3 h-[13%] w-[64%] border border-b-0 border-white/12" />
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-2 sm:bottom-3 h-[5.5%] w-[30%] border border-b-0 border-white/12" />
+            <div className="absolute inset-2 sm:inset-3 rounded-lg border border-white/10" />
+            {/* Penalty area + six-yard box, top and bottom. Shallow enough to sit
+                above the goalkeeper's label and below the forwards' — a marking
+                that crosses a player card reads as a misaligned box, not a pitch. */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-2 sm:top-3 h-[9%] w-[58%] border border-t-0 border-white/10" />
+            <div className="absolute left-1/2 -translate-x-1/2 top-2 sm:top-3 h-[4%] w-[26%] border border-t-0 border-white/10" />
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-2 sm:bottom-3 h-[9%] w-[58%] border border-b-0 border-white/10" />
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-2 sm:bottom-3 h-[4%] w-[26%] border border-b-0 border-white/10" />
           </div>
           {/* Entry ID prompt overlay — shown when no valid ID is set */}
           {onEntryIdSubmit && (!entryId || entryId <= 0) && (
@@ -419,8 +420,8 @@ export const PitchVisualization = ({
 
           {/* Centre circle, spot and halfway line */}
           <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
-            <div className="absolute left-2 right-2 sm:left-3 sm:right-3 top-1/2 h-px bg-white/12" />
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[16%] aspect-square rounded-full border border-white/12" />
+            <div className="absolute left-2 right-2 sm:left-3 sm:right-3 top-1/2 h-px bg-white/10" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[14%] aspect-square rounded-full border border-white/10" />
           </div>
 
           {!hasTeam ? (
@@ -480,7 +481,7 @@ export const PitchVisualization = ({
 
         {/* Bench */}
         {hasTeam && (
-          <div className="mx-auto mt-3 w-full max-w-[660px] px-3 py-2 rounded-xl bg-card border border-border">
+          <div className="mx-auto mt-3 w-full max-w-[700px] px-3 py-2 rounded-xl bg-card border border-border">
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Substitutes</p>
               {isLoading && <p className="text-[10px] text-muted-foreground">Updating…</p>}
