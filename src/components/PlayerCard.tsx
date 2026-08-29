@@ -38,6 +38,9 @@ const formatPoints = (points: number) => {
   return points.toFixed(2).replace(/\.?0+$/, "");
 };
 
+const formatPercent = (value?: number | null) =>
+  typeof value === "number" && Number.isFinite(value) ? `${Math.round(value * 100)}%` : "—";
+
 const getDifficultyClass = (difficulty?: number) => {
   switch (difficulty) {
     case 1:
@@ -83,9 +86,18 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
   const [open, setOpen] = useState(false);
   const fixture = player.fixture;
   const alerts = Array.isArray(player.alerts) ? player.alerts.filter((item) => item.text) : [];
-  const hasLivePoints = player.isLiveGw && typeof player.livePoints === "number" && Number.isFinite(player.livePoints);
-  const displayPoints = hasLivePoints ? player.livePoints! : player.points;
+  // Actual points are shown whenever the payload has them -- not only during a
+  // live gameweek. A finished GW has real scores too, and gating on `isLiveGw`
+  // meant browsing back to GW1 fell through to a projection (or to "—" when the
+  // squad payload carries no projection at all).
+  const hasActualPoints =
+    typeof player.livePoints === "number" && Number.isFinite(player.livePoints);
+  const hasProjectedPoints = Number.isFinite(player.points);
+  const displayPoints = hasActualPoints ? player.livePoints! : player.points;
+  const isLiveScore = hasActualPoints && Boolean(player.isLiveGw);
   const breakdown = player.scoreBreakdown;
+  const components = breakdown?.components;
+  const distribution = breakdown?.distribution;
   const wildcard = breakdown?.wildcard;
   const recentForm = breakdown?.recent_form;
   const baseline = breakdown?.baseline;
@@ -165,11 +177,26 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
               {!fixtureShort && (
                 <span className="text-muted-foreground">{player.team}</span>
               )}
-              {hasLivePoints ? (
+              {hasActualPoints ? (
                 <>
-                  <span className="font-semibold text-emerald-400">{formatPoints(displayPoints)}</span>
-                  <span className="text-muted-foreground/60">·</span>
-                  <span className="text-muted-foreground/70">{formatPoints(player.points)}</span>
+                  <span
+                    className={
+                      isLiveScore
+                        ? "font-semibold text-emerald-400"
+                        : "font-semibold text-foreground"
+                    }
+                    title={isLiveScore ? "Live points" : "Final points"}
+                  >
+                    {formatPoints(displayPoints)}
+                  </span>
+                  {hasProjectedPoints && (
+                    <>
+                      <span className="text-muted-foreground/60">·</span>
+                      <span className="text-muted-foreground/70" title="Projected points">
+                        {formatPoints(player.points)}
+                      </span>
+                    </>
+                  )}
                 </>
               ) : (
                 <span className="font-semibold text-primary">{formatPoints(player.points)}</span>
@@ -203,6 +230,45 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
 
         {breakdown?.objective_explanation && (
           <p className="text-xs text-muted-foreground">{breakdown.objective_explanation}</p>
+        )}
+
+        {distribution && (
+          <div className="space-y-1 rounded-md border border-border bg-card px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Likely Return
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <p>Most likely: <span className="font-semibold text-foreground">{distribution.modal_points ?? "—"} pts</span></p>
+              <p>80% range: <span className="font-semibold text-foreground">
+                {distribution.p80_low ?? "—"}–{distribution.p80_high ?? "—"} pts
+              </span></p>
+              <p>Returns (6+): <span className="font-semibold text-foreground">{formatPercent(distribution.p_return_6)}</span></p>
+              <p>Haul (10+): <span className="font-semibold text-foreground">{formatPercent(distribution.p_haul_10)}</span></p>
+            </div>
+            <p className="pt-1 text-[11px] text-muted-foreground">
+              xPts is an average. This is the spread behind it — nobody scores 2.3.
+            </p>
+          </div>
+        )}
+
+        {components && (
+          <div className="space-y-1 rounded-md border border-border bg-card px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Model Chances
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <p>To score: <span className="font-semibold text-foreground">{formatPercent(components.p_goal)}</span></p>
+              <p>To assist: <span className="font-semibold text-foreground">{formatPercent(components.p_assist)}</span></p>
+              <p>Clean sheet: <span className="font-semibold text-foreground">{formatPercent(components.p_clean_sheet)}</span></p>
+              <p>Plays 60&apos;: <span className="font-semibold text-foreground">{formatPercent(components.p_60)}</span></p>
+              <p>Exp. goals: <span className="font-semibold text-foreground">{formatMetric(components.exp_goals, 2)}</span></p>
+              <p>Exp. minutes: <span className="font-semibold text-foreground">{formatMetric(components.exp_minutes, 0)}</span></p>
+            </div>
+            <p className="pt-1 text-[11px] text-muted-foreground">
+              From the xG model, worth {formatMetric(components.model_exp_points, 2)} pts on its own. The
+              headline xPts blends this with the points-per-game baseline, so the two differ.
+            </p>
+          </div>
         )}
 
         {recentForm && (

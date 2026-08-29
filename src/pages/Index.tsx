@@ -29,6 +29,10 @@ import {
 
 type PitchMode = "squad" | "recommendation";
 
+// How often to refetch the squad while a gameweek is live. Matches the backend's
+// EVENT_LIVE_TTL, so a poll that lands sooner would only re-serve the same cache.
+const LIVE_POLL_MS = 60_000;
+
 const clampGw = (gw: number) => Math.min(38, Math.max(1, gw));
 const hasExplicitGwQuery = () => {
   const query = new URLSearchParams(window.location.search);
@@ -157,12 +161,33 @@ const Index = () => {
     staleTime: 5 * 60_000,
   });
 
+  const nextEventId = nextEventQuery.data?.event_id ?? undefined;
+  // The GW in progress, from bootstrap's `is_current`. Previously derived as
+  // `nextEventId - 1`, which marks a finished GW as live in the window before
+  // the next one is flagged, and yields GW0 pre-season. Fall back to the old
+  // arithmetic only while an older backend is still deployed.
+  const currentLiveGw =
+    typeof nextEventQuery.data?.current_event_id === "number"
+      ? nextEventQuery.data.current_event_id
+      : nextEventQuery.data?.current_event_id === null
+        ? undefined
+        : typeof nextEventId === "number"
+          ? nextEventId - 1
+          : undefined;
+  const isLiveGw =
+    typeof currentLiveGw === "number" && selectedGW !== null && selectedGW === currentLiveGw;
+
   const squadQuery = useQuery<FplSquad>({
     queryKey: ["squad", entryId, squadGW],
     queryFn: ({ signal }) => fetchSquad({ entryId, eventId: squadGW! }, signal),
     enabled: canFetchSquad && Number.isFinite(entryId) && entryId > 0 && squadGW !== null,
     placeholderData: (previousData) => previousData,
+    // Poll only while the selected GW is actually live. A finished GW's points
+    // never change and a future one has none, so polling those is pure waste.
+    refetchInterval: isLiveGw ? LIVE_POLL_MS : false,
+    refetchOnWindowFocus: isLiveGw,
   });
+  const squadUpdatedAt = squadQuery.dataUpdatedAt;
 
   const fixturesQuery = useQuery<FplTeamFixture[]>({
     queryKey: ["fixtures", selectedGW],
@@ -312,11 +337,6 @@ const Index = () => {
     );
     setPitchMode("recommendation");
   }, [horizonGws, chipStrategy, includeTransfers]);
-
-  const nextEventId = nextEventQuery.data?.event_id;
-  // Current GW = nextEventId - 1 (in-progress). isLiveGw true only for that GW.
-  const currentLiveGw = typeof nextEventId === "number" ? nextEventId - 1 : undefined;
-  const isLiveGw = typeof currentLiveGw === "number" && selectedGW !== null && selectedGW === currentLiveGw;
 
   // Don't render the app until we know which GW to show — avoids the fallback flash.
   const gwResolved = selectedGW !== null;
@@ -565,6 +585,7 @@ const Index = () => {
           onPitchModeChange={setPitchMode}
           hasRecommendation={Boolean(recommendationMutation.data)}
           isLiveGw={isLiveGw}
+          updatedAt={squadUpdatedAt}
           headerAction={
             showOptimize ? (
               <OptimizeSquadDialog

@@ -11,7 +11,11 @@ export interface FplTeamRecommendationPlayer {
   is_vice_captain: boolean;
   multiplier: number;
   xpts: number;
+  /** Actual points scored in the rendered GW, raw — apply `multiplier` for the captain. */
   event_points?: number | null;
+  live_minutes?: number | null;
+  live_bonus?: number | null;
+  live_bps?: number | null;
   next_fixtures?: string;
   fixtures_horizon?: FplFixturesHorizonItem[];
   is_captain_suggested?: boolean;
@@ -72,6 +76,41 @@ export interface FplBaselineBreakdown {
   gw1_after_ep_next_blend?: number | null;
 }
 
+/**
+ * Component probabilities behind a projection.
+ *
+ * These describe the xG MODEL half of the number only: the headline `xpts` is a
+ * blend of the ppg baseline and the model, so `model_exp_points` is what the
+ * `ep_*` components actually add up to — not `current_gw_xpts`.
+ */
+export interface FplPlayerComponents {
+  p_goal?: number | null;
+  p_assist?: number | null;
+  p_clean_sheet?: number | null;
+  p_appear?: number | null;
+  p_60?: number | null;
+  p_dc?: number | null;
+  exp_goals?: number | null;
+  exp_assists?: number | null;
+  exp_minutes?: number | null;
+  model_exp_points?: number | null;
+  ep_appearance?: number | null;
+  ep_goals?: number | null;
+  ep_assists?: number | null;
+  ep_clean_sheet?: number | null;
+  ep_bonus?: number | null;
+  ep_dc?: number | null;
+}
+
+/** The distribution behind the mean — what the player is actually likely to score. */
+export interface FplPointsDistribution {
+  modal_points?: number | null;
+  p_return_6?: number | null;
+  p_haul_10?: number | null;
+  p80_low?: number | null;
+  p80_high?: number | null;
+}
+
 export interface FplPlayerScoreBreakdown {
   note?: string;
   current_gw_xpts?: number | null;
@@ -82,6 +121,8 @@ export interface FplPlayerScoreBreakdown {
   wildcard?: FplWildcardScoreBreakdown;
   recent_form?: FplRecentFormBreakdown;
   baseline?: FplBaselineBreakdown;
+  components?: FplPlayerComponents | null;
+  distribution?: FplPointsDistribution | null;
   fixtures_horizon?: FplFixturesHorizonItem[];
 }
 
@@ -187,6 +228,8 @@ export interface FplTeamFixture {
 
 export interface FplNextEventSummary {
   event_id: number | null;
+  /** The GW in progress, from bootstrap's `is_current`. Null pre-season and between GWs. */
+  current_event_id?: number | null;
   deadline_time_utc?: string | null;
   first_fixture_time_utc?: string | null;
   hours_to_deadline?: number | null;

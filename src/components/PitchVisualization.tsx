@@ -33,6 +33,8 @@ interface PitchVisualizationProps {
   onPitchModeChange?: (mode: "squad" | "recommendation") => void;
   hasRecommendation?: boolean;
   isLiveGw?: boolean;
+  /** Timestamp of the last successful squad fetch; shown while a GW is live. */
+  updatedAt?: number | null;
   /** Optional action rendered next to the Squad / ZN Pick tabs (e.g. Optimize my squad). */
   headerAction?: ReactNode;
 }
@@ -174,6 +176,7 @@ export const PitchVisualization = ({
   onPitchModeChange,
   hasRecommendation = false,
   isLiveGw = false,
+  updatedAt = null,
   headerAction,
 }: PitchVisualizationProps) => {
   const [draftId, setDraftId] = useState("");
@@ -313,6 +316,7 @@ export const PitchVisualization = ({
           onSelectGW={(gw) => gwSelectable && onRequestedGwChange(gw)}
           isRecommendation={Boolean(recommendationTeam)}
           isLiveGw={isLiveGw}
+          updatedAt={updatedAt}
         />
 
         <div
