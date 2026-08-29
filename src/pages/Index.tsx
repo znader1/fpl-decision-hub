@@ -7,6 +7,8 @@ import { RecommendationsPanel } from "@/components/RecommendationsPanel";
 import { OptimizeSquadDialog } from "@/components/OptimizeSquadDialog";
 import { Navbar } from "@/components/layout/Navbar";
 import { QueryErrorCard } from "@/components/QueryErrorCard";
+import { Button } from "@/components/ui/button";
+import { Zap } from "lucide-react";
 import { parseEntryIdInput } from "@/lib/entryId";
 import { checkEntryIdentity, rolloverMessage } from "@/lib/entryIdentity";
 import { useProfile } from "@/hooks/useProfile";
@@ -526,6 +528,30 @@ const Index = () => {
     );
   };
 
+  // A live gameweek cannot be planned — FPL has no picks for it yet. The old UI
+  // disabled the button and told the user to go change the gameweek themselves.
+  // Do it for them: the same constraint, expressed as the next step.
+  const planGw = isLiveGw ? clampGw((currentLiveGw ?? resolvedGW) + 1) : resolvedGW;
+
+  const runRecommendation = (eventId: number) => {
+    const nextChipPlayEventId = chipStrategy === "wildcard" ? eventId : undefined;
+    if (chipStrategy === "wildcard") setChipPlayEventId(nextChipPlayEventId);
+    setAppliedTransferCount(0);
+    recommendationMutation.mutate(
+      buildRecommendationParams(eventId, { chipPlayEventId: nextChipPlayEventId })
+    );
+  };
+
+  const handlePrimaryRecommend = () => {
+    if (planGw !== resolvedGW) {
+      // Move the view forward too, so the pitch and the result agree.
+      setSelectedGW(planGw);
+      setSquadGW(planGw);
+      setPitchMode("squad");
+    }
+    runRecommendation(planGw);
+  };
+
   const parameterProps = {
     entryId,
     onEntryIdChange: setEntryAndReset,
@@ -538,17 +564,9 @@ const Index = () => {
     canRecommend,
     isRecommending: recommendationMutation.isPending,
     isLiveGw,
+    planGw,
     maxHorizon: Math.max(1, 38 - resolvedGW + 1),
-    onRecommend: () => {
-      const nextChipPlayEventId = chipStrategy === "wildcard" ? resolvedGW : undefined;
-      if (chipStrategy === "wildcard") {
-        setChipPlayEventId(nextChipPlayEventId);
-      }
-      setAppliedTransferCount(0);
-      recommendationMutation.mutate(
-        buildRecommendationParams(resolvedGW, { chipPlayEventId: nextChipPlayEventId })
-      );
-    },
+    onRecommend: handlePrimaryRecommend,
     recommendErrorMessage,
   };
 
@@ -655,13 +673,35 @@ const Index = () => {
           isLiveGw={isLiveGw}
           updatedAt={squadUpdatedAt}
           headerAction={
-            showOptimize ? (
-              <OptimizeSquadDialog
-                entryId={entryId}
-                horizonGws={horizonGws}
-                onApplied={handleOptimizeApplied}
-              />
-            ) : undefined
+            <>
+              {showOptimize && (
+                <OptimizeSquadDialog
+                  entryId={entryId}
+                  horizonGws={horizonGws}
+                  onApplied={handleOptimizeApplied}
+                />
+              )}
+              {/* The single recommend entry point on desktop. The sidebar keeps
+                  its own button for narrow viewports, where this bar has no room. */}
+              <Button
+                size="sm"
+                className="hidden lg:inline-flex"
+                onClick={handlePrimaryRecommend}
+                disabled={!canRecommend || !(entryId > 0) || recommendationMutation.isPending}
+                title={
+                  planGw !== resolvedGW
+                    ? `GW${resolvedGW} is in progress — plan GW${planGw} instead`
+                    : undefined
+                }
+              >
+                <Zap className="h-3.5 w-3.5" />
+                {recommendationMutation.isPending
+                  ? "Working…"
+                  : planGw !== resolvedGW
+                    ? `Plan GW${planGw}`
+                    : "Recommend"}
+              </Button>
+            </>
           }
         />
         </>
