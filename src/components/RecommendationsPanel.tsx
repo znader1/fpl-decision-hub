@@ -333,6 +333,11 @@ function VerdictBanner({ plan }: { plan: FplTransferPlanHorizon }) {
         )}
       </div>
       {plan.reasoning && <p className="text-xs leading-relaxed">{plan.reasoning}</p>}
+      <p className="text-[11px] opacity-70 leading-relaxed">
+        {plan.allow_hits
+          ? `Planned across ${plan.horizon_gws ?? plan.gws?.length ?? 1} GWs and allowed to take hits, so it can name more moves than the free-transfer suggestions above.`
+          : `Planned across ${plan.horizon_gws ?? plan.gws?.length ?? 1} GWs using free transfers only.`}
+      </p>
     </div>
   );
 }
@@ -348,7 +353,9 @@ export function HorizonTransferPlan({ plan }: { plan?: FplTransferPlanHorizon })
       <div className="rounded-lg border bg-card p-3 space-y-2">
         <div className="flex items-center gap-2">
           <CalendarClock className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Multi-GW plan (1 FT/GW, roll or bank)</span>
+          <span className="text-sm font-semibold">
+            Multi-GW plan (1 FT/GW, roll or bank)
+          </span>
           {typeof plan.total_net_gain === "number" && (
             <span className="ml-auto text-xs">
               Net over {plan.horizon_gws} GWs{" "}

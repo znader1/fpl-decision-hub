@@ -247,6 +247,14 @@ export const TransferPlanner = ({
             No transfer suggestions returned.
           </div>
         )}
+        {moves.length > 0 && (
+          // Named so it can't be read as contradicting the multi-GW plan below,
+          // which optimises a different thing (a horizon, hits allowed) and can
+          // therefore name a different number of moves.
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            This gameweek, free transfers only
+          </p>
+        )}
         {moves.map((move, idx) => (
           <div key={`${move.sell.id}-${move.buy.id}-${idx}`} className="rounded-lg border border-border p-3">
             {(() => {
