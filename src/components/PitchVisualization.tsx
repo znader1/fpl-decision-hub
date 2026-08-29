@@ -40,12 +40,12 @@ interface PitchVisualizationProps {
 }
 
 export const getRowGapClass = (count: number) => {
-  if (count >= 6) return "gap-1 sm:gap-2";
-  if (count === 5) return "gap-2 sm:gap-4";
-  if (count === 4) return "gap-3 sm:gap-6";
-  if (count === 3) return "gap-5 sm:gap-10";
-  if (count === 2) return "gap-8 sm:gap-14";
-  return "gap-3 sm:gap-6";
+  if (count >= 6) return "gap-0.5 sm:gap-1";
+  if (count === 5) return "gap-1 sm:gap-2";
+  if (count === 4) return "gap-2 sm:gap-3";
+  if (count === 3) return "gap-4 sm:gap-6";
+  if (count === 2) return "gap-6 sm:gap-10";
+  return "gap-2 sm:gap-4";
 };
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
@@ -320,7 +320,8 @@ export const PitchVisualization = ({
             monitor it left the pitch stranded at 600px with dead space around
             it. The clamp keeps it playable at both ends. */}
         <div
-          className="relative rounded-2xl overflow-hidden px-2 py-5 sm:px-4 sm:py-6
+          className="relative mx-auto w-full max-w-[560px] rounded-2xl overflow-hidden
+                     px-2 py-4 sm:px-3 sm:py-5
                      min-h-[clamp(400px,52vh,640px)] flex flex-col justify-between"
           style={{
             // Mown stripes: eight bands rather than four, and a horizontal
@@ -343,15 +344,13 @@ export const PitchVisualization = ({
               and pinned behind the players. */}
           <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
             {/* Touchlines */}
-            <div className="absolute inset-2 sm:inset-3 rounded-lg border-2 border-white/15" />
-            {/* Penalty area + six-yard box, top and bottom */}
-            <div className="absolute left-1/2 -translate-x-1/2 top-2 sm:top-3 h-[16%] w-[58%] border-2 border-t-0 border-white/15 rounded-b-sm" />
-            <div className="absolute left-1/2 -translate-x-1/2 top-2 sm:top-3 h-[7%] w-[30%] border-2 border-t-0 border-white/15 rounded-b-sm" />
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-2 sm:bottom-3 h-[16%] w-[58%] border-2 border-b-0 border-white/15 rounded-t-sm" />
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-2 sm:bottom-3 h-[7%] w-[30%] border-2 border-b-0 border-white/15 rounded-t-sm" />
-            {/* Penalty spots */}
-            <div className="absolute left-1/2 -translate-x-1/2 top-[13%] h-1 w-1 rounded-full bg-white/25" />
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-[13%] h-1 w-1 rounded-full bg-white/25" />
+            <div className="absolute inset-2 sm:inset-3 rounded-lg border border-white/12" />
+            {/* Penalty area + six-yard box, top and bottom. Real-pitch proportions:
+                the penalty area is ~65% of the width and ~16% of the length. */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-2 sm:top-3 h-[13%] w-[64%] border border-t-0 border-white/12" />
+            <div className="absolute left-1/2 -translate-x-1/2 top-2 sm:top-3 h-[5.5%] w-[30%] border border-t-0 border-white/12" />
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-2 sm:bottom-3 h-[13%] w-[64%] border border-b-0 border-white/12" />
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-2 sm:bottom-3 h-[5.5%] w-[30%] border border-b-0 border-white/12" />
           </div>
           {/* Entry ID prompt overlay — shown when no valid ID is set */}
           {onEntryIdSubmit && (!entryId || entryId <= 0) && (
@@ -412,9 +411,8 @@ export const PitchVisualization = ({
 
           {/* Centre circle, spot and halfway line */}
           <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
-            <div className="absolute left-2 right-2 sm:left-3 sm:right-3 top-1/2 h-[2px] bg-white/15" />
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[18%] aspect-square rounded-full border-2 border-white/15" />
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-white/25" />
+            <div className="absolute left-2 right-2 sm:left-3 sm:right-3 top-1/2 h-px bg-white/12" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[16%] aspect-square rounded-full border border-white/12" />
           </div>
 
           {!hasTeam ? (
@@ -474,12 +472,12 @@ export const PitchVisualization = ({
 
         {/* Bench */}
         {hasTeam && (
-          <div className="mt-4 p-4 rounded-xl bg-card border border-border">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Substitutes</p>
-              {isLoading && <p className="text-xs text-muted-foreground">Updating…</p>}
+          <div className="mx-auto mt-3 w-full max-w-[560px] px-3 py-2 rounded-xl bg-card border border-border">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Substitutes</p>
+              {isLoading && <p className="text-[10px] text-muted-foreground">Updating…</p>}
             </div>
-            <div className="flex flex-wrap justify-center gap-3 sm:gap-8">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-4">
               {bench.map((player) => (
                 <PlayerCard
                   key={player.player_id}
