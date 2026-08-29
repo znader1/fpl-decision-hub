@@ -247,15 +247,27 @@ const Index = () => {
     if (didApplyNextGwDefault) return;
     if (!nextEventQuery.isFetched) return;
 
+
+    // A failed next-event call is not off-season. Latching the GW-38 placeholder
+    // here (and persisting it) is how a transient backend outage left the app
+    // permanently opening on GW38: the placeholder was written to localStorage as
+    // if the user had chosen it, and every later visit started there. Leave the GW
+    // alone and stay unlatched so the real default applies once the API recovers.
+    if (nextEventQuery.isError) return;
+
     const nextGw = nextEventQuery.data?.event_id;
     if (Number.isFinite(nextGw) && nextGw !== null && nextGw >= 1 && nextGw <= 38) {
       // Open on the live GW (current in-progress) so the user sees real scores first.
       // They can navigate forward to plan transfers for the next GW.
-      const liveGw = clampGw(nextGw - 1);
+      const liveGw = clampGw(
+        typeof nextEventQuery.data?.current_event_id === "number"
+          ? nextEventQuery.data.current_event_id
+          : nextGw - 1,
+      );
       setSelectedGW(liveGw);
       setSquadGW(liveGw);
     } else {
-      // Off-season or API unavailable — fall back to a placeholder GW number.
+      // Genuinely off-season: the API answered and has no upcoming gameweek.
       // isOffSeason (below) gates whether the pitch or the off-season card renders.
       setSelectedGW(38);
       setSquadGW(38);
@@ -265,7 +277,14 @@ const Index = () => {
     setPitchMode("squad");
     recommendationMutation.reset();
     setDidApplyNextGwDefault(true);
-  }, [didApplyNextGwDefault, nextEventQuery.data?.event_id, nextEventQuery.isFetched, recommendationMutation]);
+  }, [
+    didApplyNextGwDefault,
+    nextEventQuery.data?.event_id,
+    nextEventQuery.data?.current_event_id,
+    nextEventQuery.isFetched,
+    nextEventQuery.isError,
+    recommendationMutation,
+  ]);
 
   // Root cause of the GW-navigation wedge (see BACKLOG P0): when the backend can't
   // fetch picks for the requested event_id (deterministically for future GWs mid-season
@@ -321,7 +340,11 @@ const Index = () => {
   useEffect(() => {
     try {
       localStorage.setItem("fpl_entry_id", String(entryId));
-      if (selectedGW !== null) localStorage.setItem("fpl_selected_gw", String(selectedGW));
+      // Only persist a GW the API actually confirmed. Storing a placeholder from
+      // a failed fetch makes it the user's remembered choice forever.
+      if (selectedGW !== null && nextEventQuery.isSuccess) {
+        localStorage.setItem("fpl_selected_gw", String(selectedGW));
+      }
       localStorage.setItem("fpl_horizon_gws", String(horizonGws));
       localStorage.setItem("fpl_chip_strategy", chipStrategy);
       localStorage.setItem("fpl_transfer_strategy", chipStrategy);
@@ -335,7 +358,8 @@ const Index = () => {
     } catch {
       // ignore
     }
-  }, [entryId, selectedGW, horizonGws, chipStrategy, chipPlayEventId, includeTransfers, appliedTransferCount]);
+  }, [entryId, selectedGW, horizonGws, chipStrategy, chipPlayEventId, includeTransfers,
+      appliedTransferCount, nextEventQuery.isSuccess]);
 
   useEffect(() => {
     if (!recommendationMutation.data) return;
