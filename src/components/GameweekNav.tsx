@@ -19,6 +19,8 @@ interface GameweekNavProps {
   onSelectGW?: (gw: number) => void;
   isRecommendation?: boolean;
   isLiveGw?: boolean;
+  /** `Date.now()`-style timestamp of the last successful squad fetch. */
+  updatedAt?: number | null;
 }
 
 export const GameweekNav = ({
@@ -32,9 +34,16 @@ export const GameweekNav = ({
   onSelectGW,
   isRecommendation = false,
   isLiveGw = false,
+  updatedAt = null,
 }: GameweekNavProps) => {
   const stateLabel = isLiveGw ? "Live" : "Planning";
   const stateDotClass = isLiveGw ? "bg-rose-500 animate-pulse" : "bg-emerald-500";
+  // Only while live: a frozen score and a genuine zero look identical without
+  // a timestamp, and the difference is the whole reason to trust the number.
+  const updatedLabel =
+    isLiveGw && typeof updatedAt === "number" && updatedAt > 0
+      ? new Date(updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : null;
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-5 bg-card border border-border rounded-xl px-4 py-2.5">
       {/* GW navigation */}
@@ -89,6 +98,11 @@ export const GameweekNav = ({
       <div className="flex items-center gap-1.5 shrink-0 rounded-full bg-muted/50 px-2 py-0.5">
         <span className={`h-1.5 w-1.5 rounded-full ${stateDotClass}`} />
         <span className="text-[11px] font-medium text-muted-foreground">{stateLabel}</span>
+        {updatedLabel && (
+          <span className="text-[11px] text-muted-foreground/70" title="Last refreshed">
+            · {updatedLabel}
+          </span>
+        )}
       </div>
 
       {/* Divider */}
