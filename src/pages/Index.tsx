@@ -556,9 +556,12 @@ const Index = () => {
   const handlePrimaryRecommend = () => {
     if (planGw !== resolvedGW) {
       // Move the view forward too, so the pitch and the result agree.
+      // Deliberately not switching to squad mode first: the requested GW has no
+      // picks yet, so the squad view would render the substituted latest squad
+      // under a "GW3" heading for the length of the request, then flip to the
+      // recommendation. Staying put until the result lands avoids that flash.
       setSelectedGW(planGw);
       setSquadGW(planGw);
-      setPitchMode("squad");
     }
     runRecommendation(planGw);
   };
