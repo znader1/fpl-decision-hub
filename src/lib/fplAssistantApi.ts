@@ -247,9 +247,31 @@ export interface FplEntryHistory {
   points_on_bench?: number;
 }
 
+/**
+ * Who an FPL entry id belongs to right now.
+ *
+ * FPL reissues entry ids each season, so an id stored last season resolves to a
+ * different manager. `joined_time` is the field to compare on — it changes when
+ * the id is reissued, where renaming a team does not.
+ */
+export interface FplEntryIdentity {
+  entry_id: number;
+  manager_name?: string | null;
+  team_name?: string | null;
+  joined_time?: string | null;
+  started_event?: number | null;
+  years_active?: number | null;
+  region_name?: string | null;
+  overall_rank?: number | null;
+  overall_points?: number | null;
+  current_event?: number | null;
+}
+
 export interface FplSquad {
   entry_id: number;
   event_id: number;
+  /** Null when the upstream identity lookup failed; never a reason to hide the squad. */
+  entry?: FplEntryIdentity | null;
   notes?: string[];
   formation?: [number, number, number];
   captain_player_id?: number;
@@ -883,6 +905,11 @@ export const getFixturesUrlTemplate = (): string | undefined =>
 export const getNextEventUrlTemplate = (): string | undefined =>
   resolveTemplateWithApiBase(getEnvString("VITE_FPL_NEXT_EVENT_URL") ?? "/events/next");
 
+export const getEntryIdentityUrlTemplate = (): string | undefined =>
+  resolveTemplateWithApiBase(
+    getEnvString("VITE_FPL_ENTRY_IDENTITY_URL") ?? "/entry/identity?entry_id={entry_id}",
+  );
+
 export const getRecommendationUrlTemplate = (): string | undefined =>
   resolveTemplateWithApiBase(
     getEnvString("VITE_FPL_RECOMMENDATION_URL") ??
@@ -1505,6 +1532,55 @@ export const optimizeSquad = async (
   const data: unknown = await parseJsonResponse(response, url, "optimize endpoint");
   if (!isOptimizeSquadResponse(data)) {
     throw new Error("Invalid optimize squad response");
+  }
+  return data;
+};
+
+
+export const isFplEntryIdentity = (value: unknown): value is FplEntryIdentity => {
+  if (typeof value !== "object" || value === null) return false;
+  return typeof (value as FplEntryIdentity).entry_id === "number";
+};
+
+/**
+ * Look up who an entry id belongs to, before linking it.
+ *
+ * Proxied through our backend rather than called directly: FPL sends no CORS
+ * header for our origin, so a browser fetch to fantasy.premierleague.com is
+ * blocked outright.
+ */
+export const fetchEntryIdentity = async (
+  entryId: number,
+  signal?: AbortSignal,
+): Promise<FplEntryIdentity> => {
+  const template = getEntryIdentityUrlTemplate();
+  if (!template) {
+    throw new Error(
+      "The app is not configured to reach the FPL API (VITE_FPL_API_BASE_URL is unset).",
+    );
+  }
+  const url = template.replace("{entry_id}", String(entryId));
+
+  let response: Response;
+  try {
+    response = await authFetch(url, { signal });
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    if (typeof err === "object" && err !== null && "name" in err && err.name === "AbortError") throw err;
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Network error checking that team ID. ${formatNetworkHint(url)} (${message})`);
+  }
+
+  if (response.status === 404) {
+    throw new Error(`No FPL team found with ID ${entryId}. Check the number and try again.`);
+  }
+  if (!response.ok) {
+    throw new Error(`Could not check that team ID (${response.status}).`);
+  }
+
+  const data: unknown = await parseJsonResponse(response, url, "entry identity endpoint");
+  if (!isFplEntryIdentity(data)) {
+    throw new Error("Invalid entry identity response");
   }
   return data;
 };

@@ -43,22 +43,34 @@ export type Database = {
         Row: {
           created_at: string
           entry_id: number | null
+          entry_joined_time: string | null
+          entry_linked_at: string | null
           id: string
+          manager_name: string | null
           plan: string
+          team_name: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           entry_id?: number | null
+          entry_joined_time?: string | null
+          entry_linked_at?: string | null
           id: string
+          manager_name?: string | null
           plan?: string
+          team_name?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           entry_id?: number | null
+          entry_joined_time?: string | null
+          entry_linked_at?: string | null
           id?: string
+          manager_name?: string | null
           plan?: string
+          team_name?: string | null
           updated_at?: string
         }
         Relationships: []

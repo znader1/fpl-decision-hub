@@ -7,6 +7,17 @@ export type PlanTier = "free" | "pro" | "elite";
 export interface Profile {
   entryId: number | null;
   plan: PlanTier;
+  /** Who the entry id belonged to when it was linked. Null on rows linked before this existed. */
+  managerName: string | null;
+  teamName: string | null;
+  joinedTime: string | null;
+}
+
+/** Identity captured at link time, persisted so a rollover can be spotted later. */
+export interface EntryIdentitySnapshot {
+  managerName?: string | null;
+  teamName?: string | null;
+  joinedTime?: string | null;
 }
 
 const isPlanTier = (value: unknown): value is PlanTier =>
@@ -36,7 +47,7 @@ export function useProfile() {
     const versionAtFetch = writeVersion.current;
     supabase
       .from("profiles")
-      .select("entry_id, plan")
+      .select("entry_id, plan, manager_name, team_name, entry_joined_time")
       .eq("id", userId)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -44,11 +55,17 @@ export function useProfile() {
         if (writeVersion.current === versionAtFetch) {
           if (error) {
             // Profile load failure must never block the app — fall back to defaults.
-            setProfile({ entryId: null, plan: "free" });
+            setProfile({
+              entryId: null, plan: "free",
+              managerName: null, teamName: null, joinedTime: null,
+            });
           } else {
             setProfile({
               entryId: typeof data?.entry_id === "number" ? data.entry_id : null,
               plan: isPlanTier(data?.plan) ? data.plan : "free",
+              managerName: data?.manager_name ?? null,
+              teamName: data?.team_name ?? null,
+              joinedTime: data?.entry_joined_time ?? null,
             });
           }
         }
@@ -60,19 +77,34 @@ export function useProfile() {
   }, [userId]);
 
   const saveEntryId = useCallback(
-    async (entryId: number): Promise<boolean> => {
+    async (entryId: number, identity?: EntryIdentitySnapshot): Promise<boolean> => {
       writeVersion.current += 1;
       const previous = profile;
-      setProfile(
-        previous ? { ...previous, entryId } : { entryId, plan: "free" }
-      );
+      // The identity snapshot is what makes a season rollover detectable, so it
+      // is written with the id rather than backfilled later.
+      const next: Profile = {
+        entryId,
+        plan: previous?.plan ?? "free",
+        managerName: identity?.managerName ?? null,
+        teamName: identity?.teamName ?? null,
+        joinedTime: identity?.joinedTime ?? null,
+      };
+      setProfile(next);
       // Signed-out: localStorage remains the primary store; profile is
       // cross-device sync only, so the local-only update counts as success.
       if (!userId) return true;
       // Never write `plan` from the client.
       const { error } = await supabase
         .from("profiles")
-        .upsert({ id: userId, entry_id: entryId, updated_at: new Date().toISOString() });
+        .upsert({
+          id: userId,
+          entry_id: entryId,
+          manager_name: next.managerName,
+          team_name: next.teamName,
+          entry_joined_time: next.joinedTime,
+          entry_linked_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
       if (error) {
         // Revert the optimistic update so the UI reflects reality.
         setProfile(previous);

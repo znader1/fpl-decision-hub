@@ -8,10 +8,12 @@ import { OptimizeSquadDialog } from "@/components/OptimizeSquadDialog";
 import { Navbar } from "@/components/layout/Navbar";
 import { QueryErrorCard } from "@/components/QueryErrorCard";
 import { parseEntryIdInput } from "@/lib/entryId";
+import { checkEntryIdentity, rolloverMessage } from "@/lib/entryIdentity";
 import { useProfile } from "@/hooks/useProfile";
 import { useIsDesktop } from "@/hooks/use-desktop";
 import {
   fetchFixtures,
+  fetchEntryIdentity,
   fetchNextEvent,
   fetchSquad,
   fetchTeamRecommendation,
@@ -21,6 +23,7 @@ import {
   getSquadUrlTemplate,
   type FplNextEventSummary,
   type FplChipStrategy,
+  type FplEntryIdentity,
   type FplSquad,
   type FplTeamFixture,
   type FplTeamRecommendation,
@@ -287,6 +290,24 @@ const Index = () => {
     typeof returnedSquadGw === "number" &&
     squadGW !== null &&
     returnedSquadGw !== squadGW;
+  // FPL reissues entry ids each season, so a stored id can resolve to a
+  // different manager. Compare what the squad payload says the entry is now
+  // against the snapshot taken when the user linked it.
+  const identityCheck = useMemo(
+    () =>
+      checkEntryIdentity(
+        profile
+          ? {
+              managerName: profile.managerName,
+              teamName: profile.teamName,
+              joinedTime: profile.joinedTime,
+            }
+          : null,
+        squadQuery.data?.entry ?? null,
+      ),
+    [profile, squadQuery.data?.entry],
+  );
+
   const substitutionNotice = squadSubstituted
     ? `Showing your latest squad (GW ${returnedSquadGw}) — your GW ${squadGW} picks aren't available yet.`
     : undefined;
@@ -436,14 +457,24 @@ const Index = () => {
     recommendationMutation.reset();
   };
 
-  const setEntryAndReset = (value: number) => {
+  const setEntryAndReset = (value: number, identity?: FplEntryIdentity | null) => {
     setEntryId(value);
     setSquadGW(selectedGW);
     setChipPlayEventId(undefined);
     setAppliedTransferCount(0);
     setPitchMode("squad");
     recommendationMutation.reset();
-    if (value > 0) void saveEntryId(value);
+    // The identity snapshot rides along with the id: without it a season
+    // rollover is undetectable and the app renders a stranger's squad.
+    if (value > 0) {
+      void saveEntryId(value, identity
+        ? {
+            managerName: identity.manager_name ?? null,
+            teamName: identity.team_name ?? null,
+            joinedTime: identity.joined_time ?? null,
+          }
+        : undefined);
+    }
   };
 
   // Resolved GW for rendering — pre-resolution placeholder; gwResolved gates rendering
@@ -502,17 +533,22 @@ const Index = () => {
     if (id === null) {
       return "That doesn't look like a team ID. Paste the number or your full FPL team URL.";
     }
+    // Validated against the entry itself, not against a squad fetch: the picks
+    // endpoint 404s for any gameweek that hasn't locked, so checking the squad
+    // rejects perfectly valid IDs before a deadline. The lookup also yields the
+    // identity snapshot we need to store.
+    let identity: FplEntryIdentity | null = null;
     try {
-      await fetchSquad({ entryId: id, eventId: resolvedGW });
+      identity = await fetchEntryIdentity(id);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       // Only a definitive not-found blocks onboarding; transient/backend
       // errors must not lock the user out — accept and let error states surface.
-      if (/\b404\b|not found/i.test(message)) {
+      if (/\b404\b|no fpl team found|not found/i.test(message)) {
         return "Couldn't find a team with that ID. Double-check it on the FPL site.";
       }
     }
-    setEntryAndReset(id);
+    setEntryAndReset(id, identity);
     return null;
   };
 
@@ -570,6 +606,14 @@ const Index = () => {
           </div>
         </div>
       ) : (
+        <>
+        {identityCheck.status === "rolled-over" && (
+          <div className="mx-auto w-full max-w-5xl px-4 pt-4">
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+              {rolloverMessage(identityCheck)}
+            </div>
+          </div>
+        )}
         <PitchVisualization
           entryId={entryId}
           onEntryIdSubmit={handleEntryIdSubmit}
@@ -596,6 +640,7 @@ const Index = () => {
             ) : undefined
           }
         />
+        </>
       )}
       <RecommendationsPanel
         squad={squadQuery.data}
