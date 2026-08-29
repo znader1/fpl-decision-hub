@@ -128,7 +128,7 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
     <HoverCard openDelay={120} open={open} onOpenChange={setOpen}>
       <HoverCardTrigger asChild>
         <div
-          className="flex flex-col items-center gap-1 group cursor-pointer"
+          className="flex flex-col items-center gap-0.5 group cursor-pointer"
           role="button"
           tabIndex={0}
           aria-expanded={open}
@@ -162,7 +162,7 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
           {/* Width is responsive because the pitch clips: a five-defender row
               needs 5 cards plus 4 gaps to fit ~343px of usable width on a
               375px viewport, so 80px cards cut the outermost players in half. */}
-          <div className="bg-card/95 backdrop-blur-sm rounded-md px-1 sm:px-2 py-1 text-center shadow-sm border border-border w-[58px] sm:w-auto sm:min-w-[80px] max-w-full">
+          <div className="bg-card/95 backdrop-blur-sm rounded-md px-1 sm:px-2 py-0.5 text-center shadow-sm border border-border w-[58px] sm:w-auto sm:min-w-[80px] max-w-full">
             <p className="text-[10px] sm:text-xs font-bold text-foreground truncate">{player.name}</p>
             {fixtureShort && (
               <span

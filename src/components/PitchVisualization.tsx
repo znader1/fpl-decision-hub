@@ -35,14 +35,16 @@ interface PitchVisualizationProps {
   isLiveGw?: boolean;
   /** Timestamp of the last successful squad fetch; shown while a GW is live. */
   updatedAt?: number | null;
+  /** True when the rendered squad's real scores belong to the GW being viewed. */
+  showActualPoints?: boolean;
   /** Optional action rendered next to the Squad / ZN Pick tabs (e.g. Optimize my squad). */
   headerAction?: ReactNode;
 }
 
 export const getRowGapClass = (count: number) => {
   if (count >= 6) return "gap-0.5 sm:gap-1";
-  if (count === 5) return "gap-1 sm:gap-2";
-  if (count === 4) return "gap-2 sm:gap-3";
+  if (count === 5) return "gap-1 sm:gap-3";
+  if (count === 4) return "gap-2 sm:gap-5";
   if (count === 3) return "gap-4 sm:gap-6";
   if (count === 2) return "gap-6 sm:gap-10";
   return "gap-2 sm:gap-4";
@@ -104,13 +106,17 @@ const toPitchPlayer = (
   viceId?: number,
   fixture?: Player["fixture"],
   isLiveGw = false,
+  showActualPoints = false,
 ): Player => ({
   id: player.player_id,
   name: player.web_name,
   team: player.team_short,
   teamName: player.team_name,
   points: player.xpts,
-  livePoints: player.event_points,
+  // Only surface a real score when it belongs to the gameweek on screen. A
+  // future GW renders the substituted latest squad, whose points are an earlier
+  // gameweek's — showing them here reads as "your GW3 score", which is wrong.
+  livePoints: showActualPoints ? player.event_points : undefined,
   isLiveGw,
   fixture,
   isCaptain: typeof captainId === "number" && player.player_id === captainId,
@@ -125,8 +131,9 @@ const toBenchPlayer = (
   viceId?: number,
   fixture?: Player["fixture"],
   isLiveGw = false,
+  showActualPoints = false,
 ): Player => ({
-  ...toPitchPlayer(player, captainId, viceId, fixture, isLiveGw),
+  ...toPitchPlayer(player, captainId, viceId, fixture, isLiveGw, showActualPoints),
   number: player.bench_order,
 });
 
@@ -177,6 +184,7 @@ export const PitchVisualization = ({
   hasRecommendation = false,
   isLiveGw = false,
   updatedAt = null,
+  showActualPoints = false,
   headerAction,
 }: PitchVisualizationProps) => {
   const [draftId, setDraftId] = useState("");
@@ -320,9 +328,9 @@ export const PitchVisualization = ({
             monitor it left the pitch stranded at 600px with dead space around
             it. The clamp keeps it playable at both ends. */}
         <div
-          className="relative mx-auto w-full max-w-[560px] rounded-2xl overflow-hidden
-                     px-2 py-4 sm:px-3 sm:py-5
-                     min-h-[clamp(400px,52vh,640px)] flex flex-col justify-between"
+          className="relative mx-auto w-full max-w-[660px] rounded-2xl overflow-hidden
+                     px-2 py-3 sm:px-3 sm:py-4
+                     min-h-[clamp(420px,56vh,680px)] flex flex-col justify-between gap-2"
           style={{
             // Mown stripes: eight bands rather than four, and a horizontal
             // lighting gradient over the top so it reads as turf under
@@ -432,7 +440,7 @@ export const PitchVisualization = ({
                 {goalkeeper.map((player) => (
                   <PlayerCard
                     key={player.player_id}
-                    player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
+                    player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw, showActualPoints)}
                   />
                 ))}
               </div>
@@ -442,7 +450,7 @@ export const PitchVisualization = ({
                 {defenders.map((player) => (
                   <PlayerCard
                     key={player.player_id}
-                    player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
+                    player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw, showActualPoints)}
                   />
                 ))}
               </div>
@@ -452,7 +460,7 @@ export const PitchVisualization = ({
                 {midfielders.map((player) => (
                   <PlayerCard
                     key={player.player_id}
-                    player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
+                    player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw, showActualPoints)}
                   />
                 ))}
               </div>
@@ -462,7 +470,7 @@ export const PitchVisualization = ({
                 {forwards.map((player) => (
                   <PlayerCard
                     key={player.player_id}
-                    player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
+                    player={toPitchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw, showActualPoints)}
                   />
                 ))}
               </div>
@@ -472,7 +480,7 @@ export const PitchVisualization = ({
 
         {/* Bench */}
         {hasTeam && (
-          <div className="mx-auto mt-3 w-full max-w-[560px] px-3 py-2 rounded-xl bg-card border border-border">
+          <div className="mx-auto mt-3 w-full max-w-[660px] px-3 py-2 rounded-xl bg-card border border-border">
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Substitutes</p>
               {isLoading && <p className="text-[10px] text-muted-foreground">Updating…</p>}
@@ -481,7 +489,7 @@ export const PitchVisualization = ({
               {bench.map((player) => (
                 <PlayerCard
                   key={player.player_id}
-                  player={toBenchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw)}
+                  player={toBenchPlayer(player, captainId, viceId, getFixtureForPlayer(player), isLiveGw, showActualPoints)}
                 />
               ))}
             </div>

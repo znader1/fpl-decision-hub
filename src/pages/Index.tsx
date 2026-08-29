@@ -329,6 +329,17 @@ const Index = () => {
     [profile, squadQuery.data?.entry],
   );
 
+  // Real scores belong on the pitch only when the squad shown is the one the
+  // user asked for AND that gameweek has actually started. A future GW renders
+  // the substituted latest squad; painting its points under a "GW3" heading
+  // claims a score that doesn't exist yet.
+  const showActualPoints =
+    pitchMode === "squad" &&
+    !squadSubstituted &&
+    typeof currentLiveGw === "number" &&
+    selectedGW !== null &&
+    selectedGW <= currentLiveGw;
+
   const substitutionNotice = squadSubstituted
     ? `Showing your latest squad (GW ${returnedSquadGw}) — your GW ${squadGW} picks aren't available yet.`
     : undefined;
@@ -672,6 +683,7 @@ const Index = () => {
           hasRecommendation={Boolean(recommendationMutation.data)}
           isLiveGw={isLiveGw}
           updatedAt={squadUpdatedAt}
+          showActualPoints={showActualPoints}
           headerAction={
             <>
               {showOptimize && (

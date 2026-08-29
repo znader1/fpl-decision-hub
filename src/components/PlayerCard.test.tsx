@@ -40,6 +40,16 @@ describe("points under the player", () => {
     expect(screen.getByTitle("Projected points").textContent).toBe("6.4");
   });
 
+  it("hides a real score that belongs to a different gameweek", () => {
+    // Planning a future GW renders the substituted latest squad. Painting its
+    // points under a "GW3" heading claims a score that does not exist yet —
+    // the caller suppresses livePoints, and the projection shows instead.
+    renderCard({ livePoints: undefined, points: 4.2 });
+    expect(screen.queryByTitle("Final points")).toBeNull();
+    expect(screen.queryByTitle("Live points")).toBeNull();
+    expect(screen.getByText("4.2")).toBeTruthy();
+  });
+
   it("renders a dash when neither a score nor a projection is available", () => {
     renderCard({ points: Number.NaN });
     expect(screen.getByText("—")).toBeTruthy();
