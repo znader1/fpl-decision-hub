@@ -119,7 +119,7 @@ export const GameweekNav = ({
       <div className="h-5 w-px bg-border shrink-0" />
 
       {/* Stats */}
-      <div className="flex items-center gap-5 flex-1 min-w-0">
+      <div className="flex items-center gap-4 min-w-0">
         <div className="flex items-center gap-1.5">
           <Star className="h-3.5 w-3.5 text-primary shrink-0" />
           <span className="text-xs text-muted-foreground shrink-0">
@@ -133,14 +133,14 @@ export const GameweekNav = ({
             <div className="h-4 w-px bg-border shrink-0" />
             <div className="flex items-center gap-1.5 min-w-0">
               <Trophy className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground shrink-0">Rank</span>
+              <span className="hidden xl:inline text-xs text-muted-foreground shrink-0">Rank</span>
               <span className="text-sm font-bold text-foreground tabular-nums truncate">{rank}</span>
             </div>
           </>
         )}
       </div>
 
-      {action && <div className="flex items-center gap-2 shrink-0">{action}</div>}
+      {action && <div className="flex items-center gap-2 shrink-0 ml-auto">{action}</div>}
     </div>
   );
 };
