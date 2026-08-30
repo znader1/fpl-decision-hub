@@ -211,27 +211,6 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
           <p className="text-xs text-muted-foreground">{player.teamName ?? player.team}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="rounded-md bg-muted/50 px-2 py-1.5">
-            <p className="text-muted-foreground">Selected GW xPts</p>
-            <p className="font-semibold text-foreground">{formatMetric(breakdown?.current_gw_xpts)}</p>
-          </div>
-          <div className="rounded-md bg-muted/50 px-2 py-1.5">
-            <p className="text-muted-foreground">Horizon xPts</p>
-            <p className="font-semibold text-foreground">{formatMetric(breakdown?.horizon_xpts)}</p>
-          </div>
-          <div className="col-span-2 rounded-md bg-muted/50 px-2 py-1.5">
-            <p className="text-muted-foreground">{getObjectiveLabel(breakdown?.objective_score_col)}</p>
-            <p className="font-semibold text-foreground">
-              {formatMetric(objectiveScore, 2)}
-            </p>
-          </div>
-        </div>
-
-        {breakdown?.objective_explanation && (
-          <p className="text-xs text-muted-foreground">{breakdown.objective_explanation}</p>
-        )}
-
         {distribution && (
           <div className="space-y-1 rounded-md border border-border bg-card px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -271,6 +250,34 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
           </div>
         )}
 
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-md bg-muted/50 px-2 py-1.5">
+            <p className="text-muted-foreground">Selected GW xPts</p>
+            <p className="font-semibold text-foreground">{formatMetric(breakdown?.current_gw_xpts)}</p>
+          </div>
+          <div className="rounded-md bg-muted/50 px-2 py-1.5">
+            <p className="text-muted-foreground">Horizon xPts</p>
+            <p className="font-semibold text-foreground">{formatMetric(breakdown?.horizon_xpts)}</p>
+          </div>
+          <div className="col-span-2 rounded-md bg-muted/50 px-2 py-1.5">
+            <p className="text-muted-foreground">{getObjectiveLabel(breakdown?.objective_score_col)}</p>
+            <p className="font-semibold text-foreground">
+              {formatMetric(objectiveScore, 2)}
+            </p>
+          </div>
+        </div>
+
+        {(recentForm || baseline) && (
+          <details className="group">
+            <summary className="cursor-pointer list-none text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground">
+              Model inputs
+              <span className="ml-1 font-normal normal-case opacity-60 group-open:hidden">— show</span>
+              <span className="ml-1 font-normal normal-case opacity-60 hidden group-open:inline">— hide</span>
+            </summary>
+            <div className="mt-2 space-y-2">
+              {breakdown?.objective_explanation && (
+                <p className="text-xs text-muted-foreground">{breakdown.objective_explanation}</p>
+              )}
         {recentForm && (
           <div className="space-y-1 rounded-md border border-border bg-card px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Recent Form Input</p>
@@ -295,6 +302,10 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
               <p>GW32/GW start base: <span className="font-semibold text-foreground">{formatMetric(baseline.gw1_after_ep_next_blend, 2)}</span></p>
             </div>
           </div>
+        )}
+
+            </div>
+          </details>
         )}
 
         {(breakdown?.objective_score_col === "wildcard_score" || breakdown?.wildcard) && (
