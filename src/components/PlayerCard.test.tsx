@@ -66,3 +66,25 @@ describe("points under the player", () => {
     expect(screen.getByTitle("Live points").textContent).toBe("0");
   });
 });
+
+describe("hover card information order", () => {
+  const withBreakdown = {
+    ...basePlayer,
+    scoreBreakdown: {
+      current_gw_xpts: 4.1,
+      horizon_xpts: 12.3,
+      components: { p_goal: 0.61, p_60: 0.78, model_exp_points: 5.24 },
+      distribution: { modal_points: 2, p_return_6: 0.34, p_haul_10: 0.12, p80_low: 1, p80_high: 9 },
+      recent_form: { window_gws: 5, samples: 1, avg_points: 2, avg_minutes: 66 },
+      baseline: { long_term: 2, recent_gw: 2, blended: 2 },
+    },
+  } as Player;
+
+  it("keeps the model's own inputs collapsed by default", () => {
+    // The card was showing ~17 diagnostic numbers ahead of the answer.
+    const { container } = render(<PlayerCard player={withBreakdown} />);
+    const details = container.querySelector("details");
+    // Rendered but closed: available on demand, not competing with the answer.
+    expect(details === null || (details as HTMLDetailsElement).open === false).toBe(true);
+  });
+});
