@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import type { FplChipStrategy } from "@/lib/fplAssistantApi";
+import { CHIP_LABELS, type FplChipStrategy } from "@/lib/fplAssistantApi";
 import {
   Select,
   SelectContent,
@@ -14,8 +14,10 @@ import {
 
 const CHIP_OPTIONS: Array<{ value: FplChipStrategy; label: string }> = [
   { value: "none", label: "No chip" },
-  { value: "wildcard", label: "Wildcard" },
-  { value: "free_hit", label: "Free Hit" },
+  { value: "wildcard", label: CHIP_LABELS.wildcard },
+  { value: "free_hit", label: CHIP_LABELS.free_hit },
+  { value: "bench_boost", label: CHIP_LABELS.bench_boost },
+  { value: "triple_captain", label: CHIP_LABELS.triple_captain },
 ];
 
 export interface ParameterFormProps {
@@ -129,7 +131,11 @@ export const ParameterForm = (props: ParameterFormProps) => {
               ? "Wildcard: builds an entirely new 15-man squad from scratch."
               : chipStrategy === "free_hit"
               ? "Free Hit: one-week optimal squad — your picks reset next GW."
-              : "Select Wildcard or Free Hit to draft a chip squad."}
+              : chipStrategy === "bench_boost"
+              ? "Bench Boost: all 15 players' points count this gameweek."
+              : chipStrategy === "triple_captain"
+              ? "Triple Captain: your captain's points are tripled this gameweek."
+              : "Select a chip to plan around it."}
           </p>
         </div>
 
