@@ -200,7 +200,12 @@ export interface FplHotPlayer extends FplTransferPlayer {
 
 export type FplMovesByPosition = Partial<Record<FplPosition, number>>;
 export type FplHotByPosition = Partial<Record<FplPosition, FplHotPlayer[]>>;
-export type FplChipStrategy = "none" | "wildcard" | "free_hit";
+export type FplChipStrategy =
+  | "none"
+  | "wildcard"
+  | "free_hit"
+  | "bench_boost"
+  | "triple_captain";
 
 export interface FplTransfersRecommendation {
   note?: string;
@@ -1294,6 +1299,68 @@ export const fetchUserLeagues = async (
     throw new Error(`Failed to fetch leagues (${response.status}): ${body.slice(0, 200)}`);
   }
   return (await response.json()) as { entry_id: number; leagues: LeagueSummary[] };
+};
+
+/* ── Chip plan (chip timing recommendations) ─────────────────────────────── */
+
+export type ChipName = "wildcard" | "free_hit" | "bench_boost" | "triple_captain";
+
+export const CHIP_LABELS: Record<ChipName, string> = {
+  wildcard: "Wildcard",
+  free_hit: "Free Hit",
+  bench_boost: "Bench Boost",
+  triple_captain: "Triple Captain",
+};
+
+export type ChipWindow = {
+  name: ChipName;
+  available: boolean;
+  half: 1 | 2;
+  expires_gw: number;
+};
+
+export type ChipEvPoint = { gw: number; ev: number };
+
+export type ChipPlanRecommendation = {
+  chip: ChipName;
+  event_id: number;
+  ev_gain: number | null; // null on provisional (structural-zone) recommendations
+  provisional: boolean;
+  reasons: string[];
+  ev_curve: ChipEvPoint[];
+};
+
+export type ChipNudge = { chip: ChipName; event_id: number; ev_gain: number };
+
+export type ChipPlanResponse = {
+  entry_id: number;
+  current_gw: number;
+  chips_remaining: ChipWindow[];
+  horizon_model_gws: number;
+  recommendations: ChipPlanRecommendation[];
+  nudge: ChipNudge | null;
+  transfer_context: {
+    planned_transfers_net_gain: number;
+    wc_alternative_gw: number | null;
+  };
+};
+
+export const fetchChipPlan = async (
+  entryId: number,
+  horizon?: number,
+  signal?: AbortSignal
+): Promise<ChipPlanResponse> => {
+  const apiBase = getEnvString("VITE_FPL_API_BASE_URL") ?? "";
+  const params = new URLSearchParams({ entry_id: String(entryId) });
+  if (horizon) params.set("horizon", String(horizon));
+  const path = `/chips/plan?${params.toString()}`;
+  const url = apiBase ? new URL(path, apiBase).toString() : path;
+  const response = await authFetch(url, { signal });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Failed to fetch chip plan (${response.status}): ${body.slice(0, 200)}`);
+  }
+  return (await response.json()) as ChipPlanResponse;
 };
 
 export type LeagueStrategyMode = "chase" | "defend" | "differential";
