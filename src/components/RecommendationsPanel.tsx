@@ -16,7 +16,7 @@ import { JerseyIcon } from "./JerseyIcon";
 import { ExplanationPanel } from "./ExplanationPanel";
 import { AiAdvisorPanel } from "./AiAdvisorPanel";
 import { ChipRoadmapPanel } from "./ChipRoadmapPanel";
-import type { ChipPlanResponse, FplSquad, FplTeamRecommendation, FplTransferPlanHorizon } from "@/lib/fplAssistantApi";
+import { CHIP_LABELS, type ChipName, type ChipPlanResponse, type FplSquad, type FplTeamRecommendation, type FplTransferPlanHorizon } from "@/lib/fplAssistantApi";
 
 interface RecommendationsPanelProps {
   squad?: FplSquad;
@@ -64,9 +64,7 @@ const getSuggestedCaptain = (rec: FplTeamRecommendation) => {
 
 const chipLabel = (v?: string | null) => {
   if (!v || v === "none") return null;
-  if (v === "free_hit") return "Free Hit";
-  if (v === "wildcard") return "Wildcard";
-  return v;
+  return Object.prototype.hasOwnProperty.call(CHIP_LABELS, v) ? CHIP_LABELS[v as ChipName] : v;
 };
 
 /* ── sub-components ───────────────────────────────────────────────────────── */

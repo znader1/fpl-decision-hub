@@ -85,7 +85,7 @@ const getInitialHorizon = () => {
 // here instead of hardcoding a second wildcard/free_hit-only whitelist, which used to
 // silently drop bench_boost/triple_captain back to "none" on reload.
 const isChipStrategyValue = (value: string): value is FplChipStrategy =>
-  value === "none" || value in CHIP_LABELS;
+  value === "none" || Object.prototype.hasOwnProperty.call(CHIP_LABELS, value);
 
 const getInitialChipStrategy = (): FplChipStrategy => {
   const query = new URLSearchParams(window.location.search);
