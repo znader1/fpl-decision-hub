@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
+import { fireEvent } from "@testing-library/react";
 import { ChipRoadmapPanel } from "./ChipRoadmapPanel";
 import type { ChipPlanResponse } from "@/lib/fplAssistantApi";
 
@@ -76,5 +77,40 @@ describe("ChipRoadmapPanel", () => {
   it("renders empty state when idle without a plan", () => {
     render(<ChipRoadmapPanel plan={null} isLoading={false} />);
     expect(screen.getByText(/no chip plan/i)).toBeTruthy();
+  });
+
+  it("toggles recommendation details on click and hides reason on second click", () => {
+    render(<ChipRoadmapPanel plan={basePlan} isLoading={false} />);
+    const wildcardButton = screen.getByText("Wildcard").closest("button");
+    expect(wildcardButton).toBeTruthy();
+
+    // Initially, reason should not be visible
+    expect(screen.queryByText("Large gap to optimal — squad needs reset")).toBeNull();
+
+    // Click to expand
+    fireEvent.click(wildcardButton!);
+    expect(screen.getByText("Large gap to optimal — squad needs reset")).toBeTruthy();
+
+    // Click to collapse
+    fireEvent.click(wildcardButton!);
+    expect(screen.queryByText("Large gap to optimal — squad needs reset")).toBeNull();
+  });
+
+  it("renders EV curve bars with correct title attributes for expanded recommendation", () => {
+    render(<ChipRoadmapPanel plan={basePlan} isLoading={false} />);
+    const wildcardButton = screen.getByText("Wildcard").closest("button");
+
+    // Click to expand
+    fireEvent.click(wildcardButton!);
+
+    // Check for EV curve container
+    const evCurveContainer = screen.getByLabelText("EV by gameweek");
+    expect(evCurveContainer).toBeTruthy();
+
+    // Check for bars with correct title attributes
+    const gw5Bar = screen.getByTitle("GW5: +4.2 xPts");
+    const gw8Bar = screen.getByTitle("GW8: +9.1 xPts");
+    expect(gw5Bar).toBeTruthy();
+    expect(gw8Bar).toBeTruthy();
   });
 });
