@@ -29,6 +29,10 @@ export default defineConfig(({ mode }) => ({
         target: process.env.VITE_FPL_API_BASE_URL ?? "https://fpl-assistant-api.fly.dev/",
         changeOrigin: true,
       },
+      "/chips": {
+        target: process.env.VITE_FPL_API_BASE_URL ?? "https://fpl-assistant-api.fly.dev/",
+        changeOrigin: true,
+      },
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
