@@ -4,6 +4,7 @@ import { ParameterSidebar } from "@/components/ParameterSidebar";
 import { MobileParameterDrawer } from "@/components/MobileParameterDrawer";
 import { PitchVisualization } from "@/components/PitchVisualization";
 import { RecommendationsPanel } from "@/components/RecommendationsPanel";
+import { ChipNudgeCard } from "@/components/ChipNudgeCard";
 import { OptimizeSquadDialog } from "@/components/OptimizeSquadDialog";
 import { Navbar } from "@/components/layout/Navbar";
 import { QueryErrorCard } from "@/components/QueryErrorCard";
@@ -19,10 +20,12 @@ import {
   fetchNextEvent,
   fetchSquad,
   fetchTeamRecommendation,
+  fetchChipPlan,
   getNextEventUrlTemplate,
   getRecommendationUrlTemplate,
   getFixturesUrlTemplate,
   getSquadUrlTemplate,
+  CHIP_LABELS,
   type FplNextEventSummary,
   type FplChipStrategy,
   type FplEntryIdentity,
@@ -30,6 +33,8 @@ import {
   type FplTeamFixture,
   type FplTeamRecommendation,
   type TeamRecommendationParams,
+  type ChipPlanResponse,
+  type ChipName,
 } from "@/lib/fplAssistantApi";
 
 type PitchMode = "squad" | "recommendation";
@@ -76,13 +81,19 @@ const getInitialHorizon = () => {
   return 3;
 };
 
+// Canonical chip vocabulary lives in CHIP_LABELS (fplAssistantApi.ts) — reuse its keys
+// here instead of hardcoding a second wildcard/free_hit-only whitelist, which used to
+// silently drop bench_boost/triple_captain back to "none" on reload.
+const isChipStrategyValue = (value: string): value is FplChipStrategy =>
+  value === "none" || value in CHIP_LABELS;
+
 const getInitialChipStrategy = (): FplChipStrategy => {
   const query = new URLSearchParams(window.location.search);
   const fromQuery = query.get("chip_strategy") ?? query.get("strategy");
-  if (fromQuery === "wildcard" || fromQuery === "free_hit" || fromQuery === "none") return fromQuery;
+  if (fromQuery && isChipStrategyValue(fromQuery)) return fromQuery;
 
   const fromStorage = localStorage.getItem("fpl_chip_strategy") ?? localStorage.getItem("fpl_transfer_strategy");
-  if (fromStorage === "wildcard" || fromStorage === "free_hit" || fromStorage === "none") return fromStorage;
+  if (fromStorage && isChipStrategyValue(fromStorage)) return fromStorage;
   return "none";
 };
 
@@ -164,6 +175,16 @@ const Index = () => {
     enabled: canFetchNextEvent && (canFetchSquad || canRecommend || canFetchFixtures),
     retry: false,
     staleTime: 5 * 60_000,
+  });
+
+  // gwResolved is declared later in this component (after the queries) — express the
+  // same gate directly here rather than depending on a not-yet-declared binding.
+  const chipPlanQuery = useQuery<ChipPlanResponse>({
+    queryKey: ["chipPlan", entryId, selectedGW],
+    queryFn: ({ signal }) => fetchChipPlan(entryId, undefined, signal),
+    enabled: selectedGW !== null && entryId > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 
   const nextEventId = nextEventQuery.data?.event_id ?? undefined;
@@ -566,6 +587,13 @@ const Index = () => {
     runRecommendation(planGw);
   };
 
+  // Applying a nudge just sets the chip strategy — the same thing the sidebar's
+  // onChipStrategyChange does. Persistence to localStorage is handled by the
+  // existing effect that reacts to chipStrategy changes; no separate write needed.
+  const handleApplyChipNudge = (chip: ChipName) => {
+    setChipStrategy(chip);
+  };
+
   const parameterProps = {
     entryId,
     onEntryIdChange: setEntryAndReset,
@@ -670,6 +698,18 @@ const Index = () => {
             </div>
           </div>
         )}
+        {/* Wrapper only renders when there's an actionable nudge (mirrors ChipNudgeCard's
+            own null-return gate) — an unconditional wrapper would leave a blank padded
+            strip above the pitch on every load where there's nothing to show. */}
+        {chipPlanQuery.data?.nudge && chipPlanQuery.data.nudge.chip !== chipStrategy && (
+          <div className="mx-auto w-full max-w-5xl px-4 pt-4">
+            <ChipNudgeCard
+              nudge={chipPlanQuery.data.nudge}
+              activeChipStrategy={chipStrategy}
+              onApplyChip={handleApplyChipNudge}
+            />
+          </div>
+        )}
         <PitchVisualization
           entryId={entryId}
           onEntryIdSubmit={handleEntryIdSubmit}
@@ -734,6 +774,8 @@ const Index = () => {
         onApplyTransferAtIndex={applyTransferAtIndex}
         entryId={entryId}
         currentGw={selectedGW ?? undefined}
+        chipPlan={chipPlanQuery.data ?? null}
+        isChipPlanLoading={chipPlanQuery.isLoading}
       />
         </>
       )}

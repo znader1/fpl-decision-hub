@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { FplChipStrategy } from "@/lib/fplAssistantApi";
+import { CHIP_LABELS, type FplChipStrategy } from "@/lib/fplAssistantApi";
 import { ParameterForm } from "@/components/ParameterForm";
 
 interface ParameterSidebarProps {
@@ -46,11 +46,10 @@ export const ParameterSidebar = (props: ParameterSidebarProps) => {
 
   // A live GW no longer blocks the action — the handler plans the next GW instead.
   const recommendDisabled = !canRecommend || !Number.isFinite(entryId) || entryId <= 0 || isRecommending;
-  const chipActive = chipStrategy === "wildcard" || chipStrategy === "free_hit";
+  const chipActive = chipStrategy !== "none";
   const effectiveHorizonLabel = chipStrategy === "free_hit" ? "1 GW (Free Hit)" : `${horizonGws} GWs`;
-  const chipLabel = chipActive
-    ? chipStrategy === "wildcard" ? "Wildcard" : "Free Hit"
-    : "No chip";
+  // The !== "none" check narrows FplChipStrategy to ChipName, so the index type-checks.
+  const chipLabel = chipStrategy !== "none" ? CHIP_LABELS[chipStrategy] : "No chip";
 
   /* ── Collapsed icon rail ─────────────────────────────────────────────────── */
   if (collapsed) {
