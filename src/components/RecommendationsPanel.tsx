@@ -15,7 +15,8 @@ import { TransferPlanner } from "./TransferPlanner";
 import { JerseyIcon } from "./JerseyIcon";
 import { ExplanationPanel } from "./ExplanationPanel";
 import { AiAdvisorPanel } from "./AiAdvisorPanel";
-import type { FplSquad, FplTeamRecommendation, FplTransferPlanHorizon } from "@/lib/fplAssistantApi";
+import { ChipRoadmapPanel } from "./ChipRoadmapPanel";
+import type { ChipPlanResponse, FplSquad, FplTeamRecommendation, FplTransferPlanHorizon } from "@/lib/fplAssistantApi";
 
 interface RecommendationsPanelProps {
   squad?: FplSquad;
@@ -31,9 +32,11 @@ interface RecommendationsPanelProps {
   entryId?: number;
   currentGw?: number;
   chipsRemaining?: string[];
+  chipPlan?: ChipPlanResponse | null;
+  isChipPlanLoading?: boolean;
 }
 
-type Tab = "summary" | "transfers" | "watchlist";
+type Tab = "summary" | "transfers" | "watchlist" | "chips";
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 const findPlayer = (team: FplSquad, id: number) =>
@@ -561,6 +564,8 @@ export const RecommendationsPanel = ({
   entryId,
   currentGw,
   chipsRemaining,
+  chipPlan,
+  isChipPlanLoading = false,
 }: RecommendationsPanelProps) => {
   const [activeTab, setActiveTab] = useState<Tab>("summary");
 
@@ -568,6 +573,7 @@ export const RecommendationsPanel = ({
     { id: "summary", label: "Summary", icon: TrendingUp },
     { id: "transfers", label: "Transfers", icon: ArrowRightLeft },
     { id: "watchlist", label: "Watchlist", icon: ShieldAlert },
+    { id: "chips", label: "Chips", icon: Sparkles },
   ];
 
   const moveCount = recommendation?.transfers?.moves?.length ?? 0;
@@ -606,6 +612,10 @@ export const RecommendationsPanel = ({
                   {moveCount}
                 </span>
               )}
+              {tab.id === "chips" &&
+                (chipPlan?.recommendations.some((r) => !r.provisional) ?? false) && (
+                  <span className="absolute top-2 right-[18%] h-2 w-2 rounded-full bg-primary" />
+                )}
               {isActive && (
                 <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full bg-primary" />
               )}
@@ -646,6 +656,9 @@ export const RecommendationsPanel = ({
             squad={squad}
             isRecommending={isRecommending}
           />
+        )}
+        {activeTab === "chips" && (
+          <ChipRoadmapPanel plan={chipPlan} isLoading={isChipPlanLoading} />
         )}
         <ExplanationPanel recommendation={recommendation} />
       </div>
