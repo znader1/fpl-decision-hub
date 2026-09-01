@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
 import {
   CHIP_LABELS,
-  type ChipName,
   type ChipPlanRecommendation,
   type ChipPlanResponse,
 } from "@/lib/fplAssistantApi";
@@ -22,7 +21,7 @@ const EvCurve = ({ points }: { points: ChipPlanRecommendation["ev_curve"] }) => 
           <div
             className="w-4 rounded-t bg-primary/70"
             style={{ height: `${Math.max(4, (p.ev / max) * 32)}px` }}
-            title={`GW${p.gw}: +${p.ev} xPts`}
+            title={`GW${p.gw}: +${p.ev.toFixed(1)} xPts`}
           />
           <span className="text-[9px] text-muted-foreground">{p.gw}</span>
         </div>
@@ -55,7 +54,7 @@ const RecommendationRow = ({ rec }: { rec: ChipPlanRecommendation }) => {
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-sm font-bold">GW{rec.event_id}</span>
           {rec.ev_gain !== null && (
-            <span className="text-sm font-semibold text-primary">+{rec.ev_gain} xPts</span>
+            <span className="text-sm font-semibold text-primary">+{rec.ev_gain.toFixed(1)} xPts</span>
           )}
         </div>
       </button>

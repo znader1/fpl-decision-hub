@@ -690,7 +690,15 @@ const Index = () => {
           </div>
         </div>
       ) : (
-        <>
+        // A dedicated column wrapper: this whole branch used to spread the rollover
+        // banner, the chip nudge, and PitchVisualization as separate ROW siblings
+        // (JSX fragments don't add a DOM node), so on lg+ each one became its own
+        // flex-row column and starved PitchVisualization's flex-1 down to ~0px
+        // whenever the banner or nudge rendered. Wrapping them in one flex-col here
+        // makes this div the flex-row item (taking over PitchVisualization's old
+        // flex-1 min-w-0 role) and lets the banner/nudge stack above the pitch
+        // inside it instead.
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
         {identityCheck.status === "rolled-over" && (
           <div className="mx-auto w-full max-w-5xl px-4 pt-4">
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
@@ -759,7 +767,7 @@ const Index = () => {
             </>
           }
         />
-        </>
+        </div>
       )}
       <RecommendationsPanel
         squad={squadQuery.data}
