@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search } from "lucide-react";
-import type {
-  FplSquad,
-  FplTeamFixture,
-  FplTeamRecommendation,
-  FplTeamRecommendationBenchPlayer,
-  FplTeamRecommendationPlayer,
+import {
+  CHIP_LABELS,
+  type ChipName,
+  type FplSquad,
+  type FplTeamFixture,
+  type FplTeamRecommendation,
+  type FplTeamRecommendationBenchPlayer,
+  type FplTeamRecommendationPlayer,
 } from "@/lib/fplAssistantApi";
 
 type PitchTeam = FplSquad | FplTeamRecommendation;
@@ -53,9 +55,7 @@ export const getRowGapClass = (count: number) => {
 const round1 = (value: number) => Math.round(value * 10) / 10;
 const chipLabel = (value?: string | null) => {
   if (!value) return "";
-  if (value === "free_hit") return "Free Hit";
-  if (value === "wildcard") return "Wildcard";
-  return value;
+  return Object.prototype.hasOwnProperty.call(CHIP_LABELS, value) ? CHIP_LABELS[value as ChipName] : value;
 };
 
 const parseNextFixturesLabel = (label?: string): Player["fixture"] | undefined => {
