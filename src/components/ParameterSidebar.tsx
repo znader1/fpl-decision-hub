@@ -124,7 +124,11 @@ export const ParameterSidebar = (props: ParameterSidebarProps) => {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              {isRecommending ? "Computing…" : chipActive ? "Build Chip Draft" : "Recommend Squad"}
+              {isRecommending
+                ? "Computing…"
+                : chipStrategy === "wildcard" || chipStrategy === "free_hit"
+                  ? "Build Chip Draft"
+                  : "Recommend Squad"}
             </TooltipContent>
           </Tooltip>
         </div>

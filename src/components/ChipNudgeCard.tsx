@@ -20,7 +20,7 @@ export const ChipNudgeCard = ({ nudge, activeChipStrategy, onApplyChip }: Props)
       <Zap className="h-4 w-4 shrink-0 text-primary" />
       <p className="text-sm min-w-0">
         <span className="font-semibold">{CHIP_LABELS[nudge.chip]}</span> this gameweek
-        projects <span className="font-semibold text-primary">+{nudge.ev_gain} xPts</span>{" "}
+        projects <span className="font-semibold text-primary">+{nudge.ev_gain.toFixed(1)} xPts</span>{" "}
         over holding it.
       </p>
       <button

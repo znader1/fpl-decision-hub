@@ -580,7 +580,8 @@ export const RecommendationsPanel = ({
   // display one sentence of placeholder text — squeezing the pitch for no
   // return. Narrow it until it has real content; the tab bar stays so the
   // panel doesn't vanish and reappear.
-  const hasContent = Boolean(recommendation) || Boolean(isRecommending);
+  const hasContent =
+    Boolean(recommendation) || Boolean(isRecommending) || (activeTab === "chips" && Boolean(chipPlan));
 
   return (
     <aside
