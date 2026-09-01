@@ -31,9 +31,9 @@ Current season grants two of each chip (WC, FH, BB, TC), first-half set expiring
 
 ## Backend design
 
-### 1. Engine — `src/chip_planner.py` (new, pure module)
+### 1. Engine — `src/chip_advisor.py` (evolve existing module)
 
-Dependency-injectable pure functions, same style as `ownership_ev.py` / `expected_points.py`.
+The backend already has a Layer-1 deterministic chip engine (`src/chip_advisor.py`: `ChipRecommendation`, `recommend_chips()`, per-chip scorers for all four chips) wrapped by the chat chip agent. The engine work **extends this module** rather than creating a parallel one. Gaps to close: expiry/half awareness, config-tunable priors (its numbers are currently hardcoded, violating the repo's config rule), a transfer-plan-aware wildcard baseline, budget-aware free-hit comparison, real DGW detection (the chat context builder hardcodes `fixture_count: 1`), the structural zone, the nudge, and a REST route (today it is reachable only through the LLM chat agent).
 
 **Inputs:**
 - Per-player per-GW projections over the horizon (existing `projections.project_elements_next_gws`)
@@ -50,7 +50,7 @@ Dependency-injectable pure functions, same style as `ownership_ev.py` / `expecte
 
 **Priors — config tunables under `CHIP_PLAN_*` in `src/config.py`** (values are starting points, tuned by backtest):
 - `CHIP_PLAN_HORIZON_GWS = 8` — model-zone length
-- `CHIP_PLAN_MIN_EV = {"tc": 3.0, "bboost": 5.0, "freehit": 8.0, "wildcard": 6.0}` — below threshold, "hold" is recommended
+- `CHIP_PLAN_MIN_EV = {"triple_captain": 3.0, "bench_boost": 5.0, "free_hit": 8.0, "wildcard": 6.0}` — below threshold, "hold" is recommended
 - `CHIP_PLAN_DGW_BONUS` — additive nudge for BB/TC on detected DGWs
 - `CHIP_PLAN_EXPIRY_RAMP_GWS = 5` — within N GWs of a chip's expiry, its EV threshold decays linearly toward 0 ("use it or lose it")
 - `CHIP_PLAN_FH_BLANK_ONLY_BIAS` — FH penalized on non-blank GWs
@@ -71,12 +71,12 @@ Dependency-injectable pure functions, same style as `ownership_ev.py` / `expecte
   "entry_id": 123,
   "current_gw": 4,
   "chips_remaining": [
-    {"name": "bboost", "half": 1, "expires_gw": 19, "available": true}
+    {"name": "bench_boost", "half": 1, "expires_gw": 19, "available": true}
   ],
   "horizon_model_gws": 8,
   "recommendations": [
     {
-      "chip": "bboost",
+      "chip": "bench_boost",
       "event_id": 12,
       "ev_gain": 6.4,
       "provisional": false,
@@ -84,8 +84,8 @@ Dependency-injectable pure functions, same style as `ownership_ev.py` / `expecte
       "ev_curve": [{"gw": 5, "ev": 1.2}, {"gw": 6, "ev": 0.8}]
     }
   ],
-  "nudge": {"chip": "bboost", "event_id": 5, "ev_gain": 7.1},
-  "transfer_context": {"planned_transfers_before": 2, "wc_alternative_gw": 8}
+  "nudge": {"chip": "bench_boost", "event_id": 5, "ev_gain": 7.1},
+  "transfer_context": {"planned_transfers_net_gain": 3.0, "wc_alternative_gw": 8}
 }
 ```
 
@@ -116,10 +116,9 @@ This table is the Approach C dataset: (recommendation, decision, outcome) triple
 
 ### 5. API layer — `src/lib/fplAssistantApi.ts`
 
-- Types: `ChipName = "wildcard" | "freehit" | "bboost" | "3xc"` (FPL API chip identifiers — used verbatim in `/chips/plan` payloads), `ChipPlanRecommendation`, `ChipPlanResponse`, `ChipNudge` matching the contract above.
+- Types: `ChipName = "wildcard" | "free_hit" | "bench_boost" | "triple_captain"` — the backend's canonical chip names (already used by `src/chip_advisor.py` and `_derive_chips_remaining`). The backend normalizes FPL API identifiers (`freehit`, `bboost`, `3xc`) to these before they reach any payload, so the frontend never maps chip names. Plus `ChipPlanRecommendation`, `ChipPlanResponse`, `ChipNudge` matching the contract above.
 - `fetchChipPlan(entryId, horizon?, signal?)` — same authFetch/URL-resolution pattern as `fetchUserLeagues`.
-- `FplChipStrategy` widens to `"none" | "wildcard" | "free_hit" | "bench_boost" | "triple_captain"`.
-- Explicit mapping between the two vocabularies lives in one place (`fplAssistantApi.ts`): `wildcard→wildcard`, `freehit→free_hit`, `bboost→bench_boost`, `3xc→triple_captain`. Components never translate chip names themselves.
+- `FplChipStrategy` widens to `"none" | "wildcard" | "free_hit" | "bench_boost" | "triple_captain"` — identical vocabulary to `ChipName`, so a chip recommendation maps to a chip strategy with no translation.
 
 ### 6. Components
 
