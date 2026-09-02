@@ -34,6 +34,7 @@ interface RecommendationsPanelProps {
   chipsRemaining?: string[];
   chipPlan?: ChipPlanResponse | null;
   isChipPlanLoading?: boolean;
+  isChipPlanError?: boolean;
 }
 
 type Tab = "summary" | "transfers" | "watchlist" | "chips";
@@ -564,6 +565,7 @@ export const RecommendationsPanel = ({
   chipsRemaining,
   chipPlan,
   isChipPlanLoading = false,
+  isChipPlanError = false,
 }: RecommendationsPanelProps) => {
   const [activeTab, setActiveTab] = useState<Tab>("summary");
 
@@ -657,7 +659,11 @@ export const RecommendationsPanel = ({
           />
         )}
         {activeTab === "chips" && (
-          <ChipRoadmapPanel plan={chipPlan} isLoading={isChipPlanLoading} />
+          <ChipRoadmapPanel
+            plan={chipPlan}
+            isLoading={isChipPlanLoading}
+            isError={isChipPlanError}
+          />
         )}
         <ExplanationPanel recommendation={recommendation} />
       </div>

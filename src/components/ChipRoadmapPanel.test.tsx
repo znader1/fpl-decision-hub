@@ -79,6 +79,12 @@ describe("ChipRoadmapPanel", () => {
     expect(screen.getByText(/no chip plan/i)).toBeTruthy();
   });
 
+  it("renders a distinct error state when the request failed", () => {
+    render(<ChipRoadmapPanel plan={null} isLoading={false} isError={true} />);
+    expect(screen.getByText(/couldn't load the chip plan/i)).toBeTruthy();
+    expect(screen.queryByText(/set your entry id/i)).toBeNull();
+  });
+
   it("toggles recommendation details on click and hides reason on second click", () => {
     render(<ChipRoadmapPanel plan={basePlan} isLoading={false} />);
     const wildcardButton = screen.getByText("Wildcard").closest("button");
