@@ -784,6 +784,7 @@ const Index = () => {
         currentGw={selectedGW ?? undefined}
         chipPlan={chipPlanQuery.data ?? null}
         isChipPlanLoading={chipPlanQuery.isLoading}
+        isChipPlanError={chipPlanQuery.isError}
       />
         </>
       )}

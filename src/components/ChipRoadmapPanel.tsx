@@ -7,6 +7,7 @@ import {
 } from "@/lib/fplAssistantApi";
 
 type Props = {
+  isError?: boolean;
   plan: ChipPlanResponse | null | undefined;
   isLoading: boolean;
 };
@@ -74,11 +75,18 @@ const RecommendationRow = ({ rec }: { rec: ChipPlanRecommendation }) => {
   );
 };
 
-export const ChipRoadmapPanel = ({ plan, isLoading }: Props) => {
+export const ChipRoadmapPanel = ({ plan, isLoading, isError = false }: Props) => {
   if (isLoading && !plan) {
     return (
       <div className="text-sm text-muted-foreground py-8 text-center">
         Analyzing chip windows…
+      </div>
+    );
+  }
+  if (isError && !plan) {
+    return (
+      <div className="text-sm text-muted-foreground py-8 text-center">
+        Couldn't load the chip plan — the chip-planner service isn't available yet.
       </div>
     );
   }
