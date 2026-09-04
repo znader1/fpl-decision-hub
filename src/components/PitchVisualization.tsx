@@ -259,7 +259,7 @@ export const PitchVisualization = ({
     // deeper (under the banner/nudge stacking wrapper in Index.tsx) rather than
     // being a direct flex-row child — without it, the default flex min-height:auto
     // would let content push past the available height instead of scrolling.
-    <div className="flex-1 min-w-0 min-h-0 p-2 sm:p-4 lg:overflow-y-auto">
+    <div className="flex-1 min-w-0 lg:min-h-0 p-2 sm:p-4 lg:overflow-y-auto">
       <div className="w-full max-w-3xl mx-auto">
 
         {/* Squad / ZN Pick toggle. Rendered inside the gameweek bar rather than

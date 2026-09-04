@@ -697,8 +697,10 @@ const Index = () => {
         // whenever the banner or nudge rendered. Wrapping them in one flex-col here
         // makes this div the flex-row item (taking over PitchVisualization's old
         // flex-1 min-w-0 role) and lets the banner/nudge stack above the pitch
-        // inside it instead.
-        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+        // inside it instead. min-h-0/flex-1 are lg-only: on mobile the page
+        // stacks vertically and a collapsed-height column makes the pitch
+        // overlap its siblings.
+        <div className="flex flex-col lg:flex-1 lg:min-w-0 lg:min-h-0">
         {identityCheck.status === "rolled-over" && (
           <div className="mx-auto w-full max-w-5xl px-4 pt-4">
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
