@@ -69,6 +69,18 @@ Supabase handles auth. `AuthContext` (`src/contexts/AuthContext.tsx`) exposes `s
 
 The recommendation tab on `PitchVisualization.tsx` is labelled **"ZN Pick"** (not "AI Pick").
 
+### Chips tab (2026-09)
+
+`RecommendationsPanel` has a fourth "Chips" tab: `ChipRoadmapPanel.tsx` renders `GET /chips/plan` (season chip recommendations with EV curves, provisional structural windows, expiry/hold/used states); `ChipNudgeCard.tsx` mounts above the pitch when the plan returns a next-GW nudge and applies via the existing `chipStrategy` state. Chip vocabulary is canonical everywhere (`wildcard | free_hit | bench_boost | triple_captain`) — the backend normalizes FPL's names; the frontend NEVER maps chip names. `FplChipStrategy` includes `bench_boost`/`triple_captain`; only wildcard/free_hit are squad-rebuilding (guards in `Index.tsx` keep that semantics — don't widen them).
+
+### Transfer Planner panel (one voice)
+
+The multi-GW plan verdict is the only advice: MAKE THE MOVE + this week's row render first; later GWs fold behind "Show the rest of the plan"; the beam-search cards are ALWAYS collapsed under "Other this-week options — not the recommendation" (they read as advice no matter the label). Plan moves may carry `h2h_conflicts` → amber "faces your X" badge. The ITB badge means remainder AFTER the suggested moves.
+
+### Vercel preview CORS (recurring)
+
+Every new branch's preview origin must be appended to `FPL_API_CORS_ORIGINS` on BOTH Fly apps (read current value via `fly ssh console -a <app> -C "printenv FPL_API_CORS_ORIGINS"` first — `fly secrets set` replaces the whole list). Permanent fix (backlogged): `allow_origin_regex` in backend `api/main.py`.
+
 ### League page
 
 `League.tsx` uses `pt-20 pb-8` (not `py-8`) to clear the fixed navbar height of `h-14`.
@@ -93,3 +105,5 @@ For feature branch testing, create a Vercel preview environment variable pointin
 | `POST /explain` | ExplanationPanel |
 | `GET /league/list` | League.tsx |
 | `POST /league/strategy` | League.tsx |
+| `GET /chips/plan` | Index.tsx chip plan query (Chips tab + nudge card) |
+| `POST /chat`, `POST /chat/{captain,transfer,chip}` | AiAdvisorPanel |
