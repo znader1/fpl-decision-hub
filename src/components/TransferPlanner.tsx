@@ -373,10 +373,9 @@ export const TransferPlanner = ({
       )}
           </>
         );
-        // When the plan's verdict is "roll", the quick swaps are temptations the
-        // strategy advises against — tuck them behind a disclosure instead of
-        // presenting them as co-equal advice.
-        if (planVerdict === "roll" && moves.length > 0) {
+        // Quick swaps read as advice no matter how they're labeled, so they
+        // always live behind a disclosure. The plan above is the only advice.
+        if (moves.length > 0) {
           return (
             <details>
               <summary className="cursor-pointer text-xs font-medium text-muted-foreground uppercase tracking-wider">
