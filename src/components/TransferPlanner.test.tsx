@@ -28,12 +28,13 @@ describe("TransferPlanner verdict-aware layout", () => {
     expect(screen.getByText(/not the recommendation/i)).toBeTruthy();
   });
 
-  it("shows quick options directly when the plan says spend", () => {
+  it("collapses quick options even when the plan says spend", () => {
     const { container } = render(
       <TransferPlanner transfers={transfers} planVerdict="spend" planSlot={<div>PLAN</div>} />
     );
-    expect(container.querySelector("details")).toBeNull();
-    expect(screen.getByText("Seller")).toBeTruthy();
+    const details = container.querySelector("details");
+    expect(details).toBeTruthy();
+    expect(details?.hasAttribute("open")).toBe(false);
   });
 
   it("renders the plan slot before the quick options and their controls", () => {
