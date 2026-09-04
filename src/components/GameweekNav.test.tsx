@@ -15,23 +15,25 @@ const base = {
 };
 
 describe("live-gameweek indicator", () => {
-  it("labels a live gameweek and stamps the refresh time", () => {
-    // A frozen score and a genuine zero are indistinguishable without this.
+  it("collapses live to a dot with the refresh time on hover", () => {
+    // A frozen score and a genuine zero are indistinguishable without the
+    // timestamp — it lives in the tooltip now so the bar stays one row.
     const at = new Date("2026-08-29T14:35:00Z").getTime();
     render(<GameweekNav {...base} isLiveGw updatedAt={at} />);
-    expect(screen.getByText("Live")).toBeTruthy();
-    expect(screen.getByTitle("Last refreshed")).toBeTruthy();
+    expect(screen.queryByText("Live")).toBeNull();
+    const pill = screen.getByTestId("gw-state-pill");
+    expect(pill.getAttribute("title")).toMatch(/^Live · last refreshed/);
   });
 
-  it("hides the timestamp outside a live gameweek", () => {
+  it("keeps the Planning label outside a live gameweek", () => {
     render(<GameweekNav {...base} isLiveGw={false} updatedAt={Date.now()} />);
     expect(screen.getByText("Planning")).toBeTruthy();
-    expect(screen.queryByTitle("Last refreshed")).toBeNull();
+    expect(screen.getByTestId("gw-state-pill").getAttribute("title")).toBeNull();
   });
 
-  it("hides the timestamp when nothing has been fetched yet", () => {
+  it("omits the timestamp when nothing has been fetched yet", () => {
     render(<GameweekNav {...base} isLiveGw updatedAt={0} />);
-    expect(screen.queryByTitle("Last refreshed")).toBeNull();
+    expect(screen.getByTestId("gw-state-pill").getAttribute("title")).toBe("Live");
   });
 });
 

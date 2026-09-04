@@ -388,7 +388,8 @@ export function HorizonTransferPlan({ plan }: { plan?: FplTransferPlanHorizon })
             is after that cost.
           </div>
         )}
-        {plan.plan.map((g) => (
+        {(() => {
+        const renderGw = (g: NonNullable<FplTransferPlanHorizon["plan"]>[number]) => (
           <div key={g.gw} className="border-t pt-2">
             <div className="flex items-center gap-2 text-xs">
               <span className="font-semibold w-12">GW{g.gw}</span>
@@ -430,7 +431,26 @@ export function HorizonTransferPlan({ plan }: { plan?: FplTransferPlanHorizon })
               </ul>
             )}
           </div>
-        ))}
+        );
+        // First glance = the decision: this week's row only. The rest of the
+        // staircase is working, shown on demand.
+        const rows = plan.plan;
+        const firstIdx = Math.max(0, rows.findIndex((r) => r.action === "transfer"));
+        const tail = rows.slice(firstIdx + 1);
+        return (
+          <>
+            {rows.slice(0, firstIdx + 1).map(renderGw)}
+            {tail.length > 0 && (
+              <details className="border-t pt-2">
+                <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Show the rest of the plan ({tail.length} more GW{tail.length === 1 ? "" : "s"})
+                </summary>
+                <div className="mt-1 space-y-2">{tail.map(renderGw)}</div>
+              </details>
+            )}
+          </>
+        );
+        })()}
       </div>
     </>
   );

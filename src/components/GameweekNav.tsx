@@ -103,14 +103,20 @@ export const GameweekNav = ({
         </Button>
       </div>
 
-      {/* State pill */}
-      <div className="flex items-center gap-1.5 shrink-0 rounded-full bg-muted/50 px-2 py-0.5">
+      {/* State pill. Live collapses to a pulsing dot (details on hover) so the
+          bar keeps everything — including the Plan button — on one row. */}
+      <div
+        className="flex items-center gap-1.5 shrink-0 rounded-full bg-muted/50 px-2 py-0.5"
+        title={
+          isLiveGw
+            ? `Live${updatedLabel ? ` · last refreshed ${updatedLabel}` : ""}`
+            : undefined
+        }
+        data-testid="gw-state-pill"
+      >
         <span className={`h-1.5 w-1.5 rounded-full ${stateDotClass}`} />
-        <span className="hidden lg:inline text-[11px] font-medium text-muted-foreground">{stateLabel}</span>
-        {updatedLabel && (
-          <span className="text-[11px] text-muted-foreground/70" title="Last refreshed">
-            · {updatedLabel}
-          </span>
+        {!isLiveGw && (
+          <span className="hidden lg:inline text-[11px] font-medium text-muted-foreground">{stateLabel}</span>
         )}
       </div>
 
