@@ -107,4 +107,31 @@ describe("HorizonTransferPlan verdict banner", () => {
     // the detailed multi-GW plan card must not render when there's no plan walk
     expect(screen.queryByText(/multi-gw plan/i)).toBeNull();
   });
+
+  it("flags a move that faces one of your own players", () => {
+    render(
+      <HorizonTransferPlan
+        plan={{
+          ...basePlan,
+          verdict: "spend",
+          plan: [
+            {
+              ...basePlan.plan[0],
+              action: "transfer",
+              moves: [
+                {
+                  position: "MID",
+                  sell: { id: 1, name: "Seller", team: "AAA", price: 5.0 },
+                  buy: { id: 2, name: "Buyer", team: "BBB", price: 5.5 },
+                  score_gain: 4.2,
+                  h2h_conflicts: ["Guéhi"],
+                },
+              ],
+            },
+          ],
+        }}
+      />
+    );
+    expect(screen.getByText(/faces your Guéhi/i)).toBeTruthy();
+  });
 });

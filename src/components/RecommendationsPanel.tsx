@@ -416,6 +416,14 @@ export function HorizonTransferPlan({ plan }: { plan?: FplTransferPlanHorizon })
                     <span>→</span>
                     <span className="text-emerald-700 font-medium">{m.buy.name}</span>
                     <span className="text-muted-foreground">({m.buy.team} £{m.buy.price})</span>
+                    {(m.h2h_conflicts?.length ?? 0) > 0 && (
+                      <span
+                        className="rounded bg-amber-500/15 px-1 text-[10px] text-amber-600"
+                        title="Faces your own player this GW — their returns cancel each other's"
+                      >
+                        faces your {m.h2h_conflicts!.join(", ")}
+                      </span>
+                    )}
                     <span className="ml-auto text-emerald-600">+{m.score_gain.toFixed(1)}</span>
                   </li>
                 ))}
