@@ -36,7 +36,7 @@ describe("TransferPlanner verdict-aware layout", () => {
     expect(screen.getByText("Seller")).toBeTruthy();
   });
 
-  it("renders the plan slot before the quick options", () => {
+  it("renders the plan slot before the quick options and their controls", () => {
     const { container } = render(
       <TransferPlanner transfers={transfers} planVerdict="spend" planSlot={<div data-testid="plan-slot">PLAN</div>} />
     );
@@ -44,6 +44,16 @@ describe("TransferPlanner verdict-aware layout", () => {
     const quick = screen.getByText(/quick options/i);
     expect(
       slot.compareDocumentPosition(quick) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    // The apply controls and gain badge describe the quick options — they must
+    // live below the plan, not in the panel header above it.
+    const applyButton = screen.getByRole("button", { name: /apply next transfer/i });
+    expect(
+      slot.compareDocumentPosition(applyButton) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    const gainBadge = screen.getByText(/gain:/i);
+    expect(
+      slot.compareDocumentPosition(gainBadge) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(container).toBeTruthy();
   });

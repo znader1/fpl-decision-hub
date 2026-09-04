@@ -179,6 +179,25 @@ export const TransferPlanner = ({
               GW {targetGw}
             </Badge>
           )}
+          {typeof transferPlan?.free_transfers === "number" && (
+            <Badge variant="outline" className="text-xs">
+              FT: {transferPlan.free_transfers}
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {planSlot}
+
+      {(() => {
+        const quickOptions = (
+          <>
+      <div className="space-y-3">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Quick options
+        </p>
+        {/* These controls describe the quick options, not the plan above. */}
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="text-xs">
             Moves: {movesUsed}
             {typeof maxMoves === "number" ? `/${maxMoves}` : ""}
@@ -186,11 +205,6 @@ export const TransferPlanner = ({
           {hasMoveGain && (
             <Badge variant="secondary" className="text-xs">
               Gain: {formatPoints(totalScoreGain, true)} pts
-            </Badge>
-          )}
-          {typeof transferPlan?.free_transfers === "number" && (
-            <Badge variant="outline" className="text-xs">
-              FT: {transferPlan.free_transfers}
             </Badge>
           )}
           {typeof transferPlan?.hit_cap === "number" && (
@@ -233,17 +247,6 @@ export const TransferPlanner = ({
             </Button>
           )}
         </div>
-      </div>
-
-      {planSlot}
-
-      {(() => {
-        const quickOptions = (
-          <>
-      <div className="space-y-3">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Quick options
-        </p>
         {isLoading && (
           <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground">
             Computing transfer suggestions…
