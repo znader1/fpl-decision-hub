@@ -4,11 +4,12 @@ import { Card } from "@/components/ui/card";
 import { JerseyIcon } from "./JerseyIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { FplPosition, FplTransfersRecommendation } from "@/lib/fplAssistantApi";
+import type { FplPosition, FplTransferPlanHorizon, FplTransfersRecommendation } from "@/lib/fplAssistantApi";
 
 interface TransferPlannerProps {
   transfers?: FplTransfersRecommendation;
   planSlot?: ReactNode;
+  planVerdict?: FplTransferPlanHorizon["verdict"];
   isLoading?: boolean;
   targetGw?: number;
   playerNameById?: Record<number, string>;
@@ -116,6 +117,7 @@ const toDebugValue = (value: unknown) => {
 export const TransferPlanner = ({
   transfers,
   planSlot,
+  planVerdict,
   isLoading = false,
   targetGw,
   playerNameById,
@@ -198,7 +200,7 @@ export const TransferPlanner = ({
           )}
           {typeof remainingItb === "number" && Number.isFinite(remainingItb) && (
             <Badge variant="outline" className="text-xs">
-              ITB: {formatMoney(remainingItb)}
+              ITB after moves: {formatMoney(remainingItb)}
             </Badge>
           )}
           {moves.length > 0 && (
@@ -233,9 +235,14 @@ export const TransferPlanner = ({
         </div>
       </div>
 
+      {planSlot}
+
+      {(() => {
+        const quickOptions = (
+          <>
       <div className="space-y-3">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Suggested Transfers
+          Quick options
         </p>
         {isLoading && (
           <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground">
@@ -248,11 +255,10 @@ export const TransferPlanner = ({
           </div>
         )}
         {moves.length > 0 && (
-          // Named so it can't be read as contradicting the multi-GW plan below,
-          // which optimises a different thing (a horizon, hits allowed) and can
-          // therefore name a different number of moves.
+          // The multi-GW plan above is the recommendation; these are narrower
+          // single-week alternatives and must read as subordinate to it.
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            This gameweek, free transfers only
+            This gameweek, free transfers only — the multi-GW plan above is the recommendation
           </p>
         )}
         {moves.map((move, idx) => (
@@ -362,8 +368,23 @@ export const TransferPlanner = ({
           </div>
         </div>
       )}
-
-      {planSlot}
+          </>
+        );
+        // When the plan's verdict is "roll", the quick swaps are temptations the
+        // strategy advises against — tuck them behind a disclosure instead of
+        // presenting them as co-equal advice.
+        if (planVerdict === "roll" && moves.length > 0) {
+          return (
+            <details>
+              <summary className="cursor-pointer text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Other this-week options — not the recommendation
+              </summary>
+              <div className="mt-3">{quickOptions}</div>
+            </details>
+          );
+        }
+        return quickOptions;
+      })()}
 
       {hotRows.length > 0 && (
         <div className="space-y-2">
