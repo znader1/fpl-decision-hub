@@ -22,6 +22,12 @@ Use this file for quick capture and prioritization. If you want collaboration/hi
 - [ ] Confirm `include_transfers` query param name and behavior.
 - [ ] Add a “current GW” source (backend endpoint or bootstrap cache) so the default GW doesn’t depend on sample data / localStorage.
 
+## P1 — Ops & UX hardening (from the GW3-deadline incident, 2026-09-04)
+- [ ] **Warm the chip-plan cache from the refresh cron** — first `/chips/plan` build per entry costs ~a minute of CPU; the twice-daily refresh (and `CHIP_SNAPSHOT_ENTRY_IDS`) should precompute it so no user ever pays it interactively.
+- [ ] **Auth expiry must not look like eternal loading** — an expired Supabase session produces 401-retry skeletons; `authFetch` should bounce to `/login` on 401 (and queries should surface the retry card faster).
+- [ ] **Mobile smoke tests in CI** — the pitch-collapse regression shipped silently; add Playwright viewport checks (375px + desktop) for /app render.
+- [ ] **`/fixtures?event_id=` 404 spam** — the frontend calls a backend route that doesn't exist (only `/fixtures/difficulty` does); either add the route or drop the client calls.
+
 ## P2 — Model validation & benchmarking (added 2026-09-04)
 - [ ] **Season backtest of the September tunables** — replay last season through the backend's SP3 backtest harness to validate what was tuned live-only: early-season shrinkage (`PROJ_SHRINKAGE_GAMES`, `PROJ_PRICE_PRIOR_SLOPE`), positional FT bar (`TRANSFER_PLAN_POS_GAIN_MULT`), XI-aware planning (`TRANSFER_PLAN_XI_AWARE`), and chip thresholds (`CHIP_PLAN_MIN_EV`, FH blank gate).
 - [ ] **Outcome scoring from `chip_plan_snapshots` (Supabase)** — the table already captures pre-deadline chip/transfer recommendations + post-GW actuals for entries 107342 and 5645321 (twice-daily cron). Once enough GWs accrue: score the advice against realized points — was “roll” right, did the recommended chip GW beat the alternatives, realized vs projected EV.
