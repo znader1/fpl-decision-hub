@@ -108,6 +108,42 @@ describe("HorizonTransferPlan verdict banner", () => {
     expect(screen.queryByText(/multi-gw plan/i)).toBeNull();
   });
 
+  it("folds the later gameweeks behind a disclosure", () => {
+    const { container } = render(
+      <HorizonTransferPlan
+        plan={{
+          ...basePlan,
+          verdict: "spend",
+          gws: [1, 2, 3],
+          horizon_gws: 3,
+          plan: [
+            {
+              ...basePlan.plan[0],
+              action: "transfer",
+              moves: [
+                {
+                  position: "MID",
+                  sell: { id: 1, name: "NowSell", team: "AAA", price: 5.0 },
+                  buy: { id: 2, name: "NowBuy", team: "BBB", price: 5.5 },
+                  score_gain: 4.2,
+                },
+              ],
+            },
+            { ...basePlan.plan[0], gw: 2 },
+            { ...basePlan.plan[0], gw: 3 },
+          ],
+        }}
+      />
+    );
+    // This week's move visible; GW2/GW3 rows live inside the fold.
+    expect(screen.getByText("NowBuy")).toBeTruthy();
+    const details = Array.from(container.querySelectorAll("details")).find((d) =>
+      d.textContent?.includes("rest of the plan")
+    );
+    expect(details).toBeTruthy();
+    expect(details?.textContent).toContain("GW3");
+  });
+
   it("flags a move that faces one of your own players", () => {
     render(
       <HorizonTransferPlan
