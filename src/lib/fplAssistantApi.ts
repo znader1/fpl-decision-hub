@@ -159,6 +159,8 @@ export interface FplTransferPlanMove {
   sell: FplTransferPlayer;
   buy: FplTransferPlayer;
   score_gain: number;
+  /** Own GKP/DEF<->attacker players the buy would face that GW (hedge warning). */
+  h2h_conflicts?: string[];
 }
 export interface FplTransferPlanGw {
   gw: number;
