@@ -22,3 +22,9 @@ Use this file for quick capture and prioritization. If you want collaboration/hi
 - [ ] Confirm `include_transfers` query param name and behavior.
 - [ ] Add a “current GW” source (backend endpoint or bootstrap cache) so the default GW doesn’t depend on sample data / localStorage.
 
+## P2 — Model validation & benchmarking (added 2026-09-04)
+- [ ] **Season backtest of the September tunables** — replay last season through the backend's SP3 backtest harness to validate what was tuned live-only: early-season shrinkage (`PROJ_SHRINKAGE_GAMES`, `PROJ_PRICE_PRIOR_SLOPE`), positional FT bar (`TRANSFER_PLAN_POS_GAIN_MULT`), XI-aware planning (`TRANSFER_PLAN_XI_AWARE`), and chip thresholds (`CHIP_PLAN_MIN_EV`, FH blank gate).
+- [ ] **Outcome scoring from `chip_plan_snapshots` (Supabase)** — the table already captures pre-deadline chip/transfer recommendations + post-GW actuals for entries 107342 and 5645321 (twice-daily cron). Once enough GWs accrue: score the advice against realized points — was “roll” right, did the recommended chip GW beat the alternatives, realized vs projected EV.
+- [ ] **Expert-article benchmark** — each GW, compare the model’s pre-deadline advice (transfers, captain, chip) against published expert/community advice (scout picks, chip articles). Backend already has news-ingestion plumbing to build on (`src/news_fetch.py`, `src/news_digest.py`). Store the expert picks alongside `chip_plan_snapshots` for the same GW so a hit-rate comparison (model vs experts vs actuals) falls out of one query.
+- [ ] **Upstream projections outlier** — promoted-team small-sample cluster (e.g. Hull GKP/DEF projecting identically at premium levels) inflates every EV surface; shrinkage + clamp are stopgaps, root fix belongs in `src/projections.py` team-level inputs.
+
