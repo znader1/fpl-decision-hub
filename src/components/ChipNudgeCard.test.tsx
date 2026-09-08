@@ -44,4 +44,26 @@ describe("ChipNudgeCard", () => {
     );
     expect(container.firstChild).toBeNull();
   });
+
+  it("shows the team-news pill and softened copy when wait_for_team_news is set", () => {
+    render(
+      <ChipNudgeCard
+        nudge={{ chip: "triple_captain", event_id: 5, ev_gain: 6.2, wait_for_team_news: true }}
+        activeChipStrategy="none"
+        onApplyChip={() => {}}
+      />
+    );
+    expect(screen.getByText(/wait for team news/i)).toBeTruthy();
+  });
+
+  it("no pill when wait_for_team_news is absent", () => {
+    render(
+      <ChipNudgeCard
+        nudge={{ chip: "triple_captain", event_id: 5, ev_gain: 6.2 }}
+        activeChipStrategy="none"
+        onApplyChip={() => {}}
+      />
+    );
+    expect(screen.queryByText(/wait for team news/i)).toBeNull();
+  });
 });

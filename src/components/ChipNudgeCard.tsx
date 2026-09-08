@@ -23,6 +23,11 @@ export const ChipNudgeCard = ({ nudge, activeChipStrategy, onApplyChip }: Props)
         projects <span className="font-semibold text-primary">+{nudge.ev_gain.toFixed(1)} xPts</span>{" "}
         over holding it.
       </p>
+      {nudge.wait_for_team_news && (
+        <span className="shrink-0 rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+          post-break — wait for team news
+        </span>
+      )}
       <button
         onClick={() => onApplyChip(nudge.chip)}
         className="ml-auto shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"

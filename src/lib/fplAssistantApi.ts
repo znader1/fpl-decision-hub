@@ -1330,9 +1330,15 @@ export type ChipPlanRecommendation = {
   provisional: boolean;
   reasons: string[];
   ev_curve: ChipEvPoint[];
+  haul_prob?: number; // triple_captain only: P(captain gets 2+ goal involvements)
 };
 
-export type ChipNudge = { chip: ChipName; event_id: number; ev_gain: number };
+export type ChipNudge = {
+  chip: ChipName;
+  event_id: number;
+  ev_gain: number;
+  wait_for_team_news?: boolean;
+};
 
 export type ChipPlanResponse = {
   entry_id: number;
