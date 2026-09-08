@@ -297,7 +297,6 @@ function TransfersTab({
         onResetAppliedTransfers={onResetAppliedTransfers}
         onApplyTransferAtIndex={onApplyTransferAtIndex}
         planSlot={<HorizonTransferPlan plan={recommendation.transfer_plan_horizon} />}
-        planVerdict={recommendation.transfer_plan_horizon?.verdict}
       />
     </div>
   );
@@ -388,8 +387,7 @@ export function HorizonTransferPlan({ plan }: { plan?: FplTransferPlanHorizon })
             is after that cost.
           </div>
         )}
-        {(() => {
-        const renderGw = (g: NonNullable<FplTransferPlanHorizon["plan"]>[number]) => (
+        {plan.plan.map((g) => (
           <div key={g.gw} className="border-t pt-2">
             <div className="flex items-center gap-2 text-xs">
               <span className="font-semibold w-12">GW{g.gw}</span>
@@ -417,40 +415,13 @@ export function HorizonTransferPlan({ plan }: { plan?: FplTransferPlanHorizon })
                     <span>→</span>
                     <span className="text-emerald-700 font-medium">{m.buy.name}</span>
                     <span className="text-muted-foreground">({m.buy.team} £{m.buy.price})</span>
-                    {(m.h2h_conflicts?.length ?? 0) > 0 && (
-                      <span
-                        className="rounded bg-amber-500/15 px-1 text-[10px] text-amber-600"
-                        title="Faces your own player this GW — their returns cancel each other's"
-                      >
-                        faces your {m.h2h_conflicts!.join(", ")}
-                      </span>
-                    )}
                     <span className="ml-auto text-emerald-600">+{m.score_gain.toFixed(1)}</span>
                   </li>
                 ))}
               </ul>
             )}
           </div>
-        );
-        // First glance = the decision: this week's row only. The rest of the
-        // staircase is working, shown on demand.
-        const rows = plan.plan;
-        const firstIdx = Math.max(0, rows.findIndex((r) => r.action === "transfer"));
-        const tail = rows.slice(firstIdx + 1);
-        return (
-          <>
-            {rows.slice(0, firstIdx + 1).map(renderGw)}
-            {tail.length > 0 && (
-              <details className="border-t pt-2">
-                <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Show the rest of the plan ({tail.length} more GW{tail.length === 1 ? "" : "s"})
-                </summary>
-                <div className="mt-1 space-y-2">{tail.map(renderGw)}</div>
-              </details>
-            )}
-          </>
-        );
-        })()}
+        ))}
       </div>
     </>
   );
