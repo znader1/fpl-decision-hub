@@ -16,6 +16,7 @@ export interface SquadBuildParams {
   horizon_gws?: number;
   budget_m?: number;
   objective?: Objective;
+  differential?: boolean; // wildcard/free_hit: penalise template ownership
   projection_basis?: ProjectionBasis;
   blend_weight?: number;
   minutes_prior_k?: number;

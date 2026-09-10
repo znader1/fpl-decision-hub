@@ -792,6 +792,8 @@ export interface TeamRecommendationParams {
   chipStrategy?: FplChipStrategy;
   chipHorizonGws?: number;
   chipPlayEventId?: number;
+  /** Chip drafts only: dock template picks by ownership so the squad differs from the crowd. */
+  differential?: boolean;
   strategy?: string;
   includeTransfers?: boolean;
   applyTransferCount?: number;
@@ -860,6 +862,7 @@ export const interpolateTeamRecommendationUrl = (template: string, params: TeamR
     chip_strategy: params.chipStrategy,
     chip_horizon_gws: params.chipHorizonGws,
     chip_play_event_id: params.chipPlayEventId,
+    differential: params.differential,
     strategy: params.strategy,
     include_transfers: params.includeTransfers,
     apply_transfer_count: params.applyTransferCount,

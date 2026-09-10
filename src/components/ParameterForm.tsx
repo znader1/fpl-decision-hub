@@ -27,6 +27,8 @@ export interface ParameterFormProps {
   onHorizonGwsChange: (horizonGws: number) => void;
   chipStrategy: FplChipStrategy;
   onChipStrategyChange: (strategy: FplChipStrategy) => void;
+  differential: boolean;
+  onDifferentialChange: (differential: boolean) => void;
   includeTransfers: boolean;
   onIncludeTransfersChange: (includeTransfers: boolean) => void;
   canRecommend: boolean;
@@ -42,7 +44,8 @@ export interface ParameterFormProps {
 export const ParameterForm = (props: ParameterFormProps) => {
   const {
     entryId, onEntryIdChange, horizonGws, onHorizonGwsChange,
-    chipStrategy, onChipStrategyChange, includeTransfers, onIncludeTransfersChange,
+    chipStrategy, onChipStrategyChange, differential, onDifferentialChange,
+    includeTransfers, onIncludeTransfersChange,
     canRecommend, isRecommending, onRecommend, recommendErrorMessage,
     isLiveGw = false, planGw, maxHorizon = 6,
   } = props;
@@ -138,6 +141,22 @@ export const ParameterForm = (props: ParameterFormProps) => {
               : "Select a chip to plan around it."}
           </p>
         </div>
+
+        {/* Differential draft (chip builds only) */}
+        {chipActive && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wider">
+                Differential draft
+              </p>
+              <Switch checked={differential} onCheckedChange={onDifferentialChange} />
+            </div>
+            <p className="text-[11px] text-sidebar-foreground/40 leading-relaxed">
+              Penalises highly-owned template picks so your chip squad differs from the
+              crowd — slightly lower mean, higher rank upside.
+            </p>
+          </div>
+        )}
 
         {/* Include transfers */}
         <div className="space-y-1.5">
