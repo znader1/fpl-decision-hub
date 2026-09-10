@@ -1340,12 +1340,22 @@ export type ChipNudge = {
   wait_for_team_news?: boolean;
 };
 
+export type ChipOutlookRow = {
+  chip: ChipName;
+  event_id: number | null; // null: no candidate window in the model horizon
+  ev_gain: number | null;
+  bar: number; // the min-EV threshold the window must clear
+  status: "play" | "hold";
+  reasons: string[];
+};
+
 export type ChipPlanResponse = {
   entry_id: number;
   current_gw: number;
   chips_remaining: ChipWindow[];
   horizon_model_gws: number;
   recommendations: ChipPlanRecommendation[];
+  outlook?: ChipOutlookRow[]; // one row per available chip, hold rows included
   nudge: ChipNudge | null;
   transfer_context: {
     planned_transfers_net_gain: number;

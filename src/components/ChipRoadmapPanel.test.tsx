@@ -120,3 +120,52 @@ describe("ChipRoadmapPanel", () => {
     expect(gw8Bar).toBeTruthy();
   });
 });
+
+describe("chip outlook", () => {
+  const outlookPlan: ChipPlanResponse = {
+    ...basePlan,
+    recommendations: [],
+    nudge: null,
+    outlook: [
+      {
+        chip: "triple_captain",
+        event_id: 8,
+        ev_gain: 11.2,
+        bar: 15,
+        status: "hold",
+        reasons: ["Captain projected xPts: 11.2"],
+      },
+      {
+        chip: "free_hit",
+        event_id: null,
+        ev_gain: null,
+        bar: 8,
+        status: "hold",
+        reasons: ["No blank-heavy or tough-fixture week in the model horizon"],
+      },
+    ],
+  };
+
+  it("renders hold outlook rows with best window, EV and bar", () => {
+    render(<ChipRoadmapPanel plan={outlookPlan} isLoading={false} />);
+    expect(screen.getByText("Triple Captain")).toBeTruthy();
+    expect(screen.getByText("GW8")).toBeTruthy();
+    expect(screen.getByText(/\+11\.2 vs bar 15/)).toBeTruthy();
+  });
+
+  it("renders a no-window outlook row without a GW", () => {
+    render(<ChipRoadmapPanel plan={outlookPlan} isLoading={false} />);
+    fireEvent.click(screen.getByText("Free Hit"));
+    expect(
+      screen.getByText("No blank-heavy or tough-fixture week in the model horizon")
+    ).toBeTruthy();
+  });
+
+  it("falls back to the legacy holding list when outlook is absent", () => {
+    render(
+      <ChipRoadmapPanel plan={{ ...basePlan, recommendations: [] }} isLoading={false} />
+    );
+    expect(screen.getByText("Wildcard")).toBeTruthy();
+    expect(screen.getAllByText(/expires GW19/).length).toBeGreaterThan(0);
+  });
+});
