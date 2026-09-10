@@ -339,6 +339,16 @@ export interface FplChipStrategySummary {
   remaining_budget_m?: number | null;
   objective_score_total?: number | null;
   objective_components?: string[];
+  /** Same-team attacker stacks in the draft XI with joint return/blank odds. */
+  stack_odds?: {
+    team: number;
+    team_short?: string;
+    n: number;
+    players: string[];
+    lam: number;
+    p_all_return: number;
+    p_all_blank: number;
+  }[];
   explanation?: string | null;
   profile?: {
     summary?: string;
