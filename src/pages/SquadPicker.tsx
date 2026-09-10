@@ -282,6 +282,16 @@ export default function SquadPicker() {
                 <option value="free_hit">free_hit</option>
                 <option value="plain">plain</option>
               </select>
+              {(params.objective === "wildcard" || params.objective === "free_hit") && (
+                <label className="mt-2 flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={!!params.differential}
+                    onChange={(e) => set("differential", e.target.checked)}
+                  />
+                  Differential draft — penalise template ownership
+                </label>
+              )}
             </Field>
             <Field label="Max per team"
               hint="FPL allows at most 3 players from one club. Lower it to force more spread across teams.">

@@ -139,6 +139,9 @@ const Index = () => {
   const [squadGW, setSquadGW] = useState<number | null>(getInitialGw);
   const [horizonGws, setHorizonGws] = useState(getInitialHorizon);
   const [chipStrategy, setChipStrategy] = useState<FplChipStrategy>(getInitialChipStrategy);
+  const [differential, setDifferential] = useState<boolean>(
+    () => typeof window !== "undefined" && localStorage.getItem("fpl_differential") === "true"
+  );
   const [chipPlayEventId, setChipPlayEventId] = useState<number | undefined>(getInitialChipPlayEventId);
   const [includeTransfers, setIncludeTransfers] = useState(getInitialIncludeTransfers);
   const [appliedTransferCount, setAppliedTransferCount] = useState(getInitialApplyTransferCount);
@@ -250,6 +253,8 @@ const Index = () => {
       chipStrategy,
       chipHorizonGws: chipStrategy === "wildcard" ? horizonGws : undefined,
       chipPlayEventId: wildcardPlayEventId,
+      differential:
+        chipStrategy === "wildcard" || chipStrategy === "free_hit" ? differential : undefined,
       strategy: chipStrategy,
       includeTransfers,
       applyTransferCount: 0,
@@ -388,6 +393,7 @@ const Index = () => {
         localStorage.removeItem("fpl_chip_play_event_id");
       }
       localStorage.setItem("fpl_include_transfers", String(includeTransfers));
+      localStorage.setItem("fpl_differential", String(differential));
       localStorage.setItem("fpl_apply_transfer_count", String(appliedTransferCount));
     } catch {
       // ignore
@@ -601,6 +607,8 @@ const Index = () => {
     onHorizonGwsChange: setHorizonGws,
     chipStrategy,
     onChipStrategyChange: setChipStrategy,
+    differential,
+    onDifferentialChange: setDifferential,
     includeTransfers,
     onIncludeTransfersChange: setIncludeTransfers,
     canRecommend,

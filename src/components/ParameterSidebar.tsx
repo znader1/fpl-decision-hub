@@ -21,6 +21,8 @@ interface ParameterSidebarProps {
   onHorizonGwsChange: (horizonGws: number) => void;
   chipStrategy: FplChipStrategy;
   onChipStrategyChange: (strategy: FplChipStrategy) => void;
+  differential: boolean;
+  onDifferentialChange: (differential: boolean) => void;
   includeTransfers: boolean;
   onIncludeTransfersChange: (includeTransfers: boolean) => void;
   canRecommend: boolean;
