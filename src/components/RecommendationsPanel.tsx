@@ -212,6 +212,28 @@ function SummaryTab({
         />
       )}
 
+      {/* Stack odds: correlation warning a mean-xPts sum can't show */}
+      {(recommendation.chip_strategy?.stack_odds?.length ?? 0) > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5 text-xs leading-relaxed space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+            Stack odds
+          </p>
+          {recommendation.chip_strategy!.stack_odds!.map((s) => (
+            <p key={s.team} className="text-muted-foreground">
+              {s.n}× {s.team_short ?? s.team} ({s.players.join(", ")}):{" "}
+              <span className="font-semibold text-foreground">
+                {Math.round(s.p_all_return * 100)}%
+              </span>{" "}
+              all return ·{" "}
+              <span className="font-semibold text-foreground">
+                {Math.round(s.p_all_blank * 100)}%
+              </span>{" "}
+              all blank
+            </p>
+          ))}
+        </div>
+      )}
+
       {/* Chip explanation */}
       {recommendation.chip_strategy?.explanation && (
         <div className="rounded-xl border border-border bg-muted/10 px-3 py-2.5 text-xs text-muted-foreground leading-relaxed">
