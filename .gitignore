@@ -28,3 +28,6 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Claude worktrees (embedded checkouts, never commit)
+.claude/worktrees/

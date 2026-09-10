@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
 import {
   CHIP_LABELS,
+  type ChipOutlookRow,
   type ChipPlanRecommendation,
   type ChipPlanResponse,
 } from "@/lib/fplAssistantApi";
@@ -75,6 +76,58 @@ const RecommendationRow = ({ rec }: { rec: ChipPlanRecommendation }) => {
   );
 };
 
+const OutlookRow = ({ row, expiresGw }: { row: ChipOutlookRow; expiresGw?: number }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-lg border border-border/60 p-2.5">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-2 text-left"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          {open ? (
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          )}
+          <span className="text-sm text-muted-foreground font-medium">{CHIP_LABELS[row.chip]}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide rounded-full border border-muted-foreground/40 text-muted-foreground px-2 py-0.5">
+            hold
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 text-xs text-muted-foreground">
+          {row.event_id !== null ? (
+            <>
+              <span className="font-semibold text-foreground">GW{row.event_id}</span>
+              {row.ev_gain !== null && (
+                <span>
+                  +{row.ev_gain.toFixed(1)} vs bar {row.bar.toFixed(0)}
+                </span>
+              )}
+            </>
+          ) : (
+            <span>no window</span>
+          )}
+        </div>
+      </button>
+      {open && (
+        <div className="mt-2 pl-5">
+          <ul className="space-y-1">
+            {row.reasons.map((reason) => (
+              <li key={reason} className="text-xs text-muted-foreground">
+                {reason}
+              </li>
+            ))}
+            {expiresGw !== undefined && (
+              <li className="text-xs text-muted-foreground/70">expires GW{expiresGw}</li>
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const ChipRoadmapPanel = ({ plan, isLoading, isError = false }: Props) => {
   if (isLoading && !plan) {
     return (
@@ -103,6 +156,8 @@ export const ChipRoadmapPanel = ({ plan, isLoading, isError = false }: Props) =>
     (c) => c.available && !recommendedChips.has(c.name)
   );
   const used = plan.chips_remaining.filter((c) => !c.available);
+  const outlookHolds = (plan.outlook ?? []).filter((o) => o.status === "hold");
+  const expiresByChip = new Map(plan.chips_remaining.map((c) => [c.name, c.expires_gw]));
 
   return (
     <div className="space-y-4">
@@ -127,7 +182,18 @@ export const ChipRoadmapPanel = ({ plan, isLoading, isError = false }: Props) =>
         </p>
       )}
 
-      {holds.length > 0 && (
+      {outlookHolds.length > 0 ? (
+        <div>
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+            Outlook — holding
+          </h4>
+          <div className="space-y-1.5">
+            {outlookHolds.map((row) => (
+              <OutlookRow key={row.chip} row={row} expiresGw={expiresByChip.get(row.chip)} />
+            ))}
+          </div>
+        </div>
+      ) : holds.length > 0 ? (
         <div>
           <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
             Holding
@@ -141,7 +207,7 @@ export const ChipRoadmapPanel = ({ plan, isLoading, isError = false }: Props) =>
             ))}
           </ul>
         </div>
-      )}
+      ) : null}
 
       {used.length > 0 && (
         <div>
