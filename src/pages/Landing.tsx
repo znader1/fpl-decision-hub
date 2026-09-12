@@ -45,7 +45,7 @@ const features = [
     icon: TrendingUp,
     title: "Transfer Planner",
     description:
-      "Step-by-step transfer suggestions with projected rank gain. Compare one vs two transfers before you commit.",
+      "A multi-gameweek transfer plan, and what banking your free transfer instead is worth — both totals in points, side by side.",
     color: "text-accent",
     bg: "bg-accent/10",
   },
@@ -83,7 +83,7 @@ const comingSoon = ["Pro & Elite tiers", "Differential alerts", "API access"];
 const stats = [
   { value: "Every player", label: "xPts modelled per GW" },
   { value: "6 GWs", label: "Planning horizon" },
-  { value: "2026/27", label: "Ready for the new season" },
+  { value: "2026/27", label: "Season live now" },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -109,15 +109,15 @@ export default function Landing() {
           </Badge>
 
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-[1.05] tracking-tight mb-6">
-            Win your FPL league
+            Your next FPL move,
             <br />
-            <span className="text-primary">with AI-grade</span> insights
+            <span className="text-primary">backed by</span> the numbers
           </h1>
 
           <p className="mx-auto max-w-2xl text-lg sm:text-xl text-white/60 mb-10 leading-relaxed">
             Transfer recommendations, captain picks and fixture analysis — all
-            powered by xPts modelling and fine-tuned FPL AI. Built by managers,
-            for managers.
+            powered by xPts modelling, with an AI that explains the reasoning
+            behind every call. Built by managers, for managers.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 mb-16">
