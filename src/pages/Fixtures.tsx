@@ -77,7 +77,7 @@ const Fixtures = () => {
   }, [horizon]);
 
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <Navbar />
       <div className="container mx-auto px-4 pt-20 pb-8 max-w-5xl">
         <div className="flex items-center gap-3 mb-2">

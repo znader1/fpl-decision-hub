@@ -90,7 +90,7 @@ const League = () => {
   // While BETA_ALL_ACCESS is true, this is unreachable.
   if (!canUseLeagueDashboard) {
     return (
-      <div className="dark min-h-screen bg-background">
+      <div className="min-h-screen bg-background">
         <Navbar />
         <div className="pt-20 pb-8 px-4 text-center">
           <p className="text-muted-foreground">League strategy is part of a paid tier.</p>
@@ -132,7 +132,7 @@ const League = () => {
   const lookup = strategy ? playerLookup(strategy) : null;
 
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <Navbar />
       <div className="container mx-auto px-4 pt-20 pb-8 max-w-5xl">
         <div className="flex items-center gap-3 mb-6">

@@ -160,11 +160,7 @@ export const OptimizeSquadDialog = ({ entryId, horizonGws, onApplied }: Optimize
           Optimize my squad
         </Button>
       </DialogTrigger>
-
-      {/* The app applies `.dark` per-page, but Radix portals the dialog to
-          document.body (outside that root) — so we re-apply `dark` here to keep
-          the dialog on the app's dark theme. */}
-      <DialogContent className="dark max-w-lg gap-0 overflow-hidden p-0">
+      <DialogContent className="max-w-lg gap-0 overflow-hidden p-0">
         <DialogHeader className="px-6 pb-4 pt-6">
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <Sparkles className="h-5 w-5 text-primary" />

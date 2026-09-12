@@ -11,7 +11,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // light default — a white flash on every visit to /app.
   if (loading) {
     return (
-      <div className="dark flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );

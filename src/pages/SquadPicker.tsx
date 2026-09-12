@@ -191,7 +191,7 @@ export default function SquadPicker() {
   };
 
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <Navbar />
       <div className="mx-auto max-w-6xl p-4 pt-20 space-y-4">
       <div>

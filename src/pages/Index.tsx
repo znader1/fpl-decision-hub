@@ -8,6 +8,7 @@ import { ChipNudgeCard } from "@/components/ChipNudgeCard";
 import { OptimizeSquadDialog } from "@/components/OptimizeSquadDialog";
 import { Navbar } from "@/components/layout/Navbar";
 import { QueryErrorCard } from "@/components/QueryErrorCard";
+import { resolveGwGateState } from "@/lib/gwGate";
 import { Button } from "@/components/ui/button";
 import { Zap } from "lucide-react";
 import { parseEntryIdInput } from "@/lib/entryId";
@@ -176,7 +177,10 @@ const Index = () => {
     queryKey: ["next-event"],
     queryFn: ({ signal }) => fetchNextEvent(signal),
     enabled: canFetchNextEvent && (canFetchSquad || canRecommend || canFetchFixtures),
-    retry: false,
+    // Was `retry: false`, which meant one cold-start 502 from Fly's
+    // scale-to-zero wedged /app on a bare "Loading…" for first-time users.
+    // Audit U1 — the render now surfaces a retryable error instead.
+    retry: 2,
     staleTime: 5 * 60_000,
   });
 
@@ -425,6 +429,11 @@ const Index = () => {
 
   // Don't render the app until we know which GW to show — avoids the fallback flash.
   const gwResolved = selectedGW !== null;
+  const gwGateState = resolveGwGateState({
+    gwResolved,
+    nextEventError: nextEventQuery.isError,
+    nextEventFetching: nextEventQuery.isFetching,
+  });
 
   // isSuccess (not isFetched) — a failed next-event fetch must show the error path,
   // not a false "off-season" card.
@@ -645,10 +654,23 @@ const Index = () => {
   };
 
   return (
-    <div className="dark flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background">
       <Navbar />
       <div className="flex flex-1 min-h-0 pt-14 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
-      {!gwResolved ? (
+      {gwGateState === "error" ? (
+        // A failed /events/next used to fall through to the "Loading…" branch
+        // below and stay there forever (audit U1). Give the user a way out.
+        <div className="flex flex-1 items-center justify-center p-6" role="alert">
+          <div className="w-full max-w-md">
+            <QueryErrorCard
+              title="Couldn't reach the FPL Assistant"
+              message="The server may be waking up. Try again in a moment."
+              onRetry={() => nextEventQuery.refetch()}
+              retrying={nextEventQuery.isFetching}
+            />
+          </div>
+        </div>
+      ) : gwGateState === "loading" ? (
         // Wait for next-event API before showing anything — prevents fallback-squad flash
         <div className="flex flex-1 items-center justify-center text-muted-foreground text-sm">
           Loading…

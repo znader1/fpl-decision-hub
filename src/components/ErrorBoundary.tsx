@@ -18,7 +18,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="dark min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-6 text-center">
           <h1 className="text-xl font-bold text-foreground">Something went wrong</h1>
           <p className="text-sm text-muted-foreground max-w-sm">
             An unexpected error broke this page. Reloading usually fixes it.
