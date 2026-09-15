@@ -1,5 +1,9 @@
 <!doctype html>
-<html lang="en">
+<!-- `dark` belongs here, not on a per-page wrapper: Radix portals
+     (dialogs, selects, drawers, hover cards) mount to document.body and
+     escaped a wrapper-scoped class, rendering light over a dark app.
+     See docs/prelaunch_audit_2026-09-12.md (U2) in the backend repo. -->
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
