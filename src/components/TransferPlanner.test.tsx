@@ -69,3 +69,37 @@ describe("TransferPlanner verdict-aware layout", () => {
     expect(screen.getByText(/ITB after moves/i)).toBeTruthy();
   });
 });
+
+describe("quick options vs plan badge", () => {
+  const planHorizon = {
+    plan: [
+      { gw: 5, moves: [{ sell: { id: 9 }, buy: { id: 10 } }] },
+    ],
+  } as never;
+
+  it("badges a quick option the multi-GW plan does not contain", () => {
+    render(
+      <TransferPlanner transfers={transfers} planVerdict="spend"
+        planSlot={<div>PLAN</div>} planHorizon={planHorizon} />
+    );
+    expect(screen.getByText(/not in plan/i)).toBeTruthy();
+  });
+
+  it("no badge when the quick option matches a planned move", () => {
+    const matching = {
+      plan: [{ gw: 5, moves: [{ sell: { id: 1 }, buy: { id: 2 } }] }],
+    } as never;
+    render(
+      <TransferPlanner transfers={transfers} planVerdict="spend"
+        planSlot={<div>PLAN</div>} planHorizon={matching} />
+    );
+    expect(screen.queryByText(/not in plan/i)).toBeNull();
+  });
+
+  it("no badge when no plan data present", () => {
+    render(
+      <TransferPlanner transfers={transfers} planVerdict="spend" planSlot={<div>PLAN</div>} />
+    );
+    expect(screen.queryByText(/not in plan/i)).toBeNull();
+  });
+});

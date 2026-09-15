@@ -10,6 +10,8 @@ interface TransferPlannerProps {
   transfers?: FplTransfersRecommendation;
   planSlot?: ReactNode;
   planVerdict?: FplTransferPlanHorizon["verdict"];
+  /** The multi-GW plan — quick options it doesn't contain get a 'not in plan' badge. */
+  planHorizon?: FplTransferPlanHorizon;
   isLoading?: boolean;
   targetGw?: number;
   playerNameById?: Record<number, string>;
@@ -118,6 +120,7 @@ export const TransferPlanner = ({
   transfers,
   planSlot,
   planVerdict,
+  planHorizon,
   isLoading = false,
   targetGw,
   playerNameById,
@@ -152,6 +155,14 @@ export const TransferPlanner = ({
           ? transfers.transfer_policy.max_moves
           : undefined;
   const totalScoreGain = moves.reduce((sum, move) => sum + (move.score_gain ?? 0), 0);
+  // Every sell→buy pair anywhere in the multi-GW plan; a quick option outside
+  // this set contradicts the product's actual advice and gets badged.
+  const plannedPairs = new Set(
+    (planHorizon?.plan ?? []).flatMap((gw) =>
+      (gw.moves ?? []).map((m) => `${m.sell?.id}-${m.buy?.id}`)
+    )
+  );
+  const hasPlan = plannedPairs.size > 0;
   const hasMoveGain = moves.some((move) => typeof move.score_gain === "number");
   const sortedMoveCounts = Object.entries(transfers?.moves_by_position ?? {})
     .filter(([, count]) => typeof count === "number" && Number.isFinite(count))
@@ -280,7 +291,17 @@ export const TransferPlanner = ({
                 <>
             <div className="mb-2 text-xs text-muted-foreground flex items-center justify-between">
               <span>Move {idx + 1}</span>
-              {move.position && <Badge variant="outline">{move.position}</Badge>}
+              <span className="flex items-center gap-1.5">
+                {hasPlan && !plannedPairs.has(`${move.sell.id}-${move.buy.id}`) && (
+                  <Badge
+                    variant="outline"
+                    className="border-amber-500/50 text-amber-600 dark:text-amber-400"
+                  >
+                    not in plan — plan says hold
+                  </Badge>
+                )}
+                {move.position && <Badge variant="outline">{move.position}</Badge>}
+              </span>
             </div>
             <div className="space-y-2">
               <div className="flex items-start gap-3 min-w-0">
