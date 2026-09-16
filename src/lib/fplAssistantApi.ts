@@ -140,6 +140,10 @@ export interface FplTransferMove {
   sell: FplTransferPlayer;
   buy: FplTransferPlayer;
   score_gain?: number;
+  /** Immediate-GW slice of score_gain; present on plan moves only. */
+  this_gw_gain?: number;
+  /** True when this is the multi-GW plan's first-GW move (leads the list). */
+  in_plan?: boolean;
   buy_hot_score?: number;
   buy_set_piece_score?: number;
 }
@@ -159,6 +163,9 @@ export interface FplTransferPlanMove {
   sell: FplTransferPlayer;
   buy: FplTransferPlayer;
   score_gain: number;
+  /** Immediate-GW slice of score_gain (score_gain is the remaining-horizon total). */
+  this_gw_gain?: number;
+  forced_injury?: boolean;
   /** Own GKP/DEF<->attacker players the buy would face that GW (hedge warning). */
   h2h_conflicts?: string[];
 }
@@ -175,6 +182,36 @@ export interface FplTransferPlanGw {
   moves: FplTransferPlanMove[];
   note: string;
 }
+export interface FplTransferVerdictMove {
+  sell: FplTransferPlayer;
+  buy: FplTransferPlayer;
+  position?: string;
+  this_gw_gain: number;
+  horizon_gain: number;
+  forced_injury?: boolean;
+  h2h_conflicts?: string[];
+}
+
+/** Structured twin of `reasoning`; emitted by plan_transfers as `verdict_detail`. */
+export interface FplTransferVerdictDetail {
+  action: "spend" | "roll" | "spend_forced_injury";
+  horizon: { start_gw: number | null; end_gw: number | null; n: number };
+  ft_before: number;
+  ft_after: number;
+  threshold: number;
+  /** First-GW moves; empty on roll. */
+  moves: FplTransferVerdictMove[];
+  this_gw_gain: number;
+  horizon_gain: number;
+  hit_cost: number;
+  /** total_net_gain of the returned plan. */
+  plan_net: number;
+  /** The path the counterfactual rejected: the roll walk on spend, the spend walk on a flipped roll. */
+  roll_alternative: { net: number; gw: number | null; moves: FplTransferVerdictMove[] } | null;
+  /** Roll only: the first later GW the plan transfers in. */
+  next_move: { gw: number; moves: FplTransferVerdictMove[]; horizon_gain: number } | null;
+}
+
 export interface FplTransferPlanHorizon {
   valid?: boolean;
   gws?: number[];
@@ -187,6 +224,7 @@ export interface FplTransferPlanHorizon {
   plan?: FplTransferPlanGw[];
   verdict?: "roll" | "spend" | "spend_forced_injury";
   reasoning?: string;
+  verdict_detail?: FplTransferVerdictDetail;
   first_gw_ft_before?: number;
   first_gw_ft_after?: number;
 }
