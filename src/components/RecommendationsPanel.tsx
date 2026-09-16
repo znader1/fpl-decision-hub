@@ -258,9 +258,7 @@ function TransfersTab({
   squad,
   isRecommending,
   appliedTransferCount,
-  canApplyNextTransfer,
   isApplyingTransfer,
-  onApplyNextTransfer,
   onResetAppliedTransfers,
   onApplyTransferAtIndex,
 }: {
@@ -268,9 +266,7 @@ function TransfersTab({
   squad?: FplSquad;
   isRecommending: boolean;
   appliedTransferCount: number;
-  canApplyNextTransfer: boolean;
   isApplyingTransfer: boolean;
-  onApplyNextTransfer?: () => void;
   onResetAppliedTransfers?: () => void;
   onApplyTransferAtIndex?: (index: number) => void;
 }) {
@@ -314,9 +310,7 @@ function TransfersTab({
         playerNameById={playerNameById}
         playerTeamById={playerTeamById}
         appliedTransferCount={appliedTransferCount}
-        canApplyNextTransfer={canApplyNextTransfer}
         isApplyingTransfer={isApplyingTransfer}
-        onApplyNextTransfer={onApplyNextTransfer}
         onResetAppliedTransfers={onResetAppliedTransfers}
         onApplyTransferAtIndex={onApplyTransferAtIndex}
         planSlot={
@@ -327,8 +321,6 @@ function TransfersTab({
             onApplyTransferAtIndex={onApplyTransferAtIndex}
           />
         }
-        planVerdict={recommendation.transfer_plan_horizon?.verdict}
-        planHorizon={recommendation.transfer_plan_horizon}
       />
     </div>
   );
@@ -685,9 +677,7 @@ export const RecommendationsPanel = ({
             squad={squad}
             isRecommending={isRecommending}
             appliedTransferCount={appliedTransferCount}
-            canApplyNextTransfer={canApplyNextTransfer}
             isApplyingTransfer={isApplyingTransfer}
-            onApplyNextTransfer={onApplyNextTransfer}
             onResetAppliedTransfers={onResetAppliedTransfers}
             onApplyTransferAtIndex={onApplyTransferAtIndex}
           />

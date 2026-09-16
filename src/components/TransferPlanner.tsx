@@ -4,22 +4,18 @@ import { Card } from "@/components/ui/card";
 import { JerseyIcon } from "./JerseyIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { FplPosition, FplTransferPlanHorizon, FplTransfersRecommendation } from "@/lib/fplAssistantApi";
+import type { FplPosition, FplTransfersRecommendation } from "@/lib/fplAssistantApi";
+import { fmtGain } from "./DecisionCard";
 
 interface TransferPlannerProps {
   transfers?: FplTransfersRecommendation;
   planSlot?: ReactNode;
-  planVerdict?: FplTransferPlanHorizon["verdict"];
-  /** The multi-GW plan — quick options it doesn't contain get a 'not in plan' badge. */
-  planHorizon?: FplTransferPlanHorizon;
   isLoading?: boolean;
   targetGw?: number;
   playerNameById?: Record<number, string>;
   playerTeamById?: Record<number, string>;
   appliedTransferCount?: number;
-  canApplyNextTransfer?: boolean;
   isApplyingTransfer?: boolean;
-  onApplyNextTransfer?: () => void;
   onResetAppliedTransfers?: () => void;
   onApplyTransferAtIndex?: (index: number) => void;
 }
@@ -119,16 +115,12 @@ const toDebugValue = (value: unknown) => {
 export const TransferPlanner = ({
   transfers,
   planSlot,
-  planVerdict,
-  planHorizon,
   isLoading = false,
   targetGw,
   playerNameById,
   playerTeamById,
   appliedTransferCount = 0,
-  canApplyNextTransfer = false,
   isApplyingTransfer = false,
-  onApplyNextTransfer,
   onResetAppliedTransfers,
   onApplyTransferAtIndex,
 }: TransferPlannerProps) => {
@@ -155,15 +147,10 @@ export const TransferPlanner = ({
           ? transfers.transfer_policy.max_moves
           : undefined;
   const totalScoreGain = moves.reduce((sum, move) => sum + (move.score_gain ?? 0), 0);
-  // Every sell→buy pair anywhere in the multi-GW plan; a quick option outside
-  // this set contradicts the product's actual advice and gets badged.
-  const plannedPairs = new Set(
-    (planHorizon?.plan ?? []).flatMap((gw) =>
-      (gw.moves ?? []).map((m) => `${m.sell?.id}-${m.buy?.id}`)
-    )
-  );
-  const hasPlan = plannedPairs.size > 0;
   const hasMoveGain = moves.some((move) => typeof move.score_gain === "number");
+  const beamHorizon = transferPlan?.horizon_gws;
+  const horizonLabel =
+    typeof beamHorizon === "number" ? `over ${beamHorizon} GW${beamHorizon === 1 ? "" : "s"}` : "single-week";
   const sortedMoveCounts = Object.entries(transfers?.moves_by_position ?? {})
     .filter(([, count]) => typeof count === "number" && Number.isFinite(count))
     .sort(([a], [b]) => POSITION_ORDER.indexOf(a as FplPosition) - POSITION_ORDER.indexOf(b as FplPosition));
@@ -204,10 +191,6 @@ export const TransferPlanner = ({
         const quickOptions = (
           <>
       <div className="space-y-3">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Quick options
-        </p>
-        {/* These controls describe the quick options, not the plan above. */}
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="text-xs">
             Moves: {movesUsed}
@@ -237,18 +220,6 @@ export const TransferPlanner = ({
             <Button
               type="button"
               size="sm"
-              variant="default"
-              className="h-7 text-xs"
-              disabled={isLoading || isApplyingTransfer || !canApplyNextTransfer}
-              onClick={onApplyNextTransfer}
-            >
-              Apply next transfer
-            </Button>
-          )}
-          {moves.length > 0 && (
-            <Button
-              type="button"
-              size="sm"
               variant="outline"
               className="h-7 text-xs"
               disabled={isLoading || isApplyingTransfer || appliedTransferCount <= 0}
@@ -268,13 +239,6 @@ export const TransferPlanner = ({
             No transfer suggestions returned.
           </div>
         )}
-        {moves.length > 0 && (
-          // The multi-GW plan above is the recommendation; these are narrower
-          // single-week alternatives and must read as subordinate to it.
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            This gameweek, free transfers only — the multi-GW plan above is the recommendation
-          </p>
-        )}
         {moves.map((move, idx) => (
           <div key={`${move.sell.id}-${move.buy.id}-${idx}`} className="rounded-lg border border-border p-3">
             {(() => {
@@ -292,12 +256,9 @@ export const TransferPlanner = ({
             <div className="mb-2 text-xs text-muted-foreground flex items-center justify-between">
               <span>Move {idx + 1}</span>
               <span className="flex items-center gap-1.5">
-                {hasPlan && !plannedPairs.has(`${move.sell.id}-${move.buy.id}`) && (
-                  <Badge
-                    variant="outline"
-                    className="border-amber-500/50 text-amber-600 dark:text-amber-400"
-                  >
-                    not in plan — plan says hold
+                {move.in_plan && (
+                  <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400">
+                    in plan
                   </Badge>
                 )}
                 {move.position && <Badge variant="outline">{move.position}</Badge>}
@@ -353,7 +314,8 @@ export const TransferPlanner = ({
                 )}
                 {typeof move.score_gain === "number" && (
                   <Badge variant="secondary" className="text-xs shrink-0">
-                    {formatPoints(move.score_gain, true)} pts
+                    {typeof move.this_gw_gain === "number" ? `${fmtGain(move.this_gw_gain)} this GW · ` : ""}
+                    {fmtGain(move.score_gain)} pts
                   </Badge>
                 )}
                 <Button
@@ -400,7 +362,7 @@ export const TransferPlanner = ({
           return (
             <details>
               <summary className="cursor-pointer text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Other this-week options — not the recommendation
+                Alternatives ({moves.length}) — best single swaps {horizonLabel}, not the recommendation
               </summary>
               <div className="mt-3">{quickOptions}</div>
             </details>
