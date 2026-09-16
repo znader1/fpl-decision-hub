@@ -439,18 +439,11 @@ const Index = () => {
   // not a false "off-season" card.
   const isOffSeason = nextEventQuery.isSuccess && !Number.isFinite(nextEventQuery.data?.event_id);
 
-  const totalSuggestedMoves = recommendationMutation.data?.transfers?.moves?.length ?? 0;
-  const canApplyNextTransfer = appliedTransferCount < totalSuggestedMoves;
-
-  const applyNextTransfer = () => {
-    if (!recommendationMutation.data) return;
-    setAppliedTransferCount((prev) => Math.min(prev + 1, totalSuggestedMoves));
-  };
-
   const applyTransferAtIndex = (index: number) => {
     if (!recommendationMutation.data) return;
     const normalized = Number.isFinite(index) ? Math.max(0, Math.floor(index)) : 0;
-    setAppliedTransferCount(Math.min(normalized + 1, totalSuggestedMoves));
+    const moveCount = recommendationMutation.data?.transfers?.moves?.length ?? 0;
+    setAppliedTransferCount(Math.min(normalized + 1, moveCount));
   };
 
   const resetAppliedTransfers = () => {
@@ -807,9 +800,7 @@ const Index = () => {
         isRecommending={recommendationMutation.isPending}
         horizonGws={horizonGws}
         appliedTransferCount={appliedTransferCount}
-        canApplyNextTransfer={canApplyNextTransfer}
         isApplyingTransfer={recommendationMutation.isPending}
-        onApplyNextTransfer={applyNextTransfer}
         onResetAppliedTransfers={resetAppliedTransfers}
         onApplyTransferAtIndex={applyTransferAtIndex}
         entryId={entryId}

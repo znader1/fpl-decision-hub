@@ -75,7 +75,10 @@ The recommendation tab on `PitchVisualization.tsx` is labelled **"ZN Pick"** (no
 
 ### Transfer Planner panel (one voice)
 
-The multi-GW plan verdict is the only advice: MAKE THE MOVE + this week's row render first; later GWs fold behind "Show the rest of the plan"; the beam-search cards are ALWAYS collapsed under "Other this-week options — not the recommendation" (they read as advice no matter the label). Plan moves may carry `h2h_conflicts` → amber "faces your X" badge. The ITB badge means remainder AFTER the suggested moves.
+The **DecisionCard** (`src/components/DecisionCard.tsx`) is the only advice: it renders `transfer_plan_horizon.verdict_detail` — the action, `+x this GW · +y over GWa–b`, the plan-vs-roll nets, ITB after, and the only Apply/Undo controls (Apply = `onApplyTransferAtIndex(k-1)`, since the plan's moves lead `transfers.moves` server-side with `in_plan: true`).
+The legacy `reasoning` banner renders only when `verdict_detail` is absent (older backend).
+The staircase (`HorizonTransferPlan`) is labelled `Plan GWa–b`; later GWs fold behind "Show the rest of the plan". Plan moves may carry `h2h_conflicts` → amber "faces your X" badge.
+Beam moves with `in_plan: false` render as a closed "Alternatives (N) — best single swaps over H GWs" list with **no apply controls** — they are scored on a different horizon and are reference only, never a second recommendation.
 
 ### Vercel preview CORS (recurring)
 

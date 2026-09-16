@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
-import { HorizonTransferPlan } from "./RecommendationsPanel";
-import type { FplTransferPlanHorizon } from "@/lib/fplAssistantApi";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { HorizonTransferPlan, RecommendationsPanel } from "./RecommendationsPanel";
+import type { FplTeamRecommendation, FplTransferPlanHorizon } from "@/lib/fplAssistantApi";
 
 afterEach(cleanup);
 
@@ -216,5 +216,59 @@ describe("HorizonTransferPlan labels", () => {
     const hits = { ...spendPlan, plan: [{ ...spendPlan.plan![0], hits: 1, hit_cost: 4, net_gain: -1.2 }] };
     render(<HorizonTransferPlan plan={hits} />);
     expect(screen.getByText(/1 move, 1 hit/)).toBeTruthy();
+  });
+});
+
+describe("RecommendationsPanel transfers tab wiring", () => {
+  const rec = {
+    event_id: 5,
+    // The Summary tab mounts first, so the fixture carries the few fields it reads.
+    formation: [3, 4, 3],
+    horizon_gws: 3,
+    transfers: { moves: [] },
+    starting_xi: [],
+    bench: [],
+    transfer_plan_horizon: {
+      verdict: "spend",
+      reasoning: "Move now.",
+      horizon_gws: 3,
+      allow_hits: false,
+      verdict_detail: {
+        action: "spend",
+        horizon: { start_gw: 5, end_gw: 7, n: 3 },
+        ft_before: 1,
+        ft_after: 0,
+        threshold: 2,
+        moves: [{
+          sell: { id: 1, name: "S1", team: "LIV", price: 7 },
+          buy: { id: 2, name: "B2", team: "BOU", price: 6.1 },
+          position: "MID",
+          this_gw_gain: 0.9,
+          horizon_gain: 2.8,
+        }],
+        this_gw_gain: 0.9,
+        horizon_gain: 2.8,
+        hit_cost: 0,
+        plan_net: 2.8,
+        roll_alternative: null,
+        next_move: null,
+      },
+    },
+  } as unknown as FplTeamRecommendation;
+
+  it("routes the card's Apply to onApplyTransferAtIndex through the Transfers tab", () => {
+    const onApply = vi.fn();
+    const onReset = vi.fn();
+    render(
+      <RecommendationsPanel
+        recommendation={rec}
+        appliedTransferCount={0}
+        onApplyTransferAtIndex={onApply}
+        onResetAppliedTransfers={onReset}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /transfers/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^apply$/i }));
+    expect(onApply).toHaveBeenCalledWith(0);
   });
 });

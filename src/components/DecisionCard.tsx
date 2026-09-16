@@ -38,13 +38,13 @@ function MoveLine({ m }: { m: FplTransferVerdictMove }) {
   return (
     <span className="flex flex-wrap items-center gap-x-1">
       <span className="text-red-600 dark:text-red-400">{m.sell.name}</span>
-      <span className="text-muted-foreground">({m.sell.team} £{m.sell.price})</span>
+      <span className="text-muted-foreground">({m.sell.team} £{m.sell.price.toFixed(1)})</span>
       {m.forced_injury && (
         <Badge variant="outline" className="border-destructive/50 text-[10px] text-destructive">flagged</Badge>
       )}
       <span>→</span>
       <span className="font-semibold text-emerald-700 dark:text-emerald-300">{m.buy.name}</span>
-      <span className="text-muted-foreground">({m.buy.team} £{m.buy.price})</span>
+      <span className="text-muted-foreground">({m.buy.team} £{m.buy.price.toFixed(1)})</span>
     </span>
   );
 }
@@ -77,14 +77,25 @@ interface DecisionCardProps {
   isApplying?: boolean;
   /** Plan moves lead `transfers.moves`, so applying k plan moves = index k-1. */
   onApplyTransferAtIndex?: (index: number) => void;
+  onResetAppliedTransfers?: () => void;
 }
 
-export function DecisionCard({ plan, appliedTransferCount = 0, isApplying = false, onApplyTransferAtIndex }: DecisionCardProps) {
+export function DecisionCard({
+  plan,
+  appliedTransferCount = 0,
+  isApplying = false,
+  onApplyTransferAtIndex,
+  onResetAppliedTransfers,
+}: DecisionCardProps) {
   const d: FplTransferVerdictDetail | undefined = plan.verdict_detail;
   if (!d) return <LegacyVerdictBanner plan={plan} />;
   const range = gwRange(d.horizon);
   const k = d.moves.length;
   const applied = k > 0 && appliedTransferCount >= k;
+  // The bank the plan leaves behind — the ITB badge the alternatives list used
+  // to carry, now attached to the thing that actually spends the money.
+  const bankAfter = plan.plan?.[0]?.bank_after;
+  const hasBank = typeof bankAfter === "number" && Number.isFinite(bankAfter);
 
   return (
     <div data-testid="plan-verdict-banner" className={`rounded-lg border p-3 flex flex-col gap-1.5 ${TONE[d.action]}`}>
@@ -114,12 +125,13 @@ export function DecisionCard({ plan, appliedTransferCount = 0, isApplying = fals
           </ul>
           <p className="text-sm text-foreground" data-testid="decision-gains">
             <b>{fmtGain(d.this_gw_gain)}</b> this GW · <b>{fmtGain(d.horizon_gain)}</b> over {range}
-            {d.hit_cost > 0 && <> · <b className="text-red-600 dark:text-red-400">−{d.hit_cost} hit</b></>}
+            {d.hit_cost > 0 && <> · <b className="text-red-600 dark:text-red-400">{fmtGain(-d.hit_cost)} hit</b></>}
           </p>
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
             <span>
               Plan {range} nets {fmtGain(d.plan_net)}
               {d.roll_alternative ? ` · rolling instead nets ${fmtGain(d.roll_alternative.net)}` : ""}
+              {hasBank ? ` · ITB after £${bankAfter.toFixed(1)}m` : ""}
             </span>
             {onApplyTransferAtIndex && k > 0 && (
               <Button
@@ -131,6 +143,18 @@ export function DecisionCard({ plan, appliedTransferCount = 0, isApplying = fals
                 onClick={() => onApplyTransferAtIndex(k - 1)}
               >
                 {applied ? "Applied" : k > 1 ? `Apply ${k} moves` : "Apply"}
+              </Button>
+            )}
+            {applied && onResetAppliedTransfers && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs"
+                disabled={isApplying}
+                onClick={onResetAppliedTransfers}
+              >
+                Undo
               </Button>
             )}
           </div>

@@ -25,9 +25,7 @@ interface RecommendationsPanelProps {
   isRecommending?: boolean;
   horizonGws?: number;
   appliedTransferCount?: number;
-  canApplyNextTransfer?: boolean;
   isApplyingTransfer?: boolean;
-  onApplyNextTransfer?: () => void;
   onResetAppliedTransfers?: () => void;
   onApplyTransferAtIndex?: (index: number) => void;
   entryId?: number;
@@ -309,16 +307,13 @@ function TransfersTab({
         targetGw={recommendation.event_id}
         playerNameById={playerNameById}
         playerTeamById={playerTeamById}
-        appliedTransferCount={appliedTransferCount}
-        isApplyingTransfer={isApplyingTransfer}
-        onResetAppliedTransfers={onResetAppliedTransfers}
-        onApplyTransferAtIndex={onApplyTransferAtIndex}
         planSlot={
           <HorizonTransferPlan
             plan={recommendation.transfer_plan_horizon}
             appliedTransferCount={appliedTransferCount}
             isApplying={isApplyingTransfer}
             onApplyTransferAtIndex={onApplyTransferAtIndex}
+            onResetAppliedTransfers={onResetAppliedTransfers}
           />
         }
       />
@@ -332,11 +327,13 @@ export function HorizonTransferPlan({
   appliedTransferCount,
   isApplying,
   onApplyTransferAtIndex,
+  onResetAppliedTransfers,
 }: {
   plan?: FplTransferPlanHorizon;
   appliedTransferCount?: number;
   isApplying?: boolean;
   onApplyTransferAtIndex?: (index: number) => void;
+  onResetAppliedTransfers?: () => void;
 }) {
   const verdictBanner = plan?.verdict ? (
     <DecisionCard
@@ -344,6 +341,7 @@ export function HorizonTransferPlan({
       appliedTransferCount={appliedTransferCount}
       isApplying={isApplying}
       onApplyTransferAtIndex={onApplyTransferAtIndex}
+      onResetAppliedTransfers={onResetAppliedTransfers}
     />
   ) : null;
   if (!plan?.plan?.length) return verdictBanner;
@@ -588,9 +586,7 @@ export const RecommendationsPanel = ({
   isRecommending = false,
   horizonGws,
   appliedTransferCount = 0,
-  canApplyNextTransfer = false,
   isApplyingTransfer = false,
-  onApplyNextTransfer,
   onResetAppliedTransfers,
   onApplyTransferAtIndex,
   entryId,

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { TransferPlanner } from "./TransferPlanner";
 import type { FplTransfersRecommendation } from "@/lib/fplAssistantApi";
 
@@ -29,43 +29,64 @@ const transfers = {
 } as unknown as FplTransfersRecommendation;
 
 describe("TransferPlanner alternatives", () => {
-  it("collapses the alternatives behind a closed disclosure labelled with the beam horizon", () => {
+  it("collapses the alternatives behind a closed disclosure counting only non-plan moves", () => {
     const { container } = render(<TransferPlanner transfers={transfers} planSlot={<div>PLAN</div>} />);
     const details = container.querySelector("details");
     expect(details).toBeTruthy();
     expect(details?.hasAttribute("open")).toBe(false);
-    expect(screen.getByText(/Alternatives \(2\) — best single swaps over 3 GWs, not the recommendation/i)).toBeTruthy();
+    expect(screen.getByText(/Alternatives \(1\) — best single swaps over 3 GWs, not the recommendation/i)).toBeTruthy();
   });
 
-  it("renders the plan slot before the alternatives and their controls", () => {
+  it("excludes the plan's own moves — they belong to the decision card", () => {
+    const { container } = render(<TransferPlanner transfers={transfers} planSlot={<div>PLAN</div>} />);
+    const details = within(container.querySelector("details")!);
+    expect(details.queryByText("Seller")).toBeNull();
+    expect(details.queryByText("Buyer")).toBeNull();
+    expect(details.getByText("Other")).toBeTruthy();
+    expect(details.getByText("Punt")).toBeTruthy();
+  });
+
+  it("carries no apply controls at all", () => {
+    const { container } = render(<TransferPlanner transfers={transfers} planSlot={<div>PLAN</div>} />);
+    const details = within(container.querySelector("details")!);
+    expect(details.queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("drops the overloaded beam badges", () => {
+    render(<TransferPlanner transfers={transfers} planSlot={<div>PLAN</div>} />);
+    expect(screen.queryByText(/Moves:/i)).toBeNull();
+    expect(screen.queryByText(/Gain:/i)).toBeNull();
+    expect(screen.queryByText(/ITB after moves/i)).toBeNull();
+    expect(screen.queryByText(/Applied/i)).toBeNull();
+  });
+
+  it("shows only the horizon gain on an alternative row", () => {
+    render(<TransferPlanner transfers={transfers} planSlot={<div>PLAN</div>} />);
+    expect(screen.getByText(/^\+3\.0 pts$/)).toBeTruthy();
+    expect(screen.queryByText(/this GW/)).toBeNull();
+  });
+
+  it("renders the plan slot before the alternatives summary", () => {
     render(<TransferPlanner transfers={transfers} planSlot={<div data-testid="plan-slot">PLAN</div>} />);
     const slot = screen.getByTestId("plan-slot");
     const summary = screen.getByText(/alternatives/i);
     expect(slot.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const reset = screen.getByRole("button", { name: /reset applied/i });
-    expect(slot.compareDocumentPosition(reset) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("has no top-level 'Apply next transfer' button", () => {
-    render(<TransferPlanner transfers={transfers} planSlot={<div>PLAN</div>} />);
-    expect(screen.queryByRole("button", { name: /apply next transfer/i })).toBeNull();
+  it("renders no disclosure when every move is in the plan", () => {
+    const allInPlan = {
+      ...transfers,
+      moves: [(transfers as unknown as { moves: unknown[] }).moves[0]],
+    } as unknown as FplTransfersRecommendation;
+    const { container } = render(<TransferPlanner transfers={allInPlan} planSlot={<div>PLAN</div>} />);
+    expect(container.querySelector("details")).toBeNull();
+    expect(screen.queryByText(/No transfer suggestions returned/i)).toBeNull();
   });
 
-  it("chips a move that is in the plan and never says 'not in plan'", () => {
-    render(<TransferPlanner transfers={transfers} planSlot={<div>PLAN</div>} />);
-    expect(screen.getAllByText(/^in plan$/i)).toHaveLength(1);
-    expect(screen.queryByText(/not in plan/i)).toBeNull();
-  });
-
-  it("shows this-GW gain alongside the horizon gain when present", () => {
-    render(<TransferPlanner transfers={transfers} planSlot={<div>PLAN</div>} />);
-    expect(screen.getByText(/\+2\.2 this GW · \+7\.1 pts/)).toBeTruthy();
-    expect(screen.getByText(/^\+3\.0 pts$/)).toBeTruthy();
-  });
-
-  it("labels ITB as post-move remainder", () => {
-    render(<TransferPlanner transfers={transfers} />);
-    expect(screen.getByText(/ITB after moves/i)).toBeTruthy();
+  it("still reports an empty beam list", () => {
+    const none = { ...transfers, moves: [] } as unknown as FplTransfersRecommendation;
+    render(<TransferPlanner transfers={none} planSlot={<div>PLAN</div>} />);
+    expect(screen.getByText(/No transfer suggestions returned/i)).toBeTruthy();
   });
 
   it("uses a singular horizon label", () => {

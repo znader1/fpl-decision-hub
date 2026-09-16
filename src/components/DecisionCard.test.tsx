@@ -57,8 +57,9 @@ describe("DecisionCard spend", () => {
     render(<DecisionCard plan={plan(detail({}))} />);
     const card = screen.getByTestId("plan-verdict-banner");
     expect(card.textContent).toMatch(/make the move/i);
-    expect(card.textContent).toContain("S1");
-    expect(card.textContent).toContain("B2");
+    // Sibling spans, so textContent has no space between name and meta.
+    expect(card.textContent).toContain("S1(LIV £7.0)");
+    expect(card.textContent).toContain("B2(BOU £6.1)");
     expect(screen.getByTestId("decision-gains").textContent).toBe("+0.9 this GW · +2.8 over GW5–7");
     expect(card.textContent).toMatch(/Plan GW5–7 nets \+6\.5/);
     expect(card.textContent).toMatch(/rolling instead nets \+0\.0/);
@@ -79,6 +80,26 @@ describe("DecisionCard spend", () => {
     expect(btn.hasAttribute("disabled")).toBe(true);
   });
 
+  it("shows Undo next to Applied and calls onResetAppliedTransfers", () => {
+    const onReset = vi.fn();
+    render(
+      <DecisionCard
+        plan={plan(detail({}))}
+        onApplyTransferAtIndex={() => {}}
+        onResetAppliedTransfers={onReset}
+        appliedTransferCount={1}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /applied/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /undo/i }));
+    expect(onReset).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows ITB after when the plan carries bank_after", () => {
+    render(<DecisionCard plan={plan(detail({}), { plan: [{ gw: 5, action: "transfer", free_transfers_before: 1, free_transfers_after: 0, hits: 0, hit_cost: 0, gw_gain: 2.8, net_gain: 2.8, bank_after: 1.2, moves: [], note: "" }] })} />);
+    expect(screen.getByTestId("plan-verdict-banner").textContent).toMatch(/ITB after £1\.2m/);
+  });
+
   it("hides the apply button when no handler is given", () => {
     render(<DecisionCard plan={plan(detail({}))} />);
     expect(screen.queryByRole("button")).toBeNull();
@@ -86,7 +107,7 @@ describe("DecisionCard spend", () => {
 
   it("shows the hit cost when hits were taken", () => {
     render(<DecisionCard plan={plan(detail({ hit_cost: 4, this_gw_gain: 3.2, horizon_gain: 9.1 }))} />);
-    expect(screen.getByTestId("decision-gains").textContent).toContain("−4 hit");
+    expect(screen.getByTestId("decision-gains").textContent).toContain("−4.0 hit");
   });
 
   it("uses the injury tone and flags the seller on a forced sell", () => {

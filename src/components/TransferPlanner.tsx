@@ -3,7 +3,6 @@ import { ArrowRightLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { JerseyIcon } from "./JerseyIcon";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import type { FplPosition, FplTransfersRecommendation } from "@/lib/fplAssistantApi";
 import { fmtGain } from "./DecisionCard";
 
@@ -14,10 +13,6 @@ interface TransferPlannerProps {
   targetGw?: number;
   playerNameById?: Record<number, string>;
   playerTeamById?: Record<number, string>;
-  appliedTransferCount?: number;
-  isApplyingTransfer?: boolean;
-  onResetAppliedTransfers?: () => void;
-  onApplyTransferAtIndex?: (index: number) => void;
 }
 
 const POSITION_ORDER: FplPosition[] = ["GKP", "DEF", "MID", "FWD"];
@@ -119,41 +114,16 @@ export const TransferPlanner = ({
   targetGw,
   playerNameById,
   playerTeamById,
-  appliedTransferCount = 0,
-  isApplyingTransfer = false,
-  onResetAppliedTransfers,
-  onApplyTransferAtIndex,
 }: TransferPlannerProps) => {
   const moves = Array.isArray(transfers?.moves) ? transfers.moves : [];
+  // The plan's own moves are the recommendation and are rendered on the
+  // DecisionCard with the only Apply control. What is left are alternatives:
+  // single-GW beam swaps, scored on a different horizon, shown for reference.
+  const alternatives = moves.filter((move) => !move.in_plan);
   const transferPlan = transfers?.transfer_plan;
-  // The API may carry fields the type doesn't declare (e.g. itb_m); going via
-  // unknown is the sound way to spell that deliberate widening.
-  const transfersRecord = transfers as unknown as Record<string, unknown> | undefined;
-  const remainingItb = readPrice(transfers?.remaining_itb ?? transfersRecord?.itb_m);
-  const movesUsed =
-    typeof transferPlan?.transfer_count_built === "number"
-      ? transferPlan.transfer_count_built
-      : typeof transfers?.moves_used === "number"
-        ? transfers.moves_used
-        : typeof transfers?.transfer_policy?.moves_used === "number"
-          ? transfers.transfer_policy.moves_used
-          : moves.length;
-  const maxMoves =
-    typeof transferPlan?.transfer_count_target === "number"
-      ? transferPlan.transfer_count_target
-      : typeof transfers?.max_moves === "number"
-        ? transfers.max_moves
-        : typeof transfers?.transfer_policy?.max_moves === "number"
-          ? transfers.transfer_policy.max_moves
-          : undefined;
-  const totalScoreGain = moves.reduce((sum, move) => sum + (move.score_gain ?? 0), 0);
-  const hasMoveGain = moves.some((move) => typeof move.score_gain === "number");
   const beamHorizon = transferPlan?.horizon_gws;
   const horizonLabel =
     typeof beamHorizon === "number" ? `over ${beamHorizon} GW${beamHorizon === 1 ? "" : "s"}` : "single-week";
-  const sortedMoveCounts = Object.entries(transfers?.moves_by_position ?? {})
-    .filter(([, count]) => typeof count === "number" && Number.isFinite(count))
-    .sort(([a], [b]) => POSITION_ORDER.indexOf(a as FplPosition) - POSITION_ORDER.indexOf(b as FplPosition));
   const hotByPosition = transfers?.hot_by_position ?? {};
   const debugTransfers =
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug_transfers") === "1";
@@ -187,189 +157,106 @@ export const TransferPlanner = ({
 
       {planSlot}
 
-      {(() => {
-        const quickOptions = (
-          <>
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="text-xs">
-            Moves: {movesUsed}
-            {typeof maxMoves === "number" ? `/${maxMoves}` : ""}
-          </Badge>
-          {hasMoveGain && (
-            <Badge variant="secondary" className="text-xs">
-              Gain: {formatPoints(totalScoreGain, true)} pts
-            </Badge>
-          )}
-          {typeof transferPlan?.hit_cap === "number" && (
-            <Badge variant="outline" className="text-xs">
-              Hit cap: {transferPlan.hit_cap}
-            </Badge>
-          )}
-          {typeof remainingItb === "number" && Number.isFinite(remainingItb) && (
-            <Badge variant="outline" className="text-xs">
-              ITB after moves: {formatMoney(remainingItb)}
-            </Badge>
-          )}
-          {moves.length > 0 && (
-            <Badge variant="outline" className="text-xs">
-              Applied: {Math.min(appliedTransferCount, moves.length)}/{moves.length}
-            </Badge>
-          )}
-          {moves.length > 0 && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs"
-              disabled={isLoading || isApplyingTransfer || appliedTransferCount <= 0}
-              onClick={onResetAppliedTransfers}
-            >
-              Reset applied
-            </Button>
-          )}
-        </div>
-        {isLoading && (
-          <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground">
-            Computing transfer suggestions…
-          </div>
-        )}
-        {!isLoading && moves.length === 0 && (
-          <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground">
-            No transfer suggestions returned.
-          </div>
-        )}
-        {moves.map((move, idx) => (
-          <div key={`${move.sell.id}-${move.buy.id}-${idx}`} className="rounded-lg border border-border p-3">
-            {(() => {
-              const sellRow = move.sell as unknown as Record<string, unknown>;
-              const buyRow = move.buy as unknown as Record<string, unknown>;
-              const sellName = readPlayerName(move.sell, move.sell.id, playerNameById);
-              const buyName = readPlayerName(move.buy, move.buy.id, playerNameById);
-              const sellTeam = readTeamShort(move.sell, move.sell.id, playerTeamById);
-              const buyTeam = readTeamShort(move.buy, move.buy.id, playerTeamById);
-              const sellMeta = formatPlayerMeta(sellTeam, move.sell.price);
-              const buyMeta = formatPlayerMeta(buyTeam, move.buy.price);
-
-              return (
-                <>
-            <div className="mb-2 text-xs text-muted-foreground flex items-center justify-between">
-              <span>Move {idx + 1}</span>
-              <span className="flex items-center gap-1.5">
-                {move.in_plan && (
-                  <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400">
-                    in plan
-                  </Badge>
-                )}
-                {move.position && <Badge variant="outline">{move.position}</Badge>}
-              </span>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="flex-1 flex items-center gap-2 min-w-[110px]">
-                  <JerseyIcon team={sellTeam} size="sm" />
-                  <div className="min-w-0">
-                    <p
-                      className="text-sm font-medium text-foreground leading-tight"
-                      title={sellName}
-                    >
-                      {sellName}
-                    </p>
-                    <p className="text-xs text-muted-foreground whitespace-nowrap">{sellMeta}</p>
-                    {move.sell.next_fixture && (
-                      <p className="text-[10px] text-muted-foreground/80 whitespace-nowrap">{move.sell.next_fixture}</p>
-                    )}
-                  </div>
-                </div>
-
-                <ArrowRightLeft className="h-4 w-4 text-muted-foreground shrink-0" />
-
-                <div className="flex-1 flex items-center gap-2 min-w-[110px]">
-                  <JerseyIcon team={buyTeam} size="sm" />
-                  <div className="min-w-0">
-                    <p
-                      className="text-sm font-medium text-foreground leading-tight"
-                      title={buyName}
-                    >
-                      {buyName}
-                    </p>
-                    <p className="text-xs text-muted-foreground whitespace-nowrap">{buyMeta}</p>
-                    {move.buy.next_fixture && (
-                      <p className="text-[10px] text-muted-foreground/80 whitespace-nowrap">{move.buy.next_fixture}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                {typeof move.buy_hot_score === "number" && (
-                  <Badge variant="outline" className="text-xs shrink-0">
-                    Hot {formatPoints(move.buy_hot_score)}
-                  </Badge>
-                )}
-                {typeof move.buy_set_piece_score === "number" && (
-                  <Badge variant="outline" className="text-xs shrink-0">
-                    SP {formatPoints(move.buy_set_piece_score)}
-                  </Badge>
-                )}
-                {typeof move.score_gain === "number" && (
-                  <Badge variant="secondary" className="text-xs shrink-0">
-                    {typeof move.this_gw_gain === "number" ? `${fmtGain(move.this_gw_gain)} this GW · ` : ""}
-                    {fmtGain(move.score_gain)} pts
-                  </Badge>
-                )}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={appliedTransferCount >= idx + 1 ? "secondary" : "default"}
-                  className="h-7 text-xs shrink-0"
-                  disabled={isLoading || isApplyingTransfer}
-                  onClick={() => onApplyTransferAtIndex?.(idx)}
-                >
-                  {appliedTransferCount >= idx + 1 ? "Applied" : "Apply transfer"}
-                </Button>
-              </div>
-            </div>
-            {debugTransfers && (
-              <p className="mt-2 text-[11px] text-muted-foreground break-all">
-                debug sell[resolved={sellName}, id={toDebugValue(sellRow.id)}, name={toDebugValue(sellRow.name)}, web_name={toDebugValue(sellRow.web_name)}, player_name={toDebugValue(sellRow.player_name)}] buy[resolved={buyName}, id={toDebugValue(buyRow.id)}, name={toDebugValue(buyRow.name)}, web_name={toDebugValue(buyRow.web_name)}, player_name={toDebugValue(buyRow.player_name)}]
-              </p>
-            )}
-                </>
-              );
-            })()}
-          </div>
-        ))}
-      </div>
-
-      {sortedMoveCounts.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Moves by Position</p>
-          <div className="flex flex-wrap gap-2">
-            {sortedMoveCounts.map(([position, count]) => (
-              <Badge key={position} variant="secondary" className="text-xs">
-                {position}: {count}
-              </Badge>
-            ))}
-          </div>
+      {isLoading && (
+        <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground">
+          Computing transfer suggestions…
         </div>
       )}
-          </>
-        );
-        // Quick swaps read as advice no matter how they're labeled, so they
-        // always live behind a disclosure. The plan above is the only advice.
-        if (moves.length > 0) {
-          return (
-            <details>
-              <summary className="cursor-pointer text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Alternatives ({moves.length}) — best single swaps {horizonLabel}, not the recommendation
-              </summary>
-              <div className="mt-3">{quickOptions}</div>
-            </details>
-          );
-        }
-        return quickOptions;
-      })()}
+      {!isLoading && moves.length === 0 && (
+        <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground">
+          No transfer suggestions returned.
+        </div>
+      )}
+
+      {/* Quick swaps read as advice no matter how they're labeled, so they
+          always live behind a disclosure and carry no apply control — the plan
+          above is the only advice, and the only thing you can apply. */}
+      {alternatives.length > 0 && (
+        <details>
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Alternatives ({alternatives.length}) — best single swaps {horizonLabel}, not the recommendation
+          </summary>
+          <div className="mt-3 space-y-3">
+            {alternatives.map((move, idx) => (
+              <div key={`${move.sell.id}-${move.buy.id}-${idx}`} className="rounded-lg border border-border p-3">
+                {(() => {
+                  const sellRow = move.sell as unknown as Record<string, unknown>;
+                  const buyRow = move.buy as unknown as Record<string, unknown>;
+                  const sellName = readPlayerName(move.sell, move.sell.id, playerNameById);
+                  const buyName = readPlayerName(move.buy, move.buy.id, playerNameById);
+                  const sellTeam = readTeamShort(move.sell, move.sell.id, playerTeamById);
+                  const buyTeam = readTeamShort(move.buy, move.buy.id, playerTeamById);
+                  const sellMeta = formatPlayerMeta(sellTeam, move.sell.price);
+                  const buyMeta = formatPlayerMeta(buyTeam, move.buy.price);
+
+                  return (
+                    <>
+                      <div className="mb-2 text-xs text-muted-foreground flex items-center justify-between">
+                        <span>Move {idx + 1}</span>
+                        {move.position && <Badge variant="outline">{move.position}</Badge>}
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="flex-1 flex items-center gap-2 min-w-[110px]">
+                            <JerseyIcon team={sellTeam} size="sm" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground leading-tight" title={sellName}>
+                                {sellName}
+                              </p>
+                              <p className="text-xs text-muted-foreground whitespace-nowrap">{sellMeta}</p>
+                              {move.sell.next_fixture && (
+                                <p className="text-[10px] text-muted-foreground/80 whitespace-nowrap">{move.sell.next_fixture}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          <ArrowRightLeft className="h-4 w-4 text-muted-foreground shrink-0" />
+
+                          <div className="flex-1 flex items-center gap-2 min-w-[110px]">
+                            <JerseyIcon team={buyTeam} size="sm" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground leading-tight" title={buyName}>
+                                {buyName}
+                              </p>
+                              <p className="text-xs text-muted-foreground whitespace-nowrap">{buyMeta}</p>
+                              {move.buy.next_fixture && (
+                                <p className="text-[10px] text-muted-foreground/80 whitespace-nowrap">{move.buy.next_fixture}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          {typeof move.buy_hot_score === "number" && (
+                            <Badge variant="outline" className="text-xs shrink-0">
+                              Hot {formatPoints(move.buy_hot_score)}
+                            </Badge>
+                          )}
+                          {typeof move.buy_set_piece_score === "number" && (
+                            <Badge variant="outline" className="text-xs shrink-0">
+                              SP {formatPoints(move.buy_set_piece_score)}
+                            </Badge>
+                          )}
+                          {typeof move.score_gain === "number" && (
+                            <Badge variant="secondary" className="text-xs shrink-0">
+                              {fmtGain(move.score_gain)} pts
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      {debugTransfers && (
+                        <p className="mt-2 text-[11px] text-muted-foreground break-all">
+                          debug sell[resolved={sellName}, id={toDebugValue(sellRow.id)}, name={toDebugValue(sellRow.name)}, web_name={toDebugValue(sellRow.web_name)}, player_name={toDebugValue(sellRow.player_name)}] buy[resolved={buyName}, id={toDebugValue(buyRow.id)}, name={toDebugValue(buyRow.name)}, web_name={toDebugValue(buyRow.web_name)}, player_name={toDebugValue(buyRow.player_name)}]
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
 
       {hotRows.length > 0 && (
         <div className="space-y-2">
