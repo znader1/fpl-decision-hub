@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TransferPlanner } from "./TransferPlanner";
+import { DecisionCard } from "./DecisionCard";
 import { JerseyIcon } from "./JerseyIcon";
 import { ExplanationPanel } from "./ExplanationPanel";
 import { AiAdvisorPanel } from "./AiAdvisorPanel";
@@ -318,7 +319,14 @@ function TransfersTab({
         onApplyNextTransfer={onApplyNextTransfer}
         onResetAppliedTransfers={onResetAppliedTransfers}
         onApplyTransferAtIndex={onApplyTransferAtIndex}
-        planSlot={<HorizonTransferPlan plan={recommendation.transfer_plan_horizon} />}
+        planSlot={
+          <HorizonTransferPlan
+            plan={recommendation.transfer_plan_horizon}
+            appliedTransferCount={appliedTransferCount}
+            isApplying={isApplyingTransfer}
+            onApplyTransferAtIndex={onApplyTransferAtIndex}
+          />
+        }
         planVerdict={recommendation.transfer_plan_horizon?.verdict}
         planHorizon={recommendation.transfer_plan_horizon}
       />
@@ -326,51 +334,26 @@ function TransfersTab({
   );
 }
 
-/* ── Verdict banner (additive) ───────────────────────────────────────────── */
-const VERDICT_LABEL: Record<NonNullable<FplTransferPlanHorizon["verdict"]>, string> = {
-  roll: "Roll it",
-  spend: "Make the move",
-  spend_forced_injury: "Injury: act now",
-};
-
-const VERDICT_TONE: Record<NonNullable<FplTransferPlanHorizon["verdict"]>, string> = {
-  roll: "border-border bg-muted/10 text-muted-foreground",
-  spend: "border-emerald-600/30 bg-emerald-600/[0.08] text-emerald-700",
-  spend_forced_injury: "border-destructive/30 bg-destructive/[0.08] text-destructive",
-};
-
-function VerdictBanner({ plan }: { plan: FplTransferPlanHorizon }) {
-  if (!plan.verdict) return null;
-  const showFt =
-    typeof plan.first_gw_ft_before === "number" && typeof plan.first_gw_ft_after === "number";
-  return (
-    <div
-      data-testid="plan-verdict-banner"
-      className={`rounded-lg border p-3 flex flex-col gap-1 ${VERDICT_TONE[plan.verdict]}`}
-    >
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider">
-          {VERDICT_LABEL[plan.verdict]}
-        </Badge>
-        {showFt && (
-          <span className="ml-auto text-xs text-muted-foreground">
-            FT {plan.first_gw_ft_before}→{plan.first_gw_ft_after}
-          </span>
-        )}
-      </div>
-      {plan.reasoning && <p className="text-xs leading-relaxed">{plan.reasoning}</p>}
-      <p className="text-[11px] opacity-70 leading-relaxed">
-        {plan.allow_hits
-          ? `Planned across ${plan.horizon_gws ?? plan.gws?.length ?? 1} GWs and allowed to take hits, so it can name more moves than the free-transfer suggestions above.`
-          : `Planned across ${plan.horizon_gws ?? plan.gws?.length ?? 1} GWs using free transfers only.`}
-      </p>
-    </div>
-  );
-}
-
 /* ── Multi-GW roll/bank plan (additive) ───────────────────────────────────── */
-export function HorizonTransferPlan({ plan }: { plan?: FplTransferPlanHorizon }) {
-  const verdictBanner = plan?.verdict ? <VerdictBanner plan={plan} /> : null;
+export function HorizonTransferPlan({
+  plan,
+  appliedTransferCount,
+  isApplying,
+  onApplyTransferAtIndex,
+}: {
+  plan?: FplTransferPlanHorizon;
+  appliedTransferCount?: number;
+  isApplying?: boolean;
+  onApplyTransferAtIndex?: (index: number) => void;
+}) {
+  const verdictBanner = plan?.verdict ? (
+    <DecisionCard
+      plan={plan}
+      appliedTransferCount={appliedTransferCount}
+      isApplying={isApplying}
+      onApplyTransferAtIndex={onApplyTransferAtIndex}
+    />
+  ) : null;
   if (!plan?.plan?.length) return verdictBanner;
   const allRoll = plan.plan.every((g) => g.action === "roll");
   // The header used to read "1 FT/GW, roll or bank" even when every gameweek in
