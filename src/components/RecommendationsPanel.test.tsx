@@ -171,3 +171,50 @@ describe("HorizonTransferPlan verdict banner", () => {
     expect(screen.getByText(/faces your Guéhi/i)).toBeTruthy();
   });
 });
+
+describe("HorizonTransferPlan labels", () => {
+  const spendPlan: FplTransferPlanHorizon = {
+    ...basePlan,
+    gws: [5, 6, 7],
+    horizon_gws: 3,
+    total_net_gain: 6.5,
+    verdict: "spend",
+    reasoning: "Move now.",
+    plan: [
+      {
+        gw: 5, action: "transfer", free_transfers_before: 1, free_transfers_after: 0,
+        hits: 0, hit_cost: 0, gw_gain: 2.8, net_gain: 2.8, bank_after: 1.0,
+        moves: [{
+          sell: { id: 1, name: "Szoboszlai", team: "LIV", price: 7 },
+          buy: { id: 2, name: "Tavernier", team: "BOU", price: 6.1 },
+          score_gain: 2.8, this_gw_gain: 0.9,
+        }],
+        note: "Szoboszlai → Tavernier",
+      },
+      { gw: 6, action: "roll", free_transfers_before: 1, free_transfers_after: 2, hits: 0, hit_cost: 0,
+        gw_gain: 0, net_gain: 0, bank_after: 1.0, moves: [], note: "Roll." },
+      { gw: 7, action: "roll", free_transfers_before: 2, free_transfers_after: 3, hits: 0, hit_cost: 0,
+        gw_gain: 0, net_gain: 0, bank_after: 1.0, moves: [], note: "Roll." },
+    ],
+  };
+
+  it("names the GW range in the header and the net line", () => {
+    render(<HorizonTransferPlan plan={spendPlan} />);
+    expect(screen.getByText("Plan GW5–7")).toBeTruthy();
+    // Exact string: the legacy banner also says "...using free transfers only."
+    expect(screen.getByText("free transfers only")).toBeTruthy();
+    // The net line mixes text nodes and a <b>, so read the element, not getByText.
+    expect(screen.getByTestId("plan-net").textContent).toBe("Net +6.5 over GW5–7");
+  });
+
+  it("shows this-GW and horizon gains on a move row", () => {
+    render(<HorizonTransferPlan plan={spendPlan} />);
+    expect(screen.getByText(/\+0\.9 this GW · \+2\.8/)).toBeTruthy();
+  });
+
+  it("labels a hits plan with the move and hit counts", () => {
+    const hits = { ...spendPlan, plan: [{ ...spendPlan.plan![0], hits: 1, hit_cost: 4, net_gain: -1.2 }] };
+    render(<HorizonTransferPlan plan={hits} />);
+    expect(screen.getByText(/1 move, 1 hit/)).toBeTruthy();
+  });
+});

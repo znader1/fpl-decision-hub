@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TransferPlanner } from "./TransferPlanner";
-import { DecisionCard } from "./DecisionCard";
+import { DecisionCard, fmtGain, gwRange } from "./DecisionCard";
 import { JerseyIcon } from "./JerseyIcon";
 import { ExplanationPanel } from "./ExplanationPanel";
 import { AiAdvisorPanel } from "./AiAdvisorPanel";
@@ -361,23 +361,27 @@ export function HorizonTransferPlan({
   const totalHits = plan.plan.reduce((sum, g) => sum + (g.hits ?? 0), 0);
   const totalHitCost = plan.plan.reduce((sum, g) => sum + (g.hit_cost ?? 0), 0);
   const totalMoves = plan.plan.reduce((sum, g) => sum + (g.moves?.length ?? 0), 0);
+  const gws = plan.gws ?? plan.plan.map((g) => g.gw);
+  const range = gwRange({ start_gw: gws[0] ?? null, end_gw: gws[gws.length - 1] ?? null });
   return (
     <>
       {verdictBanner}
       <div className="rounded-lg border bg-card p-3 space-y-2">
         <div className="flex items-center gap-2">
           <CalendarClock className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">
+          <span className="text-sm font-semibold">Plan {range}</span>
+          <Badge variant="outline" className="text-[10px]">
             {totalHits > 0
-              ? `Multi-GW plan (${totalMoves} moves, ${totalHits} hit${totalHits === 1 ? "" : "s"})`
-              : "Multi-GW plan (free transfers only)"}
-          </span>
+              ? `${totalMoves} move${totalMoves === 1 ? "" : "s"}, ${totalHits} hit${totalHits === 1 ? "" : "s"}`
+              : "free transfers only"}
+          </Badge>
           {typeof plan.total_net_gain === "number" && (
-            <span className="ml-auto text-xs">
-              Net over {plan.horizon_gws} GWs{" "}
-              <b className={plan.total_net_gain >= 0 ? "text-emerald-600" : "text-red-600"}>
-                {plan.total_net_gain >= 0 ? "+" : ""}{plan.total_net_gain.toFixed(1)} pts
-              </b>
+            <span className="ml-auto text-xs" data-testid="plan-net">
+              Net{" "}
+              <b className={plan.total_net_gain >= 0 ? "text-emerald-600 dark:text-emerald-300" : "text-red-600 dark:text-red-400"}>
+                {fmtGain(plan.total_net_gain)}
+              </b>{" "}
+              over {range}
             </span>
           )}
         </div>
@@ -390,7 +394,7 @@ export function HorizonTransferPlan({
           // Hits are the expensive part of any plan and were only visible per
           // row. State the bill once, up front.
           <div className="text-[11px] text-muted-foreground">
-            Costs {totalHitCost} pts in hits across {plan.horizon_gws} GWs. The net figure above
+            Costs {totalHitCost} pts in hits across {range}. The net figure above
             is after that cost.
           </div>
         )}
@@ -431,7 +435,9 @@ export function HorizonTransferPlan({
                         faces your {m.h2h_conflicts!.join(", ")}
                       </span>
                     )}
-                    <span className="ml-auto text-emerald-600">+{m.score_gain.toFixed(1)}</span>
+                    <span className="ml-auto text-emerald-600 dark:text-emerald-300" title="this GW · over the remaining plan">
+                      {typeof m.this_gw_gain === "number" ? `${fmtGain(m.this_gw_gain)} this GW · ` : ""}{fmtGain(m.score_gain)}
+                    </span>
                   </li>
                 ))}
               </ul>
