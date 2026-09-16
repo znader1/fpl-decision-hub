@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { HorizonTransferPlan, RecommendationsPanel } from "./RecommendationsPanel";
 import type { FplTeamRecommendation, FplTransferPlanHorizon } from "@/lib/fplAssistantApi";
 
@@ -108,7 +108,7 @@ describe("HorizonTransferPlan verdict banner", () => {
     expect(screen.queryByText(/multi-gw plan/i)).toBeNull();
   });
 
-  it("folds the later gameweeks behind a disclosure", () => {
+  it("renders every GW row inside the one closed staircase details, with no nested disclosure", () => {
     const { container } = render(
       <HorizonTransferPlan
         plan={{
@@ -135,13 +135,13 @@ describe("HorizonTransferPlan verdict banner", () => {
         }}
       />
     );
-    // This week's move visible; GW2/GW3 rows live inside the fold.
-    expect(screen.getByText("NowBuy")).toBeTruthy();
-    const details = Array.from(container.querySelectorAll("details")).find((d) =>
-      d.textContent?.includes("rest of the plan")
-    );
-    expect(details).toBeTruthy();
-    expect(details?.textContent).toContain("GW3");
+    // Only one details on the page: the whole staircase, closed by default.
+    const detailsEls = container.querySelectorAll("details");
+    expect(detailsEls).toHaveLength(1);
+    expect(detailsEls[0].hasAttribute("open")).toBe(false);
+    // All GWs render inside it (jsdom keeps closed <details> content in the DOM).
+    expect(within(detailsEls[0] as HTMLElement).getByText("NowBuy")).toBeTruthy();
+    expect(detailsEls[0].textContent).toContain("GW3");
   });
 
   it("flags a move that faces one of your own players", () => {
@@ -198,9 +198,14 @@ describe("HorizonTransferPlan labels", () => {
     ],
   };
 
-  it("names the GW range in the header and the net line", () => {
-    render(<HorizonTransferPlan plan={spendPlan} />);
-    expect(screen.getByText("Plan GW5–7")).toBeTruthy();
+  it("names the GW range, move count and net in a closed summary; keeps plan-net inside", () => {
+    const { container } = render(<HorizonTransferPlan plan={spendPlan} />);
+    const details = container.querySelector("details");
+    expect(details).toBeTruthy();
+    expect(details?.hasAttribute("open")).toBe(false);
+    const summary = details!.querySelector("summary")!;
+    expect(summary.textContent).toBe("Plan GW5–7 · 1 move · net +6.5");
+    expect(summary.querySelector("span.whitespace-nowrap")?.textContent).toBe("GW5–7");
     // Exact string: the legacy banner also says "...using free transfers only."
     expect(screen.getByText("free transfers only")).toBeTruthy();
     // The net line mixes text nodes and a <b>, so read the element, not getByText.
@@ -216,6 +221,13 @@ describe("HorizonTransferPlan labels", () => {
     const hits = { ...spendPlan, plan: [{ ...spendPlan.plan![0], hits: 1, hit_cost: 4, net_gain: -1.2 }] };
     render(<HorizonTransferPlan plan={hits} />);
     expect(screen.getByText(/1 move, 1 hit/)).toBeTruthy();
+  });
+
+  it("appends the hit count to the summary when hits > 0", () => {
+    const hits = { ...spendPlan, plan: [{ ...spendPlan.plan![0], hits: 1, hit_cost: 4, net_gain: -1.2 }] };
+    const { container } = render(<HorizonTransferPlan plan={hits} />);
+    const summary = container.querySelector("details summary")!;
+    expect(summary.textContent).toBe("Plan GW5–7 · 1 move · net +6.5 · 1 hit");
   });
 });
 

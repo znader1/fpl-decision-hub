@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { DecisionCard, fmtGain, gwRange } from "./DecisionCard";
-import type { FplTransferPlanHorizon, FplTransferVerdictDetail, FplTransferVerdictMove } from "@/lib/fplAssistantApi";
+import type {
+  FplTransferPlanHorizon,
+  FplTransferRunnerUp,
+  FplTransferVerdictDetail,
+  FplTransferVerdictMove,
+} from "@/lib/fplAssistantApi";
 
 afterEach(cleanup);
 
@@ -12,6 +17,11 @@ const mv = (sellId: number, buyId: number, thisGw = 0.9, horizon = 2.8): FplTran
   position: "MID",
   this_gw_gain: thisGw,
   horizon_gain: horizon,
+});
+
+const ru = (sellId: number, buyId: number, clearsBar: boolean, thisGw = 1.0, horizon = 3.0): FplTransferRunnerUp => ({
+  ...mv(sellId, buyId, thisGw, horizon),
+  clears_bar: clearsBar,
 });
 
 const detail = (over: Partial<FplTransferVerdictDetail>): FplTransferVerdictDetail => ({
@@ -142,6 +152,68 @@ describe("DecisionCard roll", () => {
     }))} />);
     expect(screen.getByTestId("plan-verdict-banner").textContent)
       .toMatch(/Moving now \(S1 → B3\) would net \+13\.0 over GW5–7; rolling nets \+14\.0/);
+  });
+});
+
+describe("DecisionCard runner-ups", () => {
+  it("wraps GW range strings in a non-wrapping span", () => {
+    render(<DecisionCard plan={plan(detail({}))} />);
+    const card = screen.getByTestId("plan-verdict-banner");
+    const spans = Array.from(card.querySelectorAll("span.whitespace-nowrap"));
+    expect(spans.some((s) => s.textContent === "GW5–7")).toBe(true);
+  });
+
+  it("renders nothing when runner_ups is empty or absent", () => {
+    render(<DecisionCard plan={plan(detail({ runner_ups: [] }))} />);
+    expect(screen.queryByTestId("runner-ups")).toBeNull();
+    render(<DecisionCard plan={plan(detail({}))} />);
+    expect(screen.queryByTestId("runner-ups")).toBeNull();
+  });
+
+  it("shows the first 3 runner-ups and folds the rest behind show N more, numbered from 2 on spend", () => {
+    const runner_ups = [
+      ru(10, 11, true), ru(12, 13, true), ru(14, 15, false), ru(16, 17, false), ru(18, 19, false),
+    ];
+    render(<DecisionCard plan={plan(detail({ runner_ups }))} />);
+    const block = screen.getByTestId("runner-ups");
+    expect(block.textContent).toMatch(/Also considered/);
+    expect(block.textContent).toContain("2. S10 → B11");
+    expect(block.textContent).toContain("3. S12 → B13");
+    expect(block.textContent).toContain("4. S14 → B15");
+    const details = block.querySelector("details");
+    expect(details).toBeTruthy();
+    expect(details?.hasAttribute("open")).toBe(false);
+    const inDetails = within(details as HTMLElement);
+    expect(inDetails.getByText(/show 2 more/i)).toBeTruthy();
+    expect(inDetails.getByText(/5\. S16 → B17/)).toBeTruthy();
+    expect(inDetails.getByText(/6\. S18 → B19/)).toBeTruthy();
+  });
+
+  it("numbers runner-ups from 1 and uses the roll heading on a roll verdict", () => {
+    const runner_ups = [ru(10, 11, false)];
+    render(<DecisionCard plan={plan(detail({
+      action: "roll", moves: [], this_gw_gain: 0, horizon_gain: 0, ft_before: 1, ft_after: 2,
+      roll_alternative: null, plan_net: 0, next_move: null, runner_ups,
+    }))} />);
+    const block = screen.getByTestId("runner-ups");
+    expect(block.textContent).toMatch(/Best available — all below the bar/);
+    expect(block.textContent).toContain("1. S10 → B11");
+  });
+
+  it("shows this-GW and horizon gains per runner-up row", () => {
+    const runner_ups = [ru(10, 11, true, 1.1, 3.4)];
+    render(<DecisionCard plan={plan(detail({ runner_ups }))} />);
+    expect(screen.getByTestId("runner-ups").textContent).toMatch(/\+1\.1 this GW · \+3\.4/);
+  });
+
+  it("shows a below-bar tag only on runner-ups that don't clear the bar", () => {
+    const runner_ups = [ru(10, 11, true), ru(12, 13, false)];
+    render(<DecisionCard plan={plan(detail({ runner_ups }))} />);
+    const block = screen.getByTestId("runner-ups");
+    expect(block.textContent).toMatch(/below bar/);
+    const rows = within(block).getAllByRole("listitem");
+    expect(rows[0].textContent).not.toMatch(/below bar/);
+    expect(rows[1].textContent).toMatch(/below bar/);
   });
 });
 

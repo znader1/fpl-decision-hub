@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type {
   FplTransferPlanHorizon,
+  FplTransferRunnerUp,
   FplTransferVerdictDetail,
   FplTransferVerdictMove,
 } from "@/lib/fplAssistantApi";
@@ -31,6 +32,11 @@ export const gwRange = (h: { start_gw: number | null; end_gw: number | null }) =
   return `GW${h.start_gw}–${h.end_gw}`;
 };
 
+/** `gwRange`, wrapped so it never wraps mid-string at phone width. */
+function GwRange({ h }: { h: { start_gw: number | null; end_gw: number | null } }) {
+  return <span className="whitespace-nowrap">{gwRange(h)}</span>;
+}
+
 const movesText = (moves: FplTransferVerdictMove[]) =>
   moves.map((m) => `${m.sell.name} → ${m.buy.name}`).join(" + ");
 
@@ -46,6 +52,50 @@ function MoveLine({ m }: { m: FplTransferVerdictMove }) {
       <span className="font-semibold text-emerald-700 dark:text-emerald-300">{m.buy.name}</span>
       <span className="text-muted-foreground">({m.buy.team} £{m.buy.price.toFixed(1)})</span>
     </span>
+  );
+}
+
+const RUNNER_UPS_VISIBLE = 3;
+
+function RunnerUpRow({ m, index }: { m: FplTransferRunnerUp; index: number }) {
+  return (
+    <li className="flex items-center justify-between gap-2 text-xs">
+      <span className="min-w-0 truncate">
+        {index}. {m.sell.name} → {m.buy.name}
+      </span>
+      <span className="shrink-0 text-muted-foreground">
+        {fmtGain(m.this_gw_gain)} this GW · {fmtGain(m.horizon_gain)}
+        {!m.clears_bar && <span className="ml-1 text-muted-foreground/70">below bar</span>}
+      </span>
+    </li>
+  );
+}
+
+/** "Also considered" (spend) / "Best available — all below the bar" (roll): the other candidates, ranked. */
+function RunnerUps({ d }: { d: FplTransferVerdictDetail }) {
+  const list = d.runner_ups ?? [];
+  if (list.length === 0) return null;
+  const startIndex = d.action === "roll" ? 1 : 2;
+  const heading = d.action === "roll" ? "Best available — all below the bar" : "Also considered";
+  const visible = list.slice(0, RUNNER_UPS_VISIBLE);
+  const rest = list.slice(RUNNER_UPS_VISIBLE);
+  return (
+    <div data-testid="runner-ups" className="flex flex-col gap-1 border-t pt-1.5 mt-0.5">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{heading}</p>
+      <ul className="space-y-0.5">
+        {visible.map((m, i) => <RunnerUpRow key={i} m={m} index={startIndex + i} />)}
+      </ul>
+      {rest.length > 0 && (
+        <details>
+          <summary className="cursor-pointer text-[11px] text-muted-foreground">show {rest.length} more</summary>
+          <ul className="mt-0.5 space-y-0.5">
+            {rest.map((m, i) => (
+              <RunnerUpRow key={i} m={m} index={startIndex + visible.length + i} />
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
   );
 }
 
@@ -89,7 +139,6 @@ export function DecisionCard({
 }: DecisionCardProps) {
   const d: FplTransferVerdictDetail | undefined = plan.verdict_detail;
   if (!d) return <LegacyVerdictBanner plan={plan} />;
-  const range = gwRange(d.horizon);
   const k = d.moves.length;
   const applied = k > 0 && appliedTransferCount >= k;
   // The bank the plan leaves behind — the ITB badge the alternatives list used
@@ -107,14 +156,16 @@ export function DecisionCard({
       {d.action === "roll" ? (
         <>
           <p className="text-sm text-foreground">
-            {d.roll_alternative
-              ? `Moving now (${movesText(d.roll_alternative.moves) || "no move"}) would net ${fmtGain(d.roll_alternative.net)} over ${range}; rolling nets ${fmtGain(d.plan_net)}.`
-              : `Bank the free transfer. No move clears ${fmtGain(d.threshold)} over ${range}.`}
+            {d.roll_alternative ? (
+              <>Moving now ({movesText(d.roll_alternative.moves) || "no move"}) would net {fmtGain(d.roll_alternative.net)} over <GwRange h={d.horizon} />; rolling nets {fmtGain(d.plan_net)}.</>
+            ) : (
+              <>Bank the free transfer. No move clears {fmtGain(d.threshold)} over <GwRange h={d.horizon} />.</>
+            )}
           </p>
           {d.next_move && (
             <p className="text-[11px] text-muted-foreground">
               Next planned move: {movesText(d.next_move.moves)} in GW{d.next_move.gw} (
-              {fmtGain(d.next_move.horizon_gain)} over {gwRange({ start_gw: d.next_move.gw, end_gw: d.horizon.end_gw })})
+              {fmtGain(d.next_move.horizon_gain)} over <GwRange h={{ start_gw: d.next_move.gw, end_gw: d.horizon.end_gw }} />)
             </p>
           )}
         </>
@@ -124,12 +175,12 @@ export function DecisionCard({
             {d.moves.map((m, i) => <li key={i}><MoveLine m={m} /></li>)}
           </ul>
           <p className="text-sm text-foreground" data-testid="decision-gains">
-            <b>{fmtGain(d.this_gw_gain)}</b> this GW · <b>{fmtGain(d.horizon_gain)}</b> over {range}
+            <b>{fmtGain(d.this_gw_gain)}</b> this GW · <b>{fmtGain(d.horizon_gain)}</b> over <GwRange h={d.horizon} />
             {d.hit_cost > 0 && <> · <b className="text-red-600 dark:text-red-400">{fmtGain(-d.hit_cost)} hit</b></>}
           </p>
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
             <span>
-              Plan {range} nets {fmtGain(d.plan_net)}
+              Plan <GwRange h={d.horizon} /> nets {fmtGain(d.plan_net)}
               {d.roll_alternative ? ` · rolling instead nets ${fmtGain(d.roll_alternative.net)}` : ""}
               {hasBank ? ` · ITB after £${bankAfter.toFixed(1)}m` : ""}
             </span>
@@ -160,6 +211,8 @@ export function DecisionCard({
           </div>
         </>
       )}
+
+      <RunnerUps d={d} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Lightbulb,
   ArrowRightLeft,
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TransferPlanner } from "./TransferPlanner";
 import { DecisionCard, fmtGain, gwRange } from "./DecisionCard";
+import { HotTargets } from "./HotTargets";
 import { JerseyIcon } from "./JerseyIcon";
 import { ExplanationPanel } from "./ExplanationPanel";
 import { AiAdvisorPanel } from "./AiAdvisorPanel";
@@ -253,7 +254,6 @@ function SummaryTab({
 /* ── Transfers tab ────────────────────────────────────────────────────────── */
 function TransfersTab({
   recommendation,
-  squad,
   isRecommending,
   appliedTransferCount,
   isApplyingTransfer,
@@ -261,31 +261,12 @@ function TransfersTab({
   onApplyTransferAtIndex,
 }: {
   recommendation?: FplTeamRecommendation;
-  squad?: FplSquad;
   isRecommending: boolean;
   appliedTransferCount: number;
   isApplyingTransfer: boolean;
   onResetAppliedTransfers?: () => void;
   onApplyTransferAtIndex?: (index: number) => void;
 }) {
-  const playerNameById = useMemo(() => {
-    const map: Record<number, string> = {};
-    for (const p of squad?.starting_xi ?? []) map[p.player_id] = p.web_name;
-    for (const p of squad?.bench ?? []) map[p.player_id] = p.web_name;
-    for (const p of recommendation?.starting_xi ?? []) map[p.player_id] = p.web_name;
-    for (const p of recommendation?.bench ?? []) map[p.player_id] = p.web_name;
-    return map;
-  }, [squad, recommendation]);
-
-  const playerTeamById = useMemo(() => {
-    const map: Record<number, string> = {};
-    for (const p of squad?.starting_xi ?? []) map[p.player_id] = p.team_short;
-    for (const p of squad?.bench ?? []) map[p.player_id] = p.team_short;
-    for (const p of recommendation?.starting_xi ?? []) map[p.player_id] = p.team_short;
-    for (const p of recommendation?.bench ?? []) map[p.player_id] = p.team_short;
-    return map;
-  }, [squad, recommendation]);
-
   if (isRecommending) {
     return <EmptyState icon={ArrowRightLeft} text="Computing transfer suggestions…" />;
   }
@@ -304,9 +285,6 @@ function TransfersTab({
       <TransferPlanner
         transfers={recommendation.transfers}
         isLoading={isRecommending}
-        targetGw={recommendation.event_id}
-        playerNameById={playerNameById}
-        playerTeamById={playerTeamById}
         planSlot={
           <HorizonTransferPlan
             plan={recommendation.transfer_plan_horizon}
@@ -353,42 +331,52 @@ export function HorizonTransferPlan({
   const totalMoves = plan.plan.reduce((sum, g) => sum + (g.moves?.length ?? 0), 0);
   const gws = plan.gws ?? plan.plan.map((g) => g.gw);
   const range = gwRange({ start_gw: gws[0] ?? null, end_gw: gws[gws.length - 1] ?? null });
+  const hasNet = typeof plan.total_net_gain === "number";
   return (
     <>
       {verdictBanner}
-      <div className="rounded-lg border bg-card p-3 space-y-2">
-        <div className="flex items-center gap-2">
-          <CalendarClock className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Plan {range}</span>
-          <Badge variant="outline" className="text-[10px]">
-            {totalHits > 0
-              ? `${totalMoves} move${totalMoves === 1 ? "" : "s"}, ${totalHits} hit${totalHits === 1 ? "" : "s"}`
-              : "free transfers only"}
-          </Badge>
-          {typeof plan.total_net_gain === "number" && (
-            <span className="ml-auto text-xs" data-testid="plan-net">
-              Net{" "}
-              <b className={plan.total_net_gain >= 0 ? "text-emerald-600 dark:text-emerald-300" : "text-red-600 dark:text-red-400"}>
-                {fmtGain(plan.total_net_gain)}
-              </b>{" "}
-              over {range}
-            </span>
+      {/* The whole staircase is working, not the decision — collapse it behind
+          one disclosure so the tab isn't dense with every GW visible at once. */}
+      <details className="rounded-lg border bg-card p-3">
+        <summary className="cursor-pointer flex items-center gap-2 text-sm font-semibold">
+          <CalendarClock className="h-4 w-4 text-muted-foreground shrink-0" />
+          <span>
+            Plan <span className="whitespace-nowrap">{range}</span> · {totalMoves} move{totalMoves === 1 ? "" : "s"}
+            {hasNet ? ` · net ${fmtGain(plan.total_net_gain as number)}` : ""}
+            {totalHits > 0 ? ` · ${totalHits} hit${totalHits === 1 ? "" : "s"}` : ""}
+          </span>
+        </summary>
+        <div className="mt-2 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="outline" className="text-[10px]">
+              {totalHits > 0
+                ? `${totalMoves} move${totalMoves === 1 ? "" : "s"}, ${totalHits} hit${totalHits === 1 ? "" : "s"}`
+                : "free transfers only"}
+            </Badge>
+            {hasNet && (
+              <span className="ml-auto text-xs" data-testid="plan-net">
+                Net{" "}
+                <b className={(plan.total_net_gain as number) >= 0 ? "text-emerald-600 dark:text-emerald-300" : "text-red-600 dark:text-red-400"}>
+                  {fmtGain(plan.total_net_gain as number)}
+                </b>{" "}
+                over {range}
+              </span>
+            )}
+          </div>
+          {allRoll && (
+            <div className="text-[11px] text-muted-foreground">
+              No transfer clears the bar over this horizon — roll and bank the free transfers.
+            </div>
           )}
-        </div>
-        {allRoll && (
-          <div className="text-[11px] text-muted-foreground">
-            No transfer clears the bar over this horizon — roll and bank the free transfers.
-          </div>
-        )}
-        {totalHits > 0 && (
-          // Hits are the expensive part of any plan and were only visible per
-          // row. State the bill once, up front.
-          <div className="text-[11px] text-muted-foreground">
-            Costs {totalHitCost} pts in hits across {range}. The net figure above
-            is after that cost.
-          </div>
-        )}
-        {(() => {
+          {totalHits > 0 && (
+            // Hits are the expensive part of any plan and were only visible per
+            // row. State the bill once, up front.
+            <div className="text-[11px] text-muted-foreground">
+              Costs {totalHitCost} pts in hits across {range}. The net figure above
+              is after that cost.
+            </div>
+          )}
+          {(() => {
         const renderGw = (g: NonNullable<FplTransferPlanHorizon["plan"]>[number]) => (
           <div key={g.gw} className="border-t pt-2">
             <div className="flex items-center gap-2 text-xs">
@@ -434,26 +422,12 @@ export function HorizonTransferPlan({
             )}
           </div>
         );
-        // First glance = the decision: this week's row only. The rest of the
-        // staircase is working, shown on demand.
-        const rows = plan.plan;
-        const firstIdx = Math.max(0, rows.findIndex((r) => r.action === "transfer"));
-        const tail = rows.slice(firstIdx + 1);
-        return (
-          <>
-            {rows.slice(0, firstIdx + 1).map(renderGw)}
-            {tail.length > 0 && (
-              <details className="border-t pt-2">
-                <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Show the rest of the plan ({tail.length} more GW{tail.length === 1 ? "" : "s"})
-                </summary>
-                <div className="mt-1 space-y-2">{tail.map(renderGw)}</div>
-              </details>
-            )}
-          </>
-        );
+        // The whole staircase now lives behind the outer <details> above, so
+        // every GW row renders flat — no nested "show the rest" disclosure.
+        return plan.plan.map(renderGw);
         })()}
-      </div>
+        </div>
+      </details>
     </>
   );
 }
@@ -575,6 +549,8 @@ function WatchlistTab({
       {insights.length === 0 && !captain && !bench1 && scoringBullets.length === 0 && (
         <EmptyState icon={Lightbulb} text="No flags or insights for this gameweek." />
       )}
+
+      <HotTargets hotByPosition={recommendation.transfers?.hot_by_position} />
     </div>
   );
 }
@@ -670,7 +646,6 @@ export const RecommendationsPanel = ({
         {activeTab === "transfers" && (
           <TransfersTab
             recommendation={recommendation}
-            squad={squad}
             isRecommending={isRecommending}
             appliedTransferCount={appliedTransferCount}
             isApplyingTransfer={isApplyingTransfer}

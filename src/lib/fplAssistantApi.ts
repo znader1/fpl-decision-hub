@@ -192,6 +192,10 @@ export interface FplTransferVerdictMove {
   h2h_conflicts?: string[];
 }
 
+export interface FplTransferRunnerUp extends FplTransferVerdictMove {
+  clears_bar: boolean;
+}
+
 /** Structured twin of `reasoning`; emitted by plan_transfers as `verdict_detail`. */
 export interface FplTransferVerdictDetail {
   action: "spend" | "roll" | "spend_forced_injury";
@@ -210,6 +214,8 @@ export interface FplTransferVerdictDetail {
   roll_alternative: { net: number; gw: number | null; moves: FplTransferVerdictMove[] } | null;
   /** Roll only: the first later GW the plan transfers in. */
   next_move: { gw: number; moves: FplTransferVerdictMove[]; horizon_gain: number } | null;
+  /** Best swap for each other squad player, ranked by horizon gain; the chosen pair is excluded. */
+  runner_ups?: FplTransferRunnerUp[];
 }
 
 export interface FplTransferPlanHorizon {
