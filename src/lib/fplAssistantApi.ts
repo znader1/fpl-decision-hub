@@ -1378,16 +1378,38 @@ export type ChipWindow = {
   expires_gw: number;
 };
 
-export type ChipEvPoint = { gw: number; ev: number };
+export type ChipEvPoint = {
+  gw: number;
+  ev: number;
+  p_beats_bar?: number; // TC/BB: P(the chip's extra points clear that GW's bar)
+  p_return?: number; // TC/BB: P(captain / bench sum >= the "return" threshold)
+  european?: number; // squad players in European weeks around this GW
+  post_break?: boolean; // first GW after an international break
+};
+
+/** Shape behind a TC/BB EV: the chip's extra-points distribution for its best GW. */
+export type ChipDistribution = {
+  mean: number;
+  modal: number; // single most likely score
+  p_return: number; // P(>= CHIP_PLAN_DIST_RETURN_AT, 6 by default)
+  p_haul: number; // P(>= 10)
+  p_blank: number; // P(<= 2)
+  p80_low: number;
+  p80_high: number;
+  bar?: number;
+  p_beats_bar?: number; // P(extra points >= bar)
+};
 
 export type ChipPlanRecommendation = {
   chip: ChipName;
   event_id: number;
   ev_gain: number | null; // null on provisional (structural-zone) recommendations
   provisional: boolean;
+  likelihood?: number; // provisional only: 1.0 announced, <1 expected (e.g. FA Cup clash)
   reasons: string[];
   ev_curve: ChipEvPoint[];
   haul_prob?: number; // triple_captain only: P(captain gets 2+ goal involvements)
+  distribution?: ChipDistribution; // TC/BB only, when the backend has player priors
 };
 
 export type ChipNudge = {
@@ -1395,6 +1417,7 @@ export type ChipNudge = {
   event_id: number;
   ev_gain: number;
   wait_for_team_news?: boolean;
+  p_beats_bar?: number;
 };
 
 export type ChipOutlookRow = {
@@ -1404,6 +1427,39 @@ export type ChipOutlookRow = {
   bar: number; // the min-EV threshold the window must clear
   status: "play" | "hold";
   reasons: string[];
+  distribution?: ChipDistribution;
+};
+
+export type EuropeanCompetition = "ucl" | "uel" | "uecl";
+
+export const EUROPEAN_LABELS: Record<EuropeanCompetition, string> = {
+  ucl: "UCL",
+  uel: "UEL",
+  uecl: "UECL",
+};
+
+export type ChipCalendarRow = {
+  gw: number;
+  deadline_utc: string | null;
+  in_model_zone: boolean;
+  post_break: boolean;
+  break_gap_days: number | null;
+  european: Partial<Record<EuropeanCompetition, string[]>>; // competition -> team labels
+  squad_european: { name: string; team: string; competition: EuropeanCompetition; when: "before" | "after" | "both" }[];
+  n_teams_playing: number | null; // null: fixtures not known that far out
+  dgw_teams: (string | number)[];
+  blank_teams: (string | number)[];
+  is_blank_heavy: boolean;
+  has_dgw: boolean;
+  cup_clash: { competition: string; label: string; likely_blank: boolean } | null;
+};
+
+export type ChipPlanSignals = {
+  breaks: boolean;
+  european_calendar: boolean; // false: data/models/european_calendar.json has no teams configured
+  cup_calendar: boolean;
+  distributions: boolean;
+  european_xpts_mult: number | null;
 };
 
 export type ChipPlanResponse = {
@@ -1414,6 +1470,8 @@ export type ChipPlanResponse = {
   recommendations: ChipPlanRecommendation[];
   outlook?: ChipOutlookRow[]; // one row per available chip, hold rows included
   nudge: ChipNudge | null;
+  calendar?: ChipCalendarRow[]; // one row per upcoming GW (older backends omit it)
+  signals?: ChipPlanSignals;
   transfer_context: {
     planned_transfers_net_gain: number;
     wc_alternative_gw: number | null;

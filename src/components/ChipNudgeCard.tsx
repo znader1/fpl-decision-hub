@@ -21,7 +21,16 @@ export const ChipNudgeCard = ({ nudge, activeChipStrategy, onApplyChip }: Props)
       <p className="text-sm min-w-0">
         <span className="font-semibold">{CHIP_LABELS[nudge.chip]}</span> this gameweek
         projects <span className="font-semibold text-primary">+{nudge.ev_gain.toFixed(1)} xPts</span>{" "}
-        over holding it.
+        over holding it
+        {nudge.p_beats_bar !== undefined && (
+          <>
+            {" "}
+            <span className="text-muted-foreground whitespace-nowrap">
+              · {Math.round(nudge.p_beats_bar * 100)}% chance it beats the bar
+            </span>
+          </>
+        )}
+        .
       </p>
       {nudge.wait_for_team_news && (
         <span className="shrink-0 rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
