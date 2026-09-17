@@ -51,6 +51,20 @@ function MoveLine({ m }: { m: FplTransferVerdictMove }) {
       <span>→</span>
       <span className="font-semibold text-emerald-700 dark:text-emerald-300">{m.buy.name}</span>
       <span className="text-muted-foreground">({m.buy.team} £{m.buy.price.toFixed(1)})</span>
+      <ConflictChip names={m.h2h_conflicts} />
+    </span>
+  );
+}
+
+/** Amber flag when the buy plays against your own keeper/defence (or vice versa) this GW. */
+function ConflictChip({ names }: { names?: string[] }) {
+  if (!names || names.length === 0) return null;
+  return (
+    <span
+      className="rounded bg-amber-500/15 px-1 text-[10px] text-amber-700 dark:text-amber-400 whitespace-nowrap"
+      title="Plays against your own player this GW — their returns cancel each other's"
+    >
+      faces your {names.join(", ")}
     </span>
   );
 }
@@ -61,7 +75,7 @@ function RunnerUpRow({ m, index }: { m: FplTransferRunnerUp; index: number }) {
   return (
     <li className="flex items-center justify-between gap-2 text-xs">
       <span className="min-w-0 truncate">
-        {index}. {m.sell.name} → {m.buy.name}
+        {index}. {m.sell.name} → {m.buy.name} <ConflictChip names={m.h2h_conflicts} />
       </span>
       <span className="shrink-0 text-muted-foreground">
         {fmtGain(m.this_gw_gain)} this GW · {fmtGain(m.horizon_gain)}

@@ -230,3 +230,20 @@ describe("DecisionCard fallback", () => {
     expect(container.querySelector('[data-testid="plan-verdict-banner"]')).toBeNull();
   });
 });
+
+describe("DecisionCard head-to-head flag", () => {
+  it("shows 'faces your X' on the pick and on a runner-up", () => {
+    render(<DecisionCard plan={plan(detail({
+      moves: [{ ...mv(1, 2), h2h_conflicts: ["Raya"] }],
+      runner_ups: [{ ...mv(3, 4, 4.5, 4.5), clears_bar: true, h2h_conflicts: ["Woodman"] }],
+    }))} />);
+    const card = screen.getByTestId("plan-verdict-banner");
+    expect(card.textContent).toContain("faces your Raya");
+    expect(screen.getByTestId("runner-ups").textContent).toContain("faces your Woodman");
+  });
+
+  it("renders no flag when there is no conflict", () => {
+    render(<DecisionCard plan={plan(detail({}))} />);
+    expect(screen.queryByText(/faces your/i)).toBeNull();
+  });
+});
