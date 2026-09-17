@@ -342,3 +342,104 @@ describe("fixture calendar", () => {
     expect(screen.getByText(/Beyond the model horizon · 1 notable week/)).toBeTruthy();
   });
 });
+
+describe("chip guidance", () => {
+  const guidancePlan: ChipPlanResponse = {
+    ...basePlan,
+    recommendations: [
+      {
+        chip: "wildcard",
+        event_id: 8,
+        ev_gain: 9.1,
+        provisional: false,
+        reasons: ["Large gap to optimal — squad needs reset"],
+        ev_curve: [{ gw: 8, ev: 9.1 }],
+        guidance: "Play it in GW8: +9.1 pts over the bar of 5.0.",
+      },
+    ],
+    nudge: null,
+    outlook: [
+      {
+        chip: "triple_captain",
+        event_id: 8,
+        ev_gain: 11.2,
+        bar: 15,
+        status: "hold",
+        reasons: ["Captain projected xPts: 11.2"],
+        guidance:
+          "Hold for now. GW8 is the best week so far (+11.2 pts). Best use: a double gameweek for your captain, usually GW24–26 or GW34–37.",
+      },
+      {
+        chip: "free_hit",
+        event_id: null,
+        ev_gain: null,
+        bar: 8,
+        status: "hold",
+        reasons: ["No blank-heavy or tough-fixture week in the model horizon"],
+        guidance:
+          "Hold. Nothing in the next 8 GWs beats keeping it. Best use: the blank gameweek, usually GW29–33 (FA Cup rounds).",
+      },
+    ],
+  };
+
+  it("shows guidance as the first line on a hold outlook row, above the collapsed model detail", () => {
+    render(<ChipRoadmapPanel plan={guidancePlan} isLoading={false} />);
+    fireEvent.click(screen.getByText("Triple Captain").closest("button")!);
+    expect(
+      screen.getByText(
+        "Hold for now. GW8 is the best week so far (+11.2 pts). Best use: a double gameweek for your captain, usually GW24–26 or GW34–37."
+      )
+    ).toBeTruthy();
+    // the engine reason now lives behind a "model detail" disclosure
+    expect(screen.getByText("model detail")).toBeTruthy();
+    const detail = screen.getByText("model detail").closest("details");
+    expect(detail).toBeTruthy();
+    expect(detail?.querySelector("summary")?.textContent).toBe("model detail");
+    expect(screen.getByText("Captain projected xPts: 11.2")).toBeTruthy();
+  });
+
+  it("shows guidance on a no-window hold outlook row too", () => {
+    render(<ChipRoadmapPanel plan={guidancePlan} isLoading={false} />);
+    fireEvent.click(screen.getByText("Free Hit").closest("button")!);
+    expect(
+      screen.getByText(
+        "Hold. Nothing in the next 8 GWs beats keeping it. Best use: the blank gameweek, usually GW29–33 (FA Cup rounds)."
+      )
+    ).toBeTruthy();
+  });
+
+  it("shows guidance above the reasons on a recommendation row", () => {
+    render(<ChipRoadmapPanel plan={guidancePlan} isLoading={false} />);
+    fireEvent.click(screen.getByText("Wildcard").closest("button")!);
+    expect(screen.getByText("Play it in GW8: +9.1 pts over the bar of 5.0.")).toBeTruthy();
+    expect(screen.getByText("Large gap to optimal — squad needs reset")).toBeTruthy();
+  });
+
+  it("renders the old layout — no guidance line, no model-detail collapse — when guidance is absent", () => {
+    const noGuidance: ChipPlanResponse = {
+      ...basePlan,
+      recommendations: [],
+      nudge: null,
+      outlook: [
+        {
+          chip: "triple_captain",
+          event_id: 8,
+          ev_gain: 11.2,
+          bar: 15,
+          status: "hold",
+          reasons: ["Captain projected xPts: 11.2"],
+        },
+      ],
+    };
+    render(<ChipRoadmapPanel plan={noGuidance} isLoading={false} />);
+    fireEvent.click(screen.getByText("Triple Captain").closest("button")!);
+    expect(screen.getByText("Captain projected xPts: 11.2")).toBeTruthy();
+    expect(screen.queryByText("model detail")).toBeNull();
+  });
+
+  it("renders the old recommendation layout when guidance is absent", () => {
+    render(<ChipRoadmapPanel plan={basePlan} isLoading={false} />);
+    fireEvent.click(screen.getByText("Wildcard").closest("button")!);
+    expect(screen.getByText("Large gap to optimal — squad needs reset")).toBeTruthy();
+  });
+});

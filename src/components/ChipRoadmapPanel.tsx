@@ -136,6 +136,7 @@ const RecommendationRow = ({ rec }: { rec: ChipPlanRecommendation }) => {
       </button>
       {open && (
         <div className="mt-2 pl-5">
+          {rec.guidance && <p className="text-xs text-foreground">{rec.guidance}</p>}
           {rec.distribution && <DistributionLine d={rec.distribution} chip={rec.chip} />}
           <ul className="space-y-1 mt-1.5">
             {rec.reasons.map((reason) => (
@@ -193,17 +194,36 @@ const OutlookRow = ({ row, expiresGw }: { row: ChipOutlookRow; expiresGw?: numbe
       </button>
       {open && (
         <div className="mt-2 pl-5">
+          {row.guidance && <p className="text-xs text-foreground">{row.guidance}</p>}
           {row.distribution && <DistributionLine d={row.distribution} chip={row.chip} />}
-          <ul className="space-y-1 mt-1.5">
-            {row.reasons.map((reason) => (
-              <li key={reason} className="text-xs text-muted-foreground">
-                {reason}
-              </li>
-            ))}
-            {expiresGw !== undefined && (
-              <li className="text-xs text-muted-foreground/70">expires GW{expiresGw}</li>
-            )}
-          </ul>
+          {row.guidance ? (
+            <details className="mt-1.5">
+              <summary className="text-[11px] text-muted-foreground cursor-pointer select-none">
+                model detail
+              </summary>
+              <ul className="space-y-1 mt-1">
+                {row.reasons.map((reason) => (
+                  <li key={reason} className="text-xs text-muted-foreground">
+                    {reason}
+                  </li>
+                ))}
+                {expiresGw !== undefined && (
+                  <li className="text-xs text-muted-foreground/70">expires GW{expiresGw}</li>
+                )}
+              </ul>
+            </details>
+          ) : (
+            <ul className="space-y-1 mt-1.5">
+              {row.reasons.map((reason) => (
+                <li key={reason} className="text-xs text-muted-foreground">
+                  {reason}
+                </li>
+              ))}
+              {expiresGw !== undefined && (
+                <li className="text-xs text-muted-foreground/70">expires GW{expiresGw}</li>
+              )}
+            </ul>
+          )}
         </div>
       )}
     </div>

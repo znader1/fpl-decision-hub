@@ -1413,6 +1413,7 @@ export type ChipPlanRecommendation = {
   ev_curve: ChipEvPoint[];
   haul_prob?: number; // triple_captain only: P(captain gets 2+ goal involvements)
   distribution?: ChipDistribution; // TC/BB only, when the backend has player priors
+  guidance?: string; // plain-language "play it" sentence (older backends omit it)
 };
 
 export type ChipNudge = {
@@ -1431,6 +1432,7 @@ export type ChipOutlookRow = {
   status: "play" | "hold";
   reasons: string[];
   distribution?: ChipDistribution;
+  guidance?: string; // plain-language "why hold / why play" sentence with a season prior (older backends omit it)
 };
 
 export type EuropeanCompetition = "ucl" | "uel" | "uecl";
