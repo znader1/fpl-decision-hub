@@ -414,7 +414,7 @@ export function HorizonTransferPlan({
                       </span>
                     )}
                     <span className="ml-auto text-emerald-600 dark:text-emerald-300" title="this GW · over the remaining plan">
-                      {typeof m.this_gw_gain === "number" ? `${fmtGain(m.this_gw_gain)} this GW · ` : ""}{fmtGain(m.score_gain)}
+                      {gws.length > 1 && typeof m.this_gw_gain === "number" ? `${fmtGain(m.this_gw_gain)} this GW · ` : ""}{fmtGain(m.score_gain)}{gws.length === 1 ? " this GW" : ""}
                     </span>
                   </li>
                 ))}

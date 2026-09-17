@@ -247,3 +247,16 @@ describe("DecisionCard head-to-head flag", () => {
     expect(screen.queryByText(/faces your/i)).toBeNull();
   });
 });
+
+describe("DecisionCard single-week horizon", () => {
+  it("shows one number when the plan covers only this GW", () => {
+    render(<DecisionCard plan={plan(detail({
+      horizon: { start_gw: 5, end_gw: 5, n: 1 }, this_gw_gain: 4.5, horizon_gain: 3.0,
+      roll_alternative: null,
+      runner_ups: [{ ...mv(3, 4, 3.8, 2.2), clears_bar: true }],
+    }))} />);
+    expect(screen.getByTestId("decision-gains").textContent).toBe("+3.0 this GW");
+    expect(screen.getByTestId("runner-ups").textContent).toContain("+2.2 this GW");
+    expect(screen.getByTestId("runner-ups").textContent).not.toContain("+3.8");
+  });
+});

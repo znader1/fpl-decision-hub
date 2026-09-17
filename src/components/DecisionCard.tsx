@@ -71,14 +71,14 @@ function ConflictChip({ names }: { names?: string[] }) {
 
 const RUNNER_UPS_VISIBLE = 3;
 
-function RunnerUpRow({ m, index }: { m: FplTransferRunnerUp; index: number }) {
+function RunnerUpRow({ m, index, singleGw }: { m: FplTransferRunnerUp; index: number; singleGw?: boolean }) {
   return (
     <li className="flex items-center justify-between gap-2 text-xs">
       <span className="min-w-0 truncate">
         {index}. {m.sell.name} → {m.buy.name} <ConflictChip names={m.h2h_conflicts} />
       </span>
       <span className="shrink-0 text-muted-foreground">
-        {fmtGain(m.this_gw_gain)} this GW · {fmtGain(m.horizon_gain)}
+        {singleGw ? `${fmtGain(m.horizon_gain)} this GW` : `${fmtGain(m.this_gw_gain)} this GW · ${fmtGain(m.horizon_gain)}`}
         {!m.clears_bar && <span className="ml-1 text-muted-foreground/70">below bar</span>}
       </span>
     </li>
@@ -97,14 +97,14 @@ function RunnerUps({ d }: { d: FplTransferVerdictDetail }) {
     <div data-testid="runner-ups" className="flex flex-col gap-1 border-t pt-1.5 mt-0.5">
       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{heading}</p>
       <ul className="space-y-0.5">
-        {visible.map((m, i) => <RunnerUpRow key={i} m={m} index={startIndex + i} />)}
+        {visible.map((m, i) => <RunnerUpRow singleGw={d.horizon.n === 1} key={i} m={m} index={startIndex + i} />)}
       </ul>
       {rest.length > 0 && (
         <details>
           <summary className="cursor-pointer text-[11px] text-muted-foreground">show {rest.length} more</summary>
           <ul className="mt-0.5 space-y-0.5">
             {rest.map((m, i) => (
-              <RunnerUpRow key={i} m={m} index={startIndex + visible.length + i} />
+              <RunnerUpRow singleGw={d.horizon.n === 1} key={i} m={m} index={startIndex + visible.length + i} />
             ))}
           </ul>
         </details>
@@ -189,7 +189,11 @@ export function DecisionCard({
             {d.moves.map((m, i) => <li key={i}><MoveLine m={m} /></li>)}
           </ul>
           <p className="text-sm text-foreground" data-testid="decision-gains">
-            <b>{fmtGain(d.this_gw_gain)}</b> this GW · <b>{fmtGain(d.horizon_gain)}</b> over <GwRange h={d.horizon} />
+            {d.horizon.n === 1 ? (
+              <><b>{fmtGain(d.horizon_gain)}</b> this GW</>
+            ) : (
+              <><b>{fmtGain(d.this_gw_gain)}</b> this GW · <b>{fmtGain(d.horizon_gain)}</b> over <GwRange h={d.horizon} /></>
+            )}
             {d.hit_cost > 0 && <> · <b className="text-red-600 dark:text-red-400">{fmtGain(-d.hit_cost)} hit</b></>}
           </p>
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
