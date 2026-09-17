@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { fireEvent } from "@testing-library/react";
 import { ChipRoadmapPanel } from "./ChipRoadmapPanel";
-import type { ChipPlanResponse } from "@/lib/fplAssistantApi";
+import type { ChipCalendarRow, ChipPlanResponse } from "@/lib/fplAssistantApi";
 
 afterEach(cleanup);
 
@@ -278,5 +278,67 @@ describe("chip distributions", () => {
     };
     render(<ChipRoadmapPanel plan={plan} isLoading={false} />);
     expect(screen.getByText("Triple Captain").className).toContain("truncate");
+  });
+});
+
+describe("fixture calendar", () => {
+  const baseRow: ChipCalendarRow = {
+    gw: 8,
+    deadline_utc: null,
+    in_model_zone: true,
+    post_break: false,
+    break_gap_days: null,
+    european: {},
+    squad_european: [],
+    n_teams_playing: null,
+    dgw_teams: [],
+    blank_teams: [],
+    is_blank_heavy: false,
+    has_dgw: false,
+    cup_clash: null,
+  };
+
+  it("renders the squad-in-Europe tag as an exact count, not a competition list", () => {
+    const squadEuropean = Array.from({ length: 6 }, (_, i) => ({
+      name: `Player ${i + 1}`,
+      team: "Team",
+      competition: "ucl" as const,
+      when: "before" as const,
+    }));
+    const plan: ChipPlanResponse = {
+      ...basePlan,
+      calendar: [
+        {
+          ...baseRow,
+          european: { ucl: ["Team"] },
+          squad_european: squadEuropean,
+        },
+      ],
+    };
+    render(<ChipRoadmapPanel plan={plan} isLoading={false} />);
+    expect(screen.getByText("6 in Europe")).toBeTruthy();
+  });
+
+  it("does not count a Europe-only beyond-horizon week as notable, but does count a DGW week", () => {
+    const europeOnlyRow: ChipCalendarRow = {
+      ...baseRow,
+      gw: 20,
+      in_model_zone: false,
+      european: { ucl: ["Team"] },
+      squad_european: [{ name: "Player 1", team: "Team", competition: "ucl", when: "before" }],
+    };
+    const dgwRow: ChipCalendarRow = {
+      ...baseRow,
+      gw: 21,
+      in_model_zone: false,
+      has_dgw: true,
+      dgw_teams: ["Team"],
+    };
+    const plan: ChipPlanResponse = {
+      ...basePlan,
+      calendar: [europeOnlyRow, dgwRow],
+    };
+    render(<ChipRoadmapPanel plan={plan} isLoading={false} />);
+    expect(screen.getByText(/Beyond the model horizon · 1 notable week/)).toBeTruthy();
   });
 });

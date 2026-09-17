@@ -213,7 +213,7 @@ const OutlookRow = ({ row, expiresGw }: { row: ChipOutlookRow; expiresGw?: numbe
 /* ── Fixture calendar strip ──────────────────────────────────────────────── */
 
 const isNotable = (r: ChipCalendarRow) =>
-  r.post_break || r.has_dgw || r.is_blank_heavy || r.squad_european.length > 0 || r.cup_clash !== null;
+  r.post_break || r.has_dgw || r.is_blank_heavy || r.cup_clash !== null;
 
 const Tag = ({ tone, title, children }: { tone: "amber" | "blue" | "red" | "green" | "muted"; title?: string; children: React.ReactNode }) => {
   const cls = {
@@ -224,7 +224,7 @@ const Tag = ({ tone, title, children }: { tone: "amber" | "blue" | "red" | "gree
     muted: "border-muted-foreground/30 text-muted-foreground",
   }[tone];
   return (
-    <span title={title} className={`rounded-full border px-1.5 py-px text-[9px] font-semibold leading-tight whitespace-nowrap ${cls}`}>
+    <span title={title} className={`rounded-full border px-1.5 py-px text-[9px] font-semibold leading-tight whitespace-nowrap max-w-full overflow-hidden text-ellipsis ${cls}`}>
       {children}
     </span>
   );
@@ -238,7 +238,7 @@ const CalendarCell = ({ row, isCurrent }: { row: ChipCalendarRow; isCurrent: boo
     : null;
   return (
     <div
-      className={`flex flex-col gap-1 rounded-md border px-2 py-1.5 min-w-[74px] ${
+      className={`flex flex-col gap-1 rounded-md border px-2 py-1.5 min-w-[74px] max-w-[112px] overflow-hidden ${
         isCurrent ? "border-primary/60 bg-primary/5" : row.in_model_zone ? "border-border" : "border-dashed border-border/60"
       }`}
     >
@@ -274,12 +274,12 @@ const CalendarCell = ({ row, isCurrent }: { row: ChipCalendarRow; isCurrent: boo
         )}
         {row.squad_european.length > 0 ? (
           <Tag tone="blue" title={`Your players in European weeks: ${euroNames}`}>
-            {row.squad_european.length} in {euroComps.map((c) => EUROPEAN_LABELS[c] ?? c).join("/") || "Europe"}
+            {row.squad_european.length} in Europe
           </Tag>
         ) : (
           euroComps.length > 0 && (
             <Tag tone="muted" title={euroComps.map((c) => `${EUROPEAN_LABELS[c] ?? c}: ${(row.european[c] ?? []).join(", ")}`).join(" · ")}>
-              {euroComps.map((c) => EUROPEAN_LABELS[c] ?? c).join("/")}
+              Europe
             </Tag>
           )
         )}
