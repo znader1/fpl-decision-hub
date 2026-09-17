@@ -1391,13 +1391,16 @@ export type ChipEvPoint = {
 export type ChipDistribution = {
   mean: number;
   modal: number; // single most likely score
-  p_return: number; // P(>= CHIP_PLAN_DIST_RETURN_AT, 6 by default)
-  p_haul: number; // P(>= 10)
-  p_blank: number; // P(<= 2)
+  // Per-PLAYER thresholds — triple captain only. A bench-4 sum clears 6 and 10
+  // nearly every week, so the backend omits these three for bench boost.
+  p_return?: number; // P(>= CHIP_PLAN_DIST_RETURN_AT, 6 by default)
+  p_haul?: number; // P(>= 10)
+  p_blank?: number; // P(<= 2)
   p80_low: number;
   p80_high: number;
+  p80_open?: boolean; // band runs off the pmf axis: read p80_high as "or more"
   bar?: number;
-  p_beats_bar?: number; // P(extra points >= bar)
+  p_beats_bar?: number; // P(extra points >= bar), measured on the pmf's own axis
 };
 
 export type ChipPlanRecommendation = {

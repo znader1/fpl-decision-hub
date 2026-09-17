@@ -169,3 +169,114 @@ describe("chip outlook", () => {
     expect(screen.getAllByText(/expires GW19/).length).toBeGreaterThan(0);
   });
 });
+
+describe("chip distributions", () => {
+  const withDistributions: ChipPlanResponse = {
+    ...basePlan,
+    // bench_boost is "used" in basePlan — make it available so the only
+    // "Bench Boost" on screen is the recommendation row under test.
+    chips_remaining: basePlan.chips_remaining.map((c) =>
+      c.name === "bench_boost" ? { ...c, available: true } : c
+    ),
+    recommendations: [
+      {
+        chip: "triple_captain",
+        event_id: 8,
+        ev_gain: 18.4,
+        provisional: false,
+        reasons: ["Captain projected xPts: 18.4"],
+        ev_curve: [{ gw: 8, ev: 18.4, p_beats_bar: 0.61 }],
+        distribution: {
+          mean: 16.6,
+          modal: 9,
+          p_return: 0.72,
+          p_haul: 0.44,
+          p_blank: 0.18,
+          p80_low: 2,
+          p80_high: 28,
+          bar: 15,
+          p_beats_bar: 0.61,
+        },
+      },
+      {
+        chip: "bench_boost",
+        event_id: 9,
+        ev_gain: 21.8,
+        provisional: false,
+        reasons: ["Bench most likely 19 pts (80% band 11–29)"],
+        ev_curve: [{ gw: 9, ev: 21.8, p_beats_bar: 0.83 }],
+        // F3: a bench-4 sum carries no per-player return/haul/blank rates
+        distribution: {
+          mean: 19.8,
+          modal: 19,
+          p80_low: 11,
+          p80_high: 29,
+          bar: 10,
+          p_beats_bar: 0.83,
+        },
+      },
+    ],
+  };
+
+  it("shows per-player return/haul/blank for TC but not for bench boost", () => {
+    render(<ChipRoadmapPanel plan={withDistributions} isLoading={false} />);
+
+    fireEvent.click(screen.getByText("Triple Captain").closest("button")!);
+    expect(screen.getByText(/captain returns \(6\+\)/)).toBeTruthy();
+    expect(screen.getByText(/haul \(10\+\)/)).toBeTruthy();
+    expect(screen.getByText(/blank/)).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Bench Boost").closest("button")!);
+    expect(screen.queryByText(/bench returns \(6\+\)/)).toBeNull();
+    // the bench line still carries the shape that does mean something
+    // (the backend reason line says the same thing, hence getAllByText)
+    expect(screen.getAllByText(/most likely 19/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/83%/).length).toBeGreaterThan(0);
+  });
+
+  it("marks an 80% band that runs off the axis as open-ended", () => {
+    const open: ChipPlanResponse = {
+      ...withDistributions,
+      recommendations: [
+        {
+          ...withDistributions.recommendations[1],
+          distribution: { ...withDistributions.recommendations[1].distribution!, p80_open: true },
+        },
+      ],
+    };
+    render(<ChipRoadmapPanel plan={open} isLoading={false} />);
+    fireEvent.click(screen.getByText("Bench Boost").closest("button")!);
+    // the band and its open-ended marker are separate text nodes
+    const band = screen
+      .getAllByText(/80% band/)
+      .map((el) => el.textContent?.replace(/\s+/g, " ").trim());
+    expect(band.some((t) => t?.includes("80% band 11–29+"))).toBe(true);
+  });
+
+  it("gives each EV curve bar a single title so the GW label does not duplicate it", () => {
+    render(<ChipRoadmapPanel plan={withDistributions} isLoading={false} />);
+    fireEvent.click(screen.getByText("Triple Captain").closest("button")!);
+    expect(
+      screen.getAllByTitle(/^GW8: \+18\.4 xPts/).length
+    ).toBe(1);
+  });
+
+  it("truncates the outlook chip label so the row cannot outgrow a narrow card", () => {
+    const plan: ChipPlanResponse = {
+      ...basePlan,
+      recommendations: [],
+      outlook: [
+        {
+          chip: "triple_captain",
+          event_id: 8,
+          ev_gain: 11.2,
+          bar: 15,
+          status: "hold",
+          reasons: ["Captain projected xPts: 11.2"],
+        },
+      ],
+    };
+    render(<ChipRoadmapPanel plan={plan} isLoading={false} />);
+    expect(screen.getByText("Triple Captain").className).toContain("truncate");
+  });
+});

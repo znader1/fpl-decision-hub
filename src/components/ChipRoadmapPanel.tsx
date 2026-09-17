@@ -43,11 +43,12 @@ const EvCurve = ({ points }: { points: ChipPlanRecommendation["ev_curve"] }) => 
                 }}
                 title={title}
               />
+              {/* The bar above owns the tooltip; repeating `title` here made
+                  every GW's title match two elements. */}
               <span
                 className={`text-[9px] ${
                   p.post_break || p.european ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
                 }`}
-                title={title}
               >
                 {p.gw}
               </span>
@@ -73,17 +74,24 @@ const DistributionLine = ({ d, chip }: { d: ChipDistribution; chip: ChipPlanReco
           <span className="font-semibold text-foreground">{pct(d.p_beats_bar)}</span> beats the bar
         </span>
       )}
-      <span>
-        <span className="font-semibold text-foreground">{pct(d.p_return)}</span> {subject} returns (6+)
-      </span>
-      <span>
-        <span className="font-semibold text-foreground">{pct(d.p_haul)}</span> haul (10+)
-      </span>
-      <span>
-        <span className="font-semibold text-foreground">{pct(d.p_blank)}</span> blank
-      </span>
+      {d.p_return !== undefined && (
+        <span>
+          <span className="font-semibold text-foreground">{pct(d.p_return)}</span> {subject} returns (6+)
+        </span>
+      )}
+      {d.p_haul !== undefined && (
+        <span>
+          <span className="font-semibold text-foreground">{pct(d.p_haul)}</span> haul (10+)
+        </span>
+      )}
+      {d.p_blank !== undefined && (
+        <span>
+          <span className="font-semibold text-foreground">{pct(d.p_blank)}</span> blank
+        </span>
+      )}
       <span className="whitespace-nowrap">
         most likely {d.modal} · 80% band {d.p80_low}–{d.p80_high}
+        {d.p80_open ? "+" : ""}
       </span>
     </div>
   );
@@ -162,8 +170,8 @@ const OutlookRow = ({ row, expiresGw }: { row: ChipOutlookRow; expiresGw?: numbe
           ) : (
             <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           )}
-          <span className="text-sm text-muted-foreground font-medium">{CHIP_LABELS[row.chip]}</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wide rounded-full border border-muted-foreground/40 text-muted-foreground px-2 py-0.5">
+          <span className="text-sm text-muted-foreground font-medium truncate">{CHIP_LABELS[row.chip]}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide rounded-full border border-muted-foreground/40 text-muted-foreground px-2 py-0.5 shrink-0">
             hold
           </span>
         </div>
@@ -266,12 +274,12 @@ const CalendarCell = ({ row, isCurrent }: { row: ChipCalendarRow; isCurrent: boo
         )}
         {row.squad_european.length > 0 ? (
           <Tag tone="blue" title={`Your players in European weeks: ${euroNames}`}>
-            {row.squad_european.length} in {euroComps.map((c) => EUROPEAN_LABELS[c]).join("/") || "Europe"}
+            {row.squad_european.length} in {euroComps.map((c) => EUROPEAN_LABELS[c] ?? c).join("/") || "Europe"}
           </Tag>
         ) : (
           euroComps.length > 0 && (
-            <Tag tone="muted" title={euroComps.map((c) => `${EUROPEAN_LABELS[c]}: ${(row.european[c] ?? []).join(", ")}`).join(" · ")}>
-              {euroComps.map((c) => EUROPEAN_LABELS[c]).join("/")}
+            <Tag tone="muted" title={euroComps.map((c) => `${EUROPEAN_LABELS[c] ?? c}: ${(row.european[c] ?? []).join(", ")}`).join(" · ")}>
+              {euroComps.map((c) => EUROPEAN_LABELS[c] ?? c).join("/")}
             </Tag>
           )
         )}
