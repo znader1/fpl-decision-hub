@@ -248,6 +248,32 @@ describe("DecisionCard head-to-head flag", () => {
   });
 });
 
+describe("DecisionCard seller fitness chip", () => {
+  it("shows '75% fit' on the pick and on a runner-up for a doubtful seller", () => {
+    render(<DecisionCard plan={plan(detail({
+      moves: [{ ...mv(1, 2), sell_availability: { status: "d", chance: 75 } }],
+      runner_ups: [{ ...mv(3, 4, 4.5, 4.5), clears_bar: true,
+                     sell_availability: { status: "d", chance: 60 } }],
+    }))} />);
+    const card = screen.getByTestId("plan-verdict-banner");
+    expect(card.textContent).toContain("75% fit");
+    expect(screen.getByTestId("runner-ups").textContent).toContain("60% fit");
+  });
+
+  it("shows the status word when chance is unknown", () => {
+    render(<DecisionCard plan={plan(detail({
+      moves: [{ ...mv(1, 2), sell_availability: { status: "i", chance: null } }],
+    }))} />);
+    const card = screen.getByTestId("plan-verdict-banner");
+    expect(card.textContent).toContain("injured");
+  });
+
+  it("renders no chip when the seller is fit", () => {
+    render(<DecisionCard plan={plan(detail({}))} />);
+    expect(screen.queryByText(/% fit/i)).toBeNull();
+  });
+});
+
 describe("DecisionCard single-week horizon", () => {
   it("shows one number when the plan covers only this GW", () => {
     render(<DecisionCard plan={plan(detail({

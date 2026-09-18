@@ -45,6 +45,7 @@ function MoveLine({ m }: { m: FplTransferVerdictMove }) {
     <span className="flex flex-wrap items-center gap-x-1">
       <span className="text-red-600 dark:text-red-400">{m.sell.name}</span>
       <span className="text-muted-foreground">({m.sell.team} £{m.sell.price.toFixed(1)})</span>
+      <FitnessChip availability={m.sell_availability} />
       {m.forced_injury && (
         <Badge variant="outline" className="border-destructive/50 text-[10px] text-destructive">flagged</Badge>
       )}
@@ -69,13 +70,44 @@ function ConflictChip({ names }: { names?: string[] }) {
   );
 }
 
+const AVAILABILITY_STATUS_WORD: Record<string, string> = {
+  i: "injured",
+  s: "suspended",
+  d: "doubtful",
+  u: "unavailable",
+};
+
+/** Amber flag on the seller when they carry availability risk (injury/doubt/suspension). */
+function FitnessChip({ availability }: { availability?: { status: string; chance: number | null } }) {
+  if (!availability) return null;
+  const label =
+    typeof availability.chance === "number"
+      ? `${availability.chance}% fit`
+      : AVAILABILITY_STATUS_WORD[availability.status] ?? availability.status;
+  return (
+    <span
+      className="rounded bg-amber-500/15 px-1 text-[10px] text-amber-700 dark:text-amber-400 whitespace-nowrap"
+      title="Seller's availability risk"
+    >
+      {label}
+    </span>
+  );
+}
+
 const RUNNER_UPS_VISIBLE = 3;
 
 function RunnerUpRow({ m, index, singleGw }: { m: FplTransferRunnerUp; index: number; singleGw?: boolean }) {
   return (
     <li className="flex items-center justify-between gap-2 text-xs">
       <span className="min-w-0 truncate">
-        {index}. {m.sell.name} → {m.buy.name} <ConflictChip names={m.h2h_conflicts} />
+        {index}. {m.sell.name}
+        {m.sell_availability && (
+          <>
+            {" "}
+            <FitnessChip availability={m.sell_availability} />
+          </>
+        )}{" "}
+        → {m.buy.name} <ConflictChip names={m.h2h_conflicts} />
       </span>
       <span className="shrink-0 text-muted-foreground">
         {singleGw ? `${fmtGain(m.horizon_gain)} this GW` : `${fmtGain(m.this_gw_gain)} this GW · ${fmtGain(m.horizon_gain)}`}

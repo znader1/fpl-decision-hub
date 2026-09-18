@@ -143,6 +143,9 @@ const Index = () => {
   const [differential, setDifferential] = useState<boolean>(
     () => typeof window !== "undefined" && localStorage.getItem("fpl_differential") === "true"
   );
+  const [prioritizeInjured, setPrioritizeInjured] = useState<boolean>(
+    () => typeof window === "undefined" || localStorage.getItem("fpl_prioritize_injured") !== "false"
+  );
   const [chipPlayEventId, setChipPlayEventId] = useState<number | undefined>(getInitialChipPlayEventId);
   const [includeTransfers, setIncludeTransfers] = useState(getInitialIncludeTransfers);
   const [appliedTransferCount, setAppliedTransferCount] = useState(getInitialApplyTransferCount);
@@ -259,6 +262,7 @@ const Index = () => {
       chipPlayEventId: wildcardPlayEventId,
       differential:
         chipStrategy === "wildcard" || chipStrategy === "free_hit" ? differential : undefined,
+      prioritizeInjured,
       strategy: chipStrategy,
       includeTransfers,
       applyTransferCount: 0,
@@ -398,12 +402,13 @@ const Index = () => {
       }
       localStorage.setItem("fpl_include_transfers", String(includeTransfers));
       localStorage.setItem("fpl_differential", String(differential));
+      localStorage.setItem("fpl_prioritize_injured", String(prioritizeInjured));
       localStorage.setItem("fpl_apply_transfer_count", String(appliedTransferCount));
     } catch {
       // ignore
     }
   }, [entryId, selectedGW, horizonGws, chipStrategy, chipPlayEventId, includeTransfers,
-      appliedTransferCount, nextEventQuery.isSuccess]);
+      appliedTransferCount, nextEventQuery.isSuccess, prioritizeInjured]);
 
   useEffect(() => {
     if (!recommendationMutation.data) return;
@@ -611,6 +616,8 @@ const Index = () => {
     onChipStrategyChange: setChipStrategy,
     differential,
     onDifferentialChange: setDifferential,
+    prioritizeInjured,
+    onPrioritizeInjuredChange: setPrioritizeInjured,
     includeTransfers,
     onIncludeTransfersChange: setIncludeTransfers,
     canRecommend,
