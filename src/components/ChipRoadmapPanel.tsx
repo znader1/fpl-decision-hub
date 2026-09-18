@@ -187,6 +187,13 @@ const OutlookRow = ({ row, expiresGw }: { row: ChipOutlookRow; expiresGw?: numbe
                 </span>
               )}
             </>
+          ) : row.stress ? (
+            // A held Free Hit shows its reading, not a dead end: the week that
+            // came closest and how far it sat from the gate.
+            <span className="tabular-nums">
+              GW{row.stress.gw} · stress {row.stress.total.toFixed(1)}/
+              {row.stress.bar.toFixed(1)}
+            </span>
           ) : (
             <span>no window</span>
           )}

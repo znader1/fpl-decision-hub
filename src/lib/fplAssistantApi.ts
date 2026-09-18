@@ -1440,6 +1440,22 @@ export type ChipOutlookRow = {
   reasons: string[];
   distribution?: ChipDistribution;
   guidance?: string; // plain-language "why hold / why play" sentence with a season prior (older backends omit it)
+  stress?: ChipStressReading; // free_hit hold rows only: how close the squad came to the gate
+};
+
+/**
+ * Free Hit "squad stress" reading on a hold row — why the chip is being held,
+ * as a number rather than a bare "no window". Present only when the backend
+ * found pressure worth reporting; older backends omit it entirely.
+ */
+export type ChipStressReading = {
+  gw: number; // the most-stressed gameweek in the model zone
+  total: number; // squad stress in player-equivalents, 0..15
+  bar: number; // the stress the gate needs to open
+  n_blanking: number;
+  n_unavailable: number;
+  unavailable_names: string[];
+  n_tough: number;
 };
 
 export type EuropeanCompetition = "ucl" | "uel" | "uecl";
