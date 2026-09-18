@@ -29,6 +29,8 @@ export interface ParameterFormProps {
   onChipStrategyChange: (strategy: FplChipStrategy) => void;
   differential: boolean;
   onDifferentialChange: (differential: boolean) => void;
+  prioritizeInjured: boolean;
+  onPrioritizeInjuredChange: (prioritizeInjured: boolean) => void;
   includeTransfers: boolean;
   onIncludeTransfersChange: (includeTransfers: boolean) => void;
   canRecommend: boolean;
@@ -45,6 +47,7 @@ export const ParameterForm = (props: ParameterFormProps) => {
   const {
     entryId, onEntryIdChange, horizonGws, onHorizonGwsChange,
     chipStrategy, onChipStrategyChange, differential, onDifferentialChange,
+    prioritizeInjured, onPrioritizeInjuredChange,
     includeTransfers, onIncludeTransfersChange,
     canRecommend, isRecommending, onRecommend, recommendErrorMessage,
     isLiveGw = false, planGw, maxHorizon = 6,
@@ -174,6 +177,20 @@ export const ParameterForm = (props: ParameterFormProps) => {
             {includeTransfersDisabled
               ? "Disabled — chip mode builds a full squad, transfers don't apply."
               : "Show which players to bring in and the expected point gain per move."}
+          </p>
+        </div>
+
+        {/* Prioritise removing injured players */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wider">
+              Prioritise removing injured players
+            </p>
+            <Switch checked={prioritizeInjured} onCheckedChange={onPrioritizeInjuredChange} />
+          </div>
+          <p className="text-[11px] text-sidebar-foreground/40 leading-relaxed">
+            When two moves are close, sell the doubtful player first. Turn off to see the raw
+            ranking.
           </p>
         </div>
 

@@ -23,6 +23,8 @@ interface ParameterSidebarProps {
   onChipStrategyChange: (strategy: FplChipStrategy) => void;
   differential: boolean;
   onDifferentialChange: (differential: boolean) => void;
+  prioritizeInjured: boolean;
+  onPrioritizeInjuredChange: (prioritizeInjured: boolean) => void;
   includeTransfers: boolean;
   onIncludeTransfersChange: (includeTransfers: boolean) => void;
   canRecommend: boolean;

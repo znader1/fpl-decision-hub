@@ -168,6 +168,8 @@ export interface FplTransferPlanMove {
   forced_injury?: boolean;
   /** Own GKP/DEF<->attacker players the buy would face that GW (hedge warning). */
   h2h_conflicts?: string[];
+  /** Present when the seller carries availability risk (status != "a" or chance < 100). */
+  sell_availability?: { status: string; chance: number | null };
 }
 export interface FplTransferPlanGw {
   gw: number;
@@ -190,6 +192,8 @@ export interface FplTransferVerdictMove {
   horizon_gain: number;
   forced_injury?: boolean;
   h2h_conflicts?: string[];
+  /** Present when the seller carries availability risk (status != "a" or chance < 100). */
+  sell_availability?: { status: string; chance: number | null };
 }
 
 export interface FplTransferRunnerUp extends FplTransferVerdictMove {
@@ -848,6 +852,8 @@ export interface TeamRecommendationParams {
   chipPlayEventId?: number;
   /** Chip drafts only: dock template picks by ownership so the squad differs from the crowd. */
   differential?: boolean;
+  /** When swaps tie, prefer selling the injured/doubtful player first. Default true server-side. */
+  prioritizeInjured?: boolean;
   strategy?: string;
   includeTransfers?: boolean;
   applyTransferCount?: number;
@@ -917,6 +923,7 @@ export const interpolateTeamRecommendationUrl = (template: string, params: TeamR
     chip_horizon_gws: params.chipHorizonGws,
     chip_play_event_id: params.chipPlayEventId,
     differential: params.differential,
+    prioritize_injured: params.prioritizeInjured,
     strategy: params.strategy,
     include_transfers: params.includeTransfers,
     apply_transfer_count: params.applyTransferCount,
