@@ -442,4 +442,60 @@ describe("chip guidance", () => {
     fireEvent.click(screen.getByText("Wildcard").closest("button")!);
     expect(screen.getByText("Large gap to optimal — squad needs reset")).toBeTruthy();
   });
+
+  it("shows the pencilled-in chip week next to the planner's verdict", () => {
+    const plan: ChipPlanResponse = {
+      ...basePlan,
+      recommendations: [],
+      outlook: [
+        {
+          chip: "wildcard",
+          event_id: 6,
+          ev_gain: 12.3,
+          bar: 20,
+          status: "hold",
+          reasons: [],
+          ev_curve: [
+            { gw: 5, ev: 8.0 },
+            { gw: 6, ev: 12.3 },
+            { gw: 7, ev: 9.9 },
+          ],
+        },
+      ],
+    };
+    render(<ChipRoadmapPanel plan={plan} isLoading={false} plannedChip="wildcard" plannedGw={6} />);
+    const card = screen.getByTestId("planned-chip-card");
+    expect(card.textContent).toMatch(/Wildcard in GW6/);
+    expect(card.textContent).toMatch(/\+12\.3 xPts in GW6/);
+    expect(card.textContent).toMatch(/under the 20-pt bar/);
+    expect(card.textContent).toMatch(/planner's best week too/);
+  });
+
+  it("names the planner's preferred week when the pencilled-in one differs", () => {
+    const plan: ChipPlanResponse = {
+      ...basePlan,
+      recommendations: [],
+      outlook: [
+        {
+          chip: "wildcard",
+          event_id: 7,
+          ev_gain: 25.0,
+          bar: 20,
+          status: "play",
+          reasons: [],
+          ev_curve: [
+            { gw: 6, ev: 12.3 },
+            { gw: 7, ev: 25.0 },
+          ],
+        },
+      ],
+    };
+    render(<ChipRoadmapPanel plan={plan} isLoading={false} plannedChip="wildcard" plannedGw={6} />);
+    expect(screen.getByTestId("planned-chip-card").textContent).toMatch(/planner prefers GW7 \(\+25\.0\)/);
+  });
+
+  it("says when the pencilled-in week is beyond the model horizon", () => {
+    render(<ChipRoadmapPanel plan={basePlan} isLoading={false} plannedChip="free_hit" plannedGw={30} />);
+    expect(screen.getByTestId("planned-chip-card").textContent).toMatch(/beyond the 8-GW model horizon/);
+  });
 });

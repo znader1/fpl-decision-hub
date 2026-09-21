@@ -508,9 +508,12 @@ const Index = () => {
     setSelectedGW(gw);
     setSquadGW(gw);
     setAppliedTransferCount(0);
+    // Only a pitch already showing a recommendation follows the GW with a new
+    // one. In squad mode the user is browsing — that GW's opponents and
+    // projected points come from /squad + /fixtures and need no recommendation
+    // (a selected chip used to force a full wildcard build on every arrow press).
     const shouldRefreshRecommendation =
-      Boolean(recommendationMutation.data) &&
-      (pitchMode === "recommendation" || chipStrategy !== "none");
+      Boolean(recommendationMutation.data) && pitchMode === "recommendation";
 
     if (shouldRefreshRecommendation) {
       const nextChipPlayEventId =
@@ -815,6 +818,14 @@ const Index = () => {
         chipPlan={chipPlanQuery.data ?? null}
         isChipPlanLoading={chipPlanQuery.isLoading}
         isChipPlanError={chipPlanQuery.isError}
+        chipStrategy={chipStrategy}
+        chipPlayEventId={
+          chipStrategy === "wildcard"
+            ? chipPlayEventId ?? recommendationMutation.data?.chip_strategy?.play_event_id ?? undefined
+            : chipStrategy === "none"
+              ? undefined
+              : selectedGW ?? undefined
+        }
       />
         </>
       )}

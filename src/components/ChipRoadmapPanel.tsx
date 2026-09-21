@@ -3,6 +3,7 @@ import { CalendarDays, ChevronDown, ChevronRight, Sparkles } from "lucide-react"
 import {
   CHIP_LABELS,
   EUROPEAN_LABELS,
+  type ChipName,
   type ChipCalendarRow,
   type ChipDistribution,
   type ChipOutlookRow,
@@ -15,6 +16,9 @@ type Props = {
   isError?: boolean;
   plan: ChipPlanResponse | null | undefined;
   isLoading: boolean;
+  /** Chip selected in the sidebar and the GW it is pencilled in for. */
+  plannedChip?: ChipName;
+  plannedGw?: number;
 };
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -230,6 +234,79 @@ const OutlookRow = ({ row, expiresGw }: { row: ChipOutlookRow; expiresGw?: numbe
   );
 };
 
+/* ── Your plan vs the planner ─────────────────────────────────────────────── */
+
+/** What the planner thinks of the chip/GW the sidebar has pencilled in. The
+ *  verdict rows answer "which chip, which week"; this answers "and the week I
+ *  actually chose?" — the two used to disagree silently ("GW6 is the best
+ *  week" next to a plain "hold"). */
+const PlannedChipCard = ({
+  plan,
+  chip,
+  gw,
+}: {
+  plan: ChipPlanResponse;
+  chip: ChipName;
+  gw: number;
+}) => {
+  const window = plan.chips_remaining.find((c) => c.name === chip);
+  const rec = plan.recommendations.find((r) => r.chip === chip && !r.provisional);
+  const outlook = (plan.outlook ?? []).find((o) => o.chip === chip);
+  const curve = rec?.ev_curve?.length ? rec.ev_curve : outlook?.ev_curve ?? [];
+  const point = curve.find((p) => p.gw === gw);
+  const best = rec ?? outlook;
+  const bestGw = best?.event_id ?? null;
+  const bestEv = best?.ev_gain ?? null;
+  const bar = outlook?.bar ?? null;
+  const label = CHIP_LABELS[chip];
+  const modelEnd = plan.current_gw + plan.horizon_model_gws - 1;
+
+  let verdict: string;
+  let tone: "green" | "amber" | "muted" = "muted";
+  if (window && !window.available) {
+    verdict = `${label} is already used this half.`;
+  } else if (!point) {
+    verdict =
+      gw > modelEnd
+        ? `GW${gw} is beyond the ${plan.horizon_model_gws}-GW model horizon — no value computed yet.`
+        : gw < plan.current_gw
+          ? `GW${gw} has passed.`
+          : `No ${label} value for GW${gw} in this plan.`;
+  } else {
+    const sameAsBest = bestGw === gw;
+    const clears = bar !== null && point.ev >= bar;
+    tone = clears ? "green" : "amber";
+    const parts: string[] = [];
+    parts.push(`+${point.ev.toFixed(1)} xPts in GW${gw}`);
+    if (bar !== null) parts.push(clears ? `clears the ${bar.toFixed(0)}-pt bar` : `under the ${bar.toFixed(0)}-pt bar`);
+    if (!sameAsBest && bestGw !== null && bestEv !== null) {
+      parts.push(`planner prefers GW${bestGw} (+${bestEv.toFixed(1)})`);
+    } else if (sameAsBest) {
+      parts.push("the planner's best week too");
+    }
+    if (point.p_beats_bar !== undefined) parts.push(`${pct(point.p_beats_bar)} chance to beat the bar`);
+    verdict = parts.join(" · ");
+  }
+  const cls = {
+    green: "border-emerald-500/50 bg-emerald-500/10",
+    amber: "border-amber-500/50 bg-amber-500/10",
+    muted: "border-border bg-muted/30",
+  }[tone];
+  return (
+    <div className={`rounded-lg border px-3 py-2 ${cls}`} data-testid="planned-chip-card">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Your plan · {label} in GW{gw}
+      </p>
+      <p className="text-xs text-foreground mt-0.5">{verdict}</p>
+      {tone === "amber" && (
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          Under the bar means the model would rather keep the chip for a bigger week; playing it anyway is your call — the numbers above are what you would get.
+        </p>
+      )}
+    </div>
+  );
+};
+
 /* ── Fixture calendar strip ──────────────────────────────────────────────── */
 
 const isNotable = (r: ChipCalendarRow) =>
@@ -351,7 +428,7 @@ const FixtureCalendar = ({ plan }: { plan: ChipPlanResponse }) => {
   );
 };
 
-export const ChipRoadmapPanel = ({ plan, isLoading, isError = false }: Props) => {
+export const ChipRoadmapPanel = ({ plan, isLoading, isError = false, plannedChip, plannedGw }: Props) => {
   if (isLoading && !plan) {
     return (
       <div className="text-sm text-muted-foreground py-8 text-center">
@@ -391,6 +468,10 @@ export const ChipRoadmapPanel = ({ plan, isLoading, isError = false }: Props) =>
           model horizon: {plan.horizon_model_gws} GWs
         </span>
       </div>
+
+      {plannedChip && typeof plannedGw === "number" && (
+        <PlannedChipCard plan={plan} chip={plannedChip} gw={plannedGw} />
+      )}
 
       <FixtureCalendar plan={plan} />
 

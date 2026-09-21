@@ -18,7 +18,7 @@ import { JerseyIcon } from "./JerseyIcon";
 import { ExplanationPanel } from "./ExplanationPanel";
 import { AiAdvisorPanel } from "./AiAdvisorPanel";
 import { ChipRoadmapPanel } from "./ChipRoadmapPanel";
-import { CHIP_LABELS, type ChipName, type ChipPlanResponse, type FplSquad, type FplTeamRecommendation, type FplTransferPlanHorizon } from "@/lib/fplAssistantApi";
+import { CHIP_LABELS, type ChipName, type ChipPlanResponse, type FplChipStrategy, type FplSquad, type FplTeamRecommendation, type FplTransferPlanHorizon } from "@/lib/fplAssistantApi";
 
 interface RecommendationsPanelProps {
   squad?: FplSquad;
@@ -33,6 +33,10 @@ interface RecommendationsPanelProps {
   currentGw?: number;
   chipsRemaining?: string[];
   chipPlan?: ChipPlanResponse | null;
+  /** The chip the sidebar has selected and the GW it is pencilled in for, so
+   *  the Chips tab can show that week's value next to the planner's verdict. */
+  chipStrategy?: FplChipStrategy;
+  chipPlayEventId?: number;
   isChipPlanLoading?: boolean;
   isChipPlanError?: boolean;
 }
@@ -571,6 +575,8 @@ export const RecommendationsPanel = ({
   chipPlan,
   isChipPlanLoading = false,
   isChipPlanError = false,
+  chipStrategy,
+  chipPlayEventId,
 }: RecommendationsPanelProps) => {
   const [activeTab, setActiveTab] = useState<Tab>("summary");
 
@@ -665,6 +671,8 @@ export const RecommendationsPanel = ({
             plan={chipPlan}
             isLoading={isChipPlanLoading}
             isError={isChipPlanError}
+            plannedChip={chipStrategy && chipStrategy !== "none" ? chipStrategy : undefined}
+            plannedGw={chipPlayEventId}
           />
         )}
         <ExplanationPanel recommendation={recommendation} />

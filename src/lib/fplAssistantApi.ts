@@ -1440,6 +1440,7 @@ export type ChipOutlookRow = {
   reasons: string[];
   distribution?: ChipDistribution;
   guidance?: string; // plain-language "why hold / why play" sentence with a season prior (older backends omit it)
+  ev_curve?: ChipEvPoint[]; // per-GW value inside the model horizon, on hold rows too (older backends omit it)
 };
 
 export type EuropeanCompetition = "ucl" | "uel" | "uecl";
