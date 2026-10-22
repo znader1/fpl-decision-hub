@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { percentileFromQuantiles } from "@/lib/fieldPercentile";
 import { CommandRail } from "@/components/CommandRail";
 import { deriveWeekDecisions } from "@/lib/weekDecisions";
@@ -39,6 +39,8 @@ import {
   transferOptions,
 } from "@/lib/planFlow";
 import { buildCaptainLab, type CaptainGoal } from "@/lib/captainLab";
+import { readHandoff, readStoredPreset } from "@/lib/wildcardDrafts";
+import { bankMFromEntryHistory } from "@/lib/entryBank";
 import { useCountdown } from "@/hooks/useCountdown";
 import { formatCountdown } from "@/lib/deadline";
 import { StepChips } from "@/components/plan/StepChips";
@@ -177,6 +179,9 @@ const Index = () => {
   // GW's picks it is for. It must never be written from a response (that was the P0 bug).
   const [squadGW, setSquadGW] = useState<number | null>(getInitialGw);
   const [horizonGws, setHorizonGws] = useState(getInitialHorizon);
+  // Set by the Transfers step's horizon control: rerun ZN Pick once the new
+  // horizon is in state (the mutation reads horizonGws from the closure).
+  const [pendingHorizonRerun, setPendingHorizonRerun] = useState(false);
   const [chipStrategy, setChipStrategy] = useState<FplChipStrategy>(getInitialChipStrategy);
   const [differential, setDifferential] = useState<boolean>(
     () => typeof window !== "undefined" && localStorage.getItem("fpl_differential") === "true"
@@ -298,6 +303,9 @@ const Index = () => {
       horizonGws: strategy === "free_hit" ? 1 : horizonGws,
       chipStrategy: strategy,
       chipHorizonGws: strategy === "wildcard" ? horizonGws : undefined,
+      wildcardPreset: strategy === "wildcard" ? readStoredPreset() : undefined,
+      pinnedIds: strategy === "wildcard" ? readHandoff().pinnedIds : undefined,
+      excludedIds: strategy === "wildcard" ? readHandoff().excludedIds : undefined,
       chipPlayEventId: wildcardPlayEventId,
       differential:
         strategy === "wildcard" || strategy === "free_hit" ? differential : undefined,
@@ -879,6 +887,13 @@ const Index = () => {
   // Cleared by resetRecommendation(): a reset after the auto-run (GW or entry
   // change, the default-GW effect) dropped the answer and left the step empty
   // with no way to ask again, since the latch still held the key.
+  useEffect(() => {
+    if (!pendingHorizonRerun) return;
+    setPendingHorizonRerun(false);
+    if (typeof deadlineGw === "number") rerunPick();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingHorizonRerun, horizonGws]);
+
   const autoRecommendKey = shouldAutoRecommend({
     step,
     hasPlanRec: Boolean(planRec),
@@ -964,7 +979,7 @@ const Index = () => {
     verdictDetail?.ft_before ??
     activeRecommendation?.transfer_plan_horizon?.start_free_transfers ??
     activeRecommendation?.transfers?.transfer_plan?.free_transfers;
-  const bank = squadQuery.data?.entry_history?.bank;
+  const bank = bankMFromEntryHistory(squadQuery.data?.entry_history);
   // Projected = the plan's own total (client-side, plan-GW xPts); until the
   // recommendation brings those, fall back to the engine's number.
   const projected = planProjected ?? activeRecommendation?.projected_points_with_captain;
@@ -1093,6 +1108,13 @@ const Index = () => {
                   loading={recommendationMutation.isPending}
                   error={recommendErrorMessage}
                   onRun={rerunPick}
+                  horizonGws={horizonGws}
+                  onHorizonChange={(h) => {
+                    // A 1-GW horizon judges this week alone (an injured starter
+                    // out for one match is a real move); the rerun uses it.
+                    setHorizonGws(h);
+                    setPendingHorizonRerun(true);
+                  }}
                 />
               )}
               {step === "captain" &&
@@ -1226,6 +1248,12 @@ const Index = () => {
               busy={recommendationMutation.isPending}
               onToggle={toggleWildcardPreview}
             />
+            <p className="mt-1 px-1 text-xs text-muted-foreground">
+              <Link to="/app/wildcard" className="underline underline-offset-2 hover:text-foreground">
+                Compare three wildcard squads
+              </Link>
+              {" "}· current preset: {readStoredPreset()}
+            </p>
           </div>
         )}
         <PitchVisualization

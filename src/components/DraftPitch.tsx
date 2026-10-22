@@ -23,7 +23,7 @@ export function DraftPitch({ squad, xiIds, captainId, viceId }: DraftPitchProps)
   const ids = { captainId, viceId };
 
   return (
-    <div>
+    <div data-testid="draft-pitch">
       <div
         className="relative rounded-2xl p-4 sm:p-6 overflow-hidden"
         style={{

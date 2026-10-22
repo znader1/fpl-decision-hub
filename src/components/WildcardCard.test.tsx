@@ -21,7 +21,7 @@ describe("WildcardCard", () => {
     render(<WildcardCard row={row} previewing={false} onToggle={() => {}} />);
     expect(screen.getByText(/best week GW31/)).toBeTruthy();
     expect(screen.getByText("+18.4 xPts")).toBeTruthy();
-    expect(screen.getByText(row.guidance as string)).toBeTruthy();
+    expect(screen.getByText(/Hold for now\. GW31 is the best week so far/)).toBeTruthy();
   });
 
   it("previews the wildcard draft", () => {
@@ -40,8 +40,9 @@ describe("WildcardCard", () => {
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
-  it("says the gain is net of planned transfers", () => {
+  it("says the gain is net of planned transfers, under Why", () => {
     render(<WildcardCard row={row} previewing={false} onToggle={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Why" }));
     expect(screen.getByText(/beyond what your planned transfers already gain/)).toBeTruthy();
   });
 
@@ -68,5 +69,17 @@ describe("WildcardCard", () => {
   it("renders nothing without an outlook row", () => {
     const { container } = render(<WildcardCard row={undefined} previewing={false} onToggle={() => {}} />);
     expect(container.firstChild).toBeNull();
+  });
+});
+
+describe("WildcardCard stays one line", () => {
+  it("keeps the guidance behind a Why toggle on every screen size", () => {
+    render(<WildcardCard row={row} previewing={false} onToggle={() => {}} />);
+    const why = screen.getByRole("button", { name: "Why" });
+    expect(why.className).not.toContain("sm:hidden");
+    const guidance = screen.getByText(/Hold for now\. GW31/);
+    expect(guidance.className).toContain("hidden");
+    fireEvent.click(why);
+    expect(screen.getByText(/Hold for now\. GW31/).className).not.toContain("hidden");
   });
 });

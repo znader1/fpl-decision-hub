@@ -34,6 +34,17 @@ export function ChipStep({ options, value, onPick }: ChipStepProps) {
               {o.gainNote && <span className="ml-1.5 text-xs font-medium text-muted-foreground">{o.gainNote}</span>}
             </div>
             <p className="text-xs leading-relaxed text-muted-foreground">{o.why}</p>
+            {o.chip === "wildcard" && (
+              // Plain anchor: this step renders outside a Router in tests and the
+              // page is a lazy route, so a full navigation is fine here.
+              <a
+                href="/app/wildcard"
+                className="text-xs font-medium text-primary underline underline-offset-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Compare three wildcard squads
+              </a>
+            )}
           </RadioCard>
         );
       })}
