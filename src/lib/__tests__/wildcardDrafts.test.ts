@@ -96,3 +96,13 @@ describe("fixture labels from the backend", () => {
     expect(out[0].fixtures?.[0]).toEqual({ gw: 8, opp: "NFO", home: true, diff: 3 });
   });
 });
+
+describe("pitch number", () => {
+  it("shows raw horizon xPts, the same unit as the tab header, not the weighted score input", () => {
+    const p = {
+      ...player(1),
+      score_breakdown: { horizon_xpts: 33.2, wildcard: { score: 34.9, weighted_xpts: 28.65, role: "xi" } },
+    } as unknown as FplTeamRecommendationPlayer;
+    expect(toDraftPitchPlayers([p])[0].xpts_horizon).toBe(33.2);
+  });
+});

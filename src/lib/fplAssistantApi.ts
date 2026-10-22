@@ -82,6 +82,7 @@ export interface FplWildcardScoreBreakdown {
   trend_term?: number | null;
   upside?: number | null;
   injury_mult?: number | null;
+  ownership_term?: number | null;
   /** xi | pinned | gk2 | def_cover | dc_mid | free | enabler */
   role?: string | null;
   facts?: FplWildcardFacts | null;

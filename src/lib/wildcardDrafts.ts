@@ -40,7 +40,9 @@ export function parseFixtureLabel(label: string): { opp: string; home: boolean; 
 
 export function toDraftPitchPlayers(squad: FplTeamRecommendationPlayer[]): DraftPitchPlayer[] {
   return squad.map((p) => {
-    const horizon = p.score_breakdown?.wildcard?.weighted_xpts ?? p.score_breakdown?.horizon_xpts ?? p.xpts ?? 0;
+    // Raw horizon xPts: the same unit as the tab header. The weighted figure
+    // (future GWs discounted) is a scoring input, not a display number.
+    const horizon = p.score_breakdown?.horizon_xpts ?? p.score_breakdown?.wildcard?.weighted_xpts ?? p.xpts ?? 0;
     const withPrice = p as FplTeamRecommendationPlayer & { price_m?: number };
     return {
       player_id: p.player_id,

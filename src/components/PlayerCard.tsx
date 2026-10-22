@@ -326,6 +326,9 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
               {typeof wildcard?.upside === "number" && (
                 <p>Upside: <span className="font-semibold text-foreground">{formatMetric(wildcard.upside, 2)}</span></p>
               )}
+              {typeof wildcard?.ownership_term === "number" && wildcard.ownership_term > 0 && (
+                <p>Template: <span className="font-semibold text-foreground">+{formatMetric(wildcard.ownership_term, 2)}</span></p>
+              )}
               {typeof wildcard?.injury_mult === "number" && wildcard.injury_mult < 1 && (
                 <p>Injury prior: <span className="font-semibold text-foreground">×{formatMetric(wildcard.injury_mult, 2)}</span></p>
               )}
