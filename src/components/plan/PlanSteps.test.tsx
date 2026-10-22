@@ -324,3 +324,19 @@ describe("TransfersStep without options", () => {
     expect(onRun).toHaveBeenCalled();
   });
 });
+
+describe("TransfersStep horizon control", () => {
+  it("offers 1 / 2 / 3 / 5 GW horizons, marks the current one and reports a change", () => {
+    const onHorizonChange = vi.fn();
+    render(<TransfersStep options={tOpts} value={null} onPick={() => {}} horizonGws={3} onHorizonChange={onHorizonChange} />);
+    const group = screen.getByRole("group", { name: /judge moves over/i });
+    const one = within(group).getByRole("button", { name: "1 GW" });
+    expect(within(group).getByRole("button", { name: "3 GW" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(one);
+    expect(onHorizonChange).toHaveBeenCalledWith(1);
+  });
+  it("renders no control when the page gives no handler", () => {
+    render(<TransfersStep options={tOpts} value={null} onPick={() => {}} />);
+    expect(screen.queryByRole("group", { name: /judge moves over/i })).toBeNull();
+  });
+});

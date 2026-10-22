@@ -36,7 +36,7 @@ describe("Navbar on app routes", () => {
     renderAt("/app/league");
     const tabs = screen.getByTestId("app-tabs");
     const active = tabs.querySelector('[aria-current="page"]');
-    expect(active?.textContent).toBe("Mini-league");
+    expect(active?.textContent).toBe("League");
     expect(tabs.textContent).toContain("Squad");
   });
 });

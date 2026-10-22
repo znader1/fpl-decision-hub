@@ -340,7 +340,7 @@ export interface FplEntryHistory {
   event_transfers?: number;
   event_transfers_cost?: number;
   points_on_bench?: number;
-  /** In the bank, £m. Not emitted by today's backend; the navbar shows it only when present. */
+  /** In the bank, FPL tenths of £m (4 = £0.4m); use lib/entryBank to convert. */
   bank?: number | null;
 }
 

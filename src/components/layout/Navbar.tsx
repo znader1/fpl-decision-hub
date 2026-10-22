@@ -21,7 +21,7 @@ const appLinks = [
   { label: "Squad", to: "/app" },
   { label: "Captain", to: "/app/captain" },
   { label: "Planner", to: "/app/fixtures" },
-  { label: "Mini-league", to: "/app/league" },
+  { label: "League", to: "/app/league" },
   // Secondary route: off the strip below lg (five tabs + pill + Sign out don't fit at md).
   { label: "Draft squad", to: "/app/squad-picker", secondary: true },
   { label: "Wildcard", to: "/app/wildcard", secondary: true },
@@ -132,7 +132,7 @@ export function Navbar({ extras, planStatus }: NavbarProps = {}) {
                         to={l.to}
                         aria-current={active ? "page" : undefined}
                         className={cn(
-                          "rounded-lg px-2.5 py-1.5 text-[13px] font-semibold transition-colors",
+                          "whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-semibold transition-colors",
                           l.secondary ? "hidden lg:inline-flex" : "inline-flex",
                           active ? "bg-white/[0.06] text-white" : "text-white/55 hover:text-white",
                         )}

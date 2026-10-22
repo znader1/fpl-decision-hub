@@ -15,16 +15,50 @@ interface TransfersStepProps {
   /** Ask ZN Pick (again) for the deadline GW. */
   onRun?: () => void;
   error?: string;
+  /** Horizon the moves are judged over; with a handler the step shows a 1/2/3/5 GW control. */
+  horizonGws?: number;
+  onHorizonChange?: (horizonGws: number) => void;
 }
 
+const HORIZON_CHOICES = [1, 2, 3, 5];
+
 /** Step 1: "Make the move" (the verdict's moves) vs "Roll the transfer", as two radio cards. */
-export function TransfersStep({ options, value, onPick, loading = false, onRun = () => {}, error }: TransfersStepProps) {
+export function TransfersStep({ options, value, onPick, loading = false, onRun = () => {}, error, horizonGws, onHorizonChange }: TransfersStepProps) {
+  const horizonControl = onHorizonChange ? (
+    <div role="group" aria-label="Judge moves over" className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+      <span className="mr-1">Judge moves over</span>
+      {HORIZON_CHOICES.map((h) => {
+        const active = h === horizonGws;
+        return (
+          <button
+            key={h}
+            type="button"
+            aria-pressed={active}
+            disabled={loading}
+            onClick={() => onHorizonChange(h)}
+            className={`rounded-full border px-2.5 py-1 font-semibold transition-colors ${
+              active ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {h} GW
+          </button>
+        );
+      })}
+      <span className="ml-1">1 GW judges this week alone, no roll-vs-move.</span>
+    </div>
+  ) : null;
   if (!options) {
-    return <RunPickCard idle="Run ZN Pick to see your moves." working="ZN Pick is working out your moves…" loading={loading} error={error} onRun={onRun} />;
+    return (
+      <div className="flex flex-col gap-3.5">
+        {horizonControl}
+        <RunPickCard idle="Run ZN Pick to see your moves." working="ZN Pick is working out your moves…" loading={loading} error={error} onRun={onRun} />
+      </div>
+    );
   }
   const { make, roll, alsoConsidered } = options;
   return (
     <div className="flex flex-col gap-3.5">
+      {horizonControl}
       <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
         <RadioCard checked={value === "make"} disabled={!make} onPick={() => onPick("make")} label="Make the move">
           <div className="flex items-center gap-2.5">
