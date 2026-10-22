@@ -39,7 +39,7 @@ import {
   transferOptions,
 } from "@/lib/planFlow";
 import { buildCaptainLab, type CaptainGoal } from "@/lib/captainLab";
-import { readStoredPreset } from "@/lib/wildcardDrafts";
+import { readHandoff, readStoredPreset } from "@/lib/wildcardDrafts";
 import { useCountdown } from "@/hooks/useCountdown";
 import { formatCountdown } from "@/lib/deadline";
 import { StepChips } from "@/components/plan/StepChips";
@@ -300,6 +300,8 @@ const Index = () => {
       chipStrategy: strategy,
       chipHorizonGws: strategy === "wildcard" ? horizonGws : undefined,
       wildcardPreset: strategy === "wildcard" ? readStoredPreset() : undefined,
+      pinnedIds: strategy === "wildcard" ? readHandoff().pinnedIds : undefined,
+      excludedIds: strategy === "wildcard" ? readHandoff().excludedIds : undefined,
       chipPlayEventId: wildcardPlayEventId,
       differential:
         strategy === "wildcard" || strategy === "free_hit" ? differential : undefined,

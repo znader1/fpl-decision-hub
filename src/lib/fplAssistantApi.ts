@@ -918,6 +918,9 @@ export interface TeamRecommendationParams {
   differential?: boolean;
   /** Wildcard only: which structural preset builds the draft (default balanced server-side). */
   wildcardPreset?: WildcardPreset;
+  /** Wildcard only: players the draft must keep / must not pick (from the wildcard page). */
+  pinnedIds?: number[];
+  excludedIds?: number[];
   /** When swaps tie, prefer selling the injured/doubtful player first. Default true server-side. */
   prioritizeInjured?: boolean;
   strategy?: string;
@@ -990,6 +993,8 @@ export const interpolateTeamRecommendationUrl = (template: string, params: TeamR
     chip_play_event_id: params.chipPlayEventId,
     differential: params.differential,
     wildcard_preset: params.wildcardPreset,
+    pinned_ids: params.pinnedIds && params.pinnedIds.length ? params.pinnedIds.join(",") : undefined,
+    excluded_ids: params.excludedIds && params.excludedIds.length ? params.excludedIds.join(",") : undefined,
     prioritize_injured: params.prioritizeInjured,
     strategy: params.strategy,
     include_transfers: params.includeTransfers,

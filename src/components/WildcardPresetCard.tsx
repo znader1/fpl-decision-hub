@@ -8,11 +8,13 @@ import {
   toDraftPitchPlayers,
   type WildcardDraftPreset,
 } from "@/lib/wildcardDrafts";
-import type { WildcardPreset } from "@/lib/fplAssistantApi";
+import type { FplTeamRecommendationPlayer, WildcardPreset } from "@/lib/fplAssistantApi";
 
 interface Props {
   preset: WildcardDraftPreset;
   budgetM: number;
+  /** Every player across the three squads, so dropped pins can be named. */
+  allPlayers?: FplTeamRecommendationPlayer[];
   onUse: (name: WildcardPreset) => void;
   pinned: Set<number>;
   excluded: Set<number>;
@@ -24,7 +26,7 @@ const fmt1 = (n: number) => (Math.round(n * 10) / 10).toFixed(1);
 
 /** One of the three wildcard squads: headline stats, the pitch, bench roles,
  *  pin / ban controls per player, and the hand-off button. */
-export function WildcardPresetCard({ preset, budgetM, onUse, pinned, excluded, onPin, onExclude }: Props) {
+export function WildcardPresetCard({ preset, budgetM, allPlayers = [], onUse, pinned, excluded, onPin, onExclude }: Props) {
   if (!preset.ok) {
     return (
       <div className="rounded-2xl border border-border bg-card p-4">
@@ -34,6 +36,7 @@ export function WildcardPresetCard({ preset, budgetM, onUse, pinned, excluded, o
     );
   }
   const s = summary(preset, budgetM);
+  const names = new Map(allPlayers.map((p) => [p.player_id, p.web_name]));
   const pitch = toDraftPitchPlayers(preset.squad);
   const xiIds = new Set(preset.xi_ids);
   const bench = preset.squad.filter((p) => !xiIds.has(p.player_id));
@@ -119,7 +122,9 @@ export function WildcardPresetCard({ preset, budgetM, onUse, pinned, excluded, o
         </ul>
       )}
       {preset.pins_conflict.length > 0 && (
-        <p className="text-[11px] text-amber-700">Some pins break a cap: {preset.pins_conflict.join(", ")}</p>
+        <p className="text-[11px] text-amber-700">
+          Pins dropped (shape or cap): {preset.pins_conflict.map((id) => names.get(id) ?? `#${id}`).join(", ")}
+        </p>
       )}
 
       <Button className="w-full" onClick={() => onUse(preset.name)}>

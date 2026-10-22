@@ -53,3 +53,26 @@ describe("summary", () => {
     });
   });
 });
+
+describe("hand-off storage", () => {
+  it("stores and reads the chosen preset with pins, bans and horizon", async () => {
+    const mod = await import("@/lib/wildcardDrafts");
+    const store = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    };
+    mod.storeHandoff({ preset: "gems", pinnedIds: [5, 9], excludedIds: [2], horizonGws: 7, playEventId: 8 });
+    expect(mod.readHandoff()).toEqual({ preset: "gems", pinnedIds: [5, 9], excludedIds: [2], horizonGws: 7, playEventId: 8 });
+    expect(store.get("fpl_chip_strategy")).toBe("wildcard");
+    expect(store.get("fpl_horizon_gws")).toBe("7");
+    expect(store.get("fpl_chip_play_event_id")).toBe("8");
+  });
+
+  it("reads safe defaults when nothing is stored", async () => {
+    const mod = await import("@/lib/wildcardDrafts");
+    (globalThis as { localStorage?: unknown }).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+    expect(mod.readHandoff()).toEqual({ preset: "balanced", pinnedIds: [], excludedIds: [], horizonGws: null, playEventId: null });
+  });
+});

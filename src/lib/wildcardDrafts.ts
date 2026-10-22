@@ -84,6 +84,63 @@ export function summary(preset: WildcardDraftPreset, budgetM: number): PresetSum
   };
 }
 
+export const WILDCARD_PINS_STORAGE_KEY = "fpl_wildcard_pinned_ids";
+export const WILDCARD_BANS_STORAGE_KEY = "fpl_wildcard_excluded_ids";
+
+export interface WildcardHandoff {
+  preset: WildcardPreset;
+  pinnedIds: number[];
+  excludedIds: number[];
+  horizonGws: number | null;
+  playEventId: number | null;
+}
+
+const readIdList = (key: string): number[] => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((v): v is number => Number.isInteger(v)) : [];
+  } catch {
+    return [];
+  }
+};
+
+/** Everything the plan flow needs to rebuild the squad the user chose on
+ *  the wildcard page: preset, pins, bans, horizon and the play GW. */
+export function storeHandoff(h: { preset: WildcardPreset; pinnedIds: number[]; excludedIds: number[]; horizonGws: number; playEventId: number | null }): void {
+  try {
+    localStorage.setItem(WILDCARD_PRESET_STORAGE_KEY, h.preset);
+    localStorage.setItem(WILDCARD_PINS_STORAGE_KEY, JSON.stringify(h.pinnedIds));
+    localStorage.setItem(WILDCARD_BANS_STORAGE_KEY, JSON.stringify(h.excludedIds));
+    localStorage.setItem("fpl_chip_strategy", "wildcard");
+    localStorage.setItem("fpl_horizon_gws", String(h.horizonGws));
+    if (h.playEventId) localStorage.setItem("fpl_chip_play_event_id", String(h.playEventId));
+  } catch {
+    /* no storage */
+  }
+}
+
+export function readHandoff(): WildcardHandoff {
+  let horizon: number | null = null;
+  let play: number | null = null;
+  try {
+    const h = Number(localStorage.getItem("fpl_horizon_gws"));
+    horizon = Number.isInteger(h) && h > 0 ? h : null;
+    const p = Number(localStorage.getItem("fpl_chip_play_event_id"));
+    play = Number.isInteger(p) && p > 0 ? p : null;
+  } catch {
+    /* no storage */
+  }
+  return {
+    preset: readStoredPreset(),
+    pinnedIds: readIdList(WILDCARD_PINS_STORAGE_KEY),
+    excludedIds: readIdList(WILDCARD_BANS_STORAGE_KEY),
+    horizonGws: horizon,
+    playEventId: play,
+  };
+}
+
 export function readStoredPreset(): WildcardPreset {
   try {
     const raw = localStorage.getItem(WILDCARD_PRESET_STORAGE_KEY);

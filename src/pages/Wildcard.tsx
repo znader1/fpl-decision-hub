@@ -13,7 +13,7 @@ import { WildcardCoreStrip } from "@/components/WildcardCoreStrip";
 import { useProfile } from "@/hooks/useProfile";
 import { getInitialEntryId } from "@/lib/entryId";
 import { fetchWildcardDrafts, type WildcardPreset } from "@/lib/fplAssistantApi";
-import { storePreset } from "@/lib/wildcardDrafts";
+import { storeHandoff } from "@/lib/wildcardDrafts";
 
 const HORIZONS = [3, 4, 5, 6, 7, 8];
 
@@ -78,13 +78,13 @@ export default function Wildcard() {
     });
 
   const usePreset = (name: WildcardPreset) => {
-    storePreset(name);
-    try {
-      localStorage.setItem("fpl_chip_strategy", "wildcard");
-      if (query.data?.event_id) localStorage.setItem("fpl_chip_play_event_id", String(query.data.event_id));
-    } catch {
-      /* no storage */
-    }
+    storeHandoff({
+      preset: name,
+      pinnedIds,
+      excludedIds,
+      horizonGws: horizon,
+      playEventId: query.data?.event_id ?? null,
+    });
     navigate("/app/plan/squad");
   };
 
@@ -100,6 +100,7 @@ export default function Wildcard() {
             <h1 className="text-2xl font-bold">Wildcard squads</h1>
             <p className="text-sm text-muted-foreground">
               Three ways to spend the same money{data ? ` from GW${data.event_id} over ${data.horizon_gws} gameweeks` : ""}. Pick the structure, not just the names.
+              {" "}"Use this squad" carries the preset, pins, bans and horizon into the plan, which rebuilds the squad with your plan settings.
             </p>
           </div>
           <label className="flex items-center gap-2 text-sm">
@@ -151,6 +152,7 @@ export default function Wildcard() {
                   key={preset.name}
                   preset={preset}
                   budgetM={data.budget_breakdown.budget_m}
+                  allPlayers={allPlayers}
                   onUse={usePreset}
                   pinned={pinned}
                   excluded={excluded}
