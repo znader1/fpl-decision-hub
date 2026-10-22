@@ -70,3 +70,15 @@ describe("WildcardCard", () => {
     expect(container.firstChild).toBeNull();
   });
 });
+
+describe("WildcardCard on a phone", () => {
+  it("keeps the guidance behind a Why toggle so the card stays one line tall", () => {
+    render(<WildcardCard row={row} previewing={false} onToggle={() => {}} />);
+    const why = screen.getByRole("button", { name: "Why" });
+    expect(why.className).toContain("sm:hidden");
+    const guidance = screen.getByText(row.guidance as string);
+    expect(guidance.className).toContain("hidden");
+    fireEvent.click(why);
+    expect(screen.getByText(row.guidance as string).className).not.toContain("hidden");
+  });
+});
