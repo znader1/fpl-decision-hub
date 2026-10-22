@@ -40,22 +40,24 @@ export const WildcardCard = ({ row, draftGw, previewing, busy = false, onToggle 
               <>
                 {" "}
                 · best week GW{best.gw}: <span className="font-semibold text-primary">{fmtGain(best.gain)} xPts</span>
-                <span className="hidden sm:inline"> over the weeks from there, beyond what your planned transfers already gain</span>
               </>
             ) : (
               " · no wildcard week stands out yet"
             )}
           </p>
-          {/* Phones: one line plus a Why toggle. Wider screens: the guidance inline. */}
+          {/* One line by default; the reasoning opens on demand on every screen size. */}
           <button
             type="button"
             onClick={() => setWhy((v) => !v)}
             aria-expanded={why}
-            className="mt-0.5 text-xs font-medium text-primary sm:hidden"
+            className="mt-0.5 text-xs font-medium text-primary"
           >
             {why ? "Hide" : "Why"}
           </button>
-          <p className={`mt-0.5 text-xs text-muted-foreground sm:block ${why ? "" : "hidden"}`}>{guidance}</p>
+          <p className={`mt-0.5 text-xs text-muted-foreground ${why ? "" : "hidden"}`}>
+            {guidance}
+            {best && !previewing ? " The gain is beyond what your planned transfers already gain." : ""}
+          </p>
         </div>
       </div>
       <button
