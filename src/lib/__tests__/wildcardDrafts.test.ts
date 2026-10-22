@@ -29,7 +29,7 @@ describe("toDraftPitchPlayers", () => {
   it("maps lineup records to pitch players with horizon xPts and next fixture", () => {
     const out = toDraftPitchPlayers([player(1, { price_m: 8.5 } as never)]);
     expect(out[0]).toMatchObject({ player_id: 1, web_name: "P1", pos: "MID", team_short: "ARS", xpts_horizon: 22.5 });
-    expect(out[0].fixtures?.[0]).toEqual({ gw: 8, opp: "BHA (H)", home: true, diff: 2 });
+    expect(out[0].fixtures?.[0]).toEqual({ gw: 8, opp: "BHA", home: true, diff: 2 });
   });
 });
 
@@ -74,5 +74,25 @@ describe("hand-off storage", () => {
     const mod = await import("@/lib/wildcardDrafts");
     (globalThis as { localStorage?: unknown }).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
     expect(mod.readHandoff()).toEqual({ preset: "balanced", pinnedIds: [], excludedIds: [], horizonGws: null, playEventId: null });
+  });
+});
+
+describe("fixture labels from the backend", () => {
+  it("parses the backend's H-NFO(D3) / A-LIV(D4) form into opp, home and difficulty", async () => {
+    const { parseFixtureLabel } = await import("@/lib/wildcardDrafts");
+    expect(parseFixtureLabel("H-NFO(D3)")).toEqual({ opp: "NFO", home: true, diff: 3 });
+    expect(parseFixtureLabel("A-LIV(D4)")).toEqual({ opp: "LIV", home: false, diff: 4 });
+    expect(parseFixtureLabel("A-COV(D3)")).toEqual({ opp: "COV", home: false, diff: 3 });
+    expect(parseFixtureLabel("BHA (H)")).toEqual({ opp: "BHA", home: true, diff: null });
+    expect(parseFixtureLabel("")).toBeNull();
+  });
+  it("toDraftPitchPlayers uses the parsed label so the pitch does not double-prefix", async () => {
+    const { toDraftPitchPlayers } = await import("@/lib/wildcardDrafts");
+    const out = toDraftPitchPlayers([{
+      player_id: 1, web_name: "P1", pos: "DEF", team_short: "BUR", team_name: "Burnley",
+      is_captain: false, is_vice_captain: false, multiplier: 1, xpts: 4,
+      fixtures_horizon: [{ event_id: 8, fixtures: "H-NFO(D3)", diff_avg: 2.86 }],
+    }]);
+    expect(out[0].fixtures?.[0]).toEqual({ gw: 8, opp: "NFO", home: true, diff: 3 });
   });
 });

@@ -25,8 +25,18 @@ export const PRESET_BLURB: Record<WildcardPreset, string> = {
   gems: "At most one premium, six low-owned starters, trend weighted up.",
 };
 
-/** "BHA (H)" → home; "(A)" → away. Unknown shapes default to home=false. */
-const isHomeLabel = (fixtures: string): boolean => /\(H\)/i.test(fixtures);
+/** The backend labels a fixture "H-NFO(D3)" / "A-LIV(D4)" (older payloads:
+ *  "BHA (H)"). The pitch card adds its own H/A prefix and (Dn) suffix, so the
+ *  page must hand it the bare opponent. */
+export function parseFixtureLabel(label: string): { opp: string; home: boolean; diff: number | null } | null {
+  const raw = (label ?? "").trim();
+  if (!raw) return null;
+  const m = raw.match(/^([HA])-([A-Za-z0-9]+)(?:\(D(\d)\))?/);
+  if (m) return { opp: m[2], home: m[1] === "H", diff: m[3] ? Number(m[3]) : null };
+  const legacy = raw.match(/^([A-Za-z0-9]+)\s*\(([HA])\)/);
+  if (legacy) return { opp: legacy[1], home: legacy[2] === "H", diff: null };
+  return { opp: raw, home: false, diff: null };
+}
 
 export function toDraftPitchPlayers(squad: FplTeamRecommendationPlayer[]): DraftPitchPlayer[] {
   return squad.map((p) => {
@@ -39,12 +49,12 @@ export function toDraftPitchPlayers(squad: FplTeamRecommendationPlayer[]): Draft
       team_short: p.team_short,
       price_m: typeof withPrice.price_m === "number" ? withPrice.price_m : 0,
       xpts_horizon: typeof horizon === "number" ? horizon : 0,
-      fixtures: (p.fixtures_horizon ?? []).map((f) => ({
-        gw: f.event_id,
-        opp: f.fixtures,
-        home: isHomeLabel(f.fixtures),
-        diff: typeof f.diff_avg === "number" ? f.diff_avg : 3,
-      })),
+      fixtures: (p.fixtures_horizon ?? []).flatMap((f) => {
+        const parsed = parseFixtureLabel(f.fixtures);
+        if (!parsed) return [];
+        const diff = parsed.diff ?? (typeof f.diff_avg === "number" ? Math.round(f.diff_avg) : 3);
+        return [{ gw: f.event_id, opp: parsed.opp, home: parsed.home, diff }];
+      }),
     };
   });
 }
