@@ -30,6 +30,7 @@ export default function Wildcard() {
   const [horizon, setHorizon] = useState(5);
   const [pinned, setPinned] = useState<Set<number>>(new Set());
   const [excluded, setExcluded] = useState<Set<number>>(new Set());
+  const [selected, setSelected] = useState<WildcardPreset>("balanced");
 
   useEffect(() => {
     if (entryId > 0) return;
@@ -146,13 +147,17 @@ export default function Wildcard() {
         {data && (
           <div className="mt-4 space-y-4">
             <WildcardCoreStrip coreIds={data.core_ids} players={allPlayers} />
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {/* Three compact summaries side by side; the full pitch of the
+                selected one below at full width, so player cards never crowd. */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               {data.presets.map((preset) => (
                 <WildcardPresetCard
                   key={preset.name}
+                  mode="summary"
+                  selected={selected === preset.name}
+                  onSelect={setSelected}
                   preset={preset}
                   budgetM={data.budget_breakdown.budget_m}
-                  allPlayers={allPlayers}
                   onUse={usePreset}
                   pinned={pinned}
                   excluded={excluded}
@@ -161,6 +166,25 @@ export default function Wildcard() {
                 />
               ))}
             </div>
+            {(() => {
+              const current = data.presets.find((p) => p.name === selected) ?? data.presets[0];
+              return current ? (
+                <div className="mx-auto w-full max-w-3xl">
+                  <WildcardPresetCard
+                    key={current.name}
+                    mode="detail"
+                    preset={current}
+                    budgetM={data.budget_breakdown.budget_m}
+                    allPlayers={allPlayers}
+                    onUse={usePreset}
+                    pinned={pinned}
+                    excluded={excluded}
+                    onPin={togglePin}
+                    onExclude={toggleExclude}
+                  />
+                </div>
+              ) : null;
+            })()}
             {data.notes.length > 0 && (
               <ul className="space-y-0.5 text-[11px] text-muted-foreground">
                 {data.notes.map((n) => <li key={n}>{n}</li>)}

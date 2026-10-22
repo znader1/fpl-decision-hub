@@ -54,3 +54,16 @@ describe("WildcardPresetCard", () => {
     expect(screen.getAllByLabelText("Unpin P9").length).toBeGreaterThan(0);
   });
 });
+
+describe("WildcardPresetCard summary mode", () => {
+  it("renders stats without a pitch and reports selection", () => {
+    const onSelect = vi.fn();
+    const { container } = render(
+      <WildcardPresetCard preset={preset} budgetM={100.4} mode="summary" selected={false} onSelect={onSelect} onUse={() => {}} pinned={new Set()} excluded={new Set()} onPin={() => {}} onExclude={() => {}} />,
+    );
+    expect(screen.getByTestId("xi-xpts").textContent).toBe("61.2");
+    expect(container.querySelector("[data-testid='draft-pitch']")).toBeNull();
+    fireEvent.click(screen.getByText("View squad"));
+    expect(onSelect).toHaveBeenCalledWith("balanced");
+  });
+});
