@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { percentileFromQuantiles } from "@/lib/fieldPercentile";
 import { CommandRail } from "@/components/CommandRail";
 import { deriveWeekDecisions } from "@/lib/weekDecisions";
@@ -39,6 +39,7 @@ import {
   transferOptions,
 } from "@/lib/planFlow";
 import { buildCaptainLab, type CaptainGoal } from "@/lib/captainLab";
+import { readStoredPreset } from "@/lib/wildcardDrafts";
 import { useCountdown } from "@/hooks/useCountdown";
 import { formatCountdown } from "@/lib/deadline";
 import { StepChips } from "@/components/plan/StepChips";
@@ -298,6 +299,7 @@ const Index = () => {
       horizonGws: strategy === "free_hit" ? 1 : horizonGws,
       chipStrategy: strategy,
       chipHorizonGws: strategy === "wildcard" ? horizonGws : undefined,
+      wildcardPreset: strategy === "wildcard" ? readStoredPreset() : undefined,
       chipPlayEventId: wildcardPlayEventId,
       differential:
         strategy === "wildcard" || strategy === "free_hit" ? differential : undefined,
@@ -1226,6 +1228,12 @@ const Index = () => {
               busy={recommendationMutation.isPending}
               onToggle={toggleWildcardPreview}
             />
+            <p className="mt-1 px-1 text-xs text-muted-foreground">
+              <Link to="/app/wildcard" className="underline underline-offset-2 hover:text-foreground">
+                Compare three wildcard squads
+              </Link>
+              {" "}· current preset: {readStoredPreset()}
+            </p>
           </div>
         )}
         <PitchVisualization

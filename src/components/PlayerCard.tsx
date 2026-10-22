@@ -96,8 +96,9 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
   const baseline = breakdown?.baseline;
   const objectiveScore = wildcard?.score ?? breakdown?.objective_score ?? breakdown?.horizon_xpts;
   const weightedFutureXpts = wildcard?.weighted_xpts ?? breakdown?.horizon_xpts;
-  const dgwBonus = wildcard?.future_dgw_bonus ?? 0;
-  const captaincyBonus = wildcard?.captaincy_bonus ?? 0;
+  const dgwBonus = wildcard?.dgw ?? wildcard?.future_dgw_bonus ?? 0;
+  const captaincyBonus = wildcard?.captaincy ?? wildcard?.captaincy_bonus ?? 0;
+  const wildcardFacts = wildcard?.facts ?? null;
   const fixtureDifficulty =
     fixture && typeof fixture.difficulty === "number" && Number.isFinite(fixture.difficulty)
       ? fixture.difficulty
@@ -319,11 +320,32 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
               <p>Weighted xPts: <span className="font-semibold text-foreground">{formatMetric(weightedFutureXpts, 2)}</span></p>
               <p>DGW bonus: <span className="font-semibold text-foreground">{formatMetric(dgwBonus, 2)}</span></p>
               <p>Captaincy: <span className="font-semibold text-foreground">{formatMetric(captaincyBonus, 2)}</span></p>
+              {typeof wildcard?.trend_term === "number" && (
+                <p>Trend: <span className="font-semibold text-foreground">{formatMetric(wildcard.trend_term, 2)}</span></p>
+              )}
+              {typeof wildcard?.upside === "number" && (
+                <p>Upside: <span className="font-semibold text-foreground">{formatMetric(wildcard.upside, 2)}</span></p>
+              )}
+              {typeof wildcard?.injury_mult === "number" && wildcard.injury_mult < 1 && (
+                <p>Injury prior: <span className="font-semibold text-foreground">×{formatMetric(wildcard.injury_mult, 2)}</span></p>
+              )}
+              {wildcard?.role && <p>Role: <span className="font-semibold text-foreground">{wildcard.role}</span></p>}
             </div>
+            {wildcardFacts && (wildcardFacts.vs_opponent || wildcardFacts.milestone || (wildcardFacts.streak ?? 0) > 0) && (
+              <div className="space-y-0.5 pt-1 text-[11px] text-foreground">
+                {wildcardFacts.vs_opponent && (
+                  <p>Vs next opponent: {wildcardFacts.vs_opponent.goals}G {wildcardFacts.vs_opponent.assists}A, {wildcardFacts.vs_opponent.points} pts in {wildcardFacts.vs_opponent.games} games</p>
+                )}
+                {wildcardFacts.milestone && (
+                  <p>{wildcardFacts.milestone.current} {wildcardFacts.milestone.stat.replace("_", " ")} · {wildcardFacts.milestone.target - wildcardFacts.milestone.current} from {wildcardFacts.milestone.target}</p>
+                )}
+                {(wildcardFacts.streak ?? 0) > 0 && <p>Returned in {wildcardFacts.streak} straight games</p>}
+              </div>
+            )}
             <div className="space-y-1 pt-1 text-[11px] text-muted-foreground">
               <p>Base score comes from future projected xPts across the wildcard window.</p>
-              <p>DGW bonus only appears when a later gameweek has more than one fixture.</p>
-              <p>Captaincy bonus mainly rewards premium MID/FWD options, so many defenders or cheaper mids stay at 0.</p>
+              <p>Trend is the direction of underlying xG/xA (or defensive output), not recent points.</p>
+              <p>Captaincy bonus only applies to premium MID/FWD options.</p>
             </div>
           </div>
         )}

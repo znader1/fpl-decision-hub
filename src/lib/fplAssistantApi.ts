@@ -63,11 +63,38 @@ export interface FplPlayerAlert {
   player_name?: string;
 }
 
+export interface FplWildcardFacts {
+  vs_opponent?: { games: number; goals: number; assists: number; points: number } | null;
+  milestone?: { stat: string; current: number; target: number } | null;
+  streak?: number | null;
+}
+
 export interface FplWildcardScoreBreakdown {
   score?: number | null;
   weighted_xpts?: number | null;
+  /** Legacy name; the v2 backend sends `dgw`. */
   future_dgw_bonus?: number | null;
+  dgw?: number | null;
+  /** Legacy name; the v2 backend sends `captaincy`. */
   captaincy_bonus?: number | null;
+  captaincy?: number | null;
+  trend?: number | null;
+  trend_term?: number | null;
+  upside?: number | null;
+  injury_mult?: number | null;
+  /** xi | pinned | gk2 | def_cover | dc_mid | free | enabler */
+  role?: string | null;
+  facts?: FplWildcardFacts | null;
+}
+
+export type WildcardPreset = "aggressive" | "balanced" | "gems";
+export const WILDCARD_PRESETS: WildcardPreset[] = ["aggressive", "balanced", "gems"];
+
+export interface FplBudgetBreakdown {
+  source: "my_team" | "entry_value" | "market";
+  squad_sell_value_m: number;
+  bank_m: number;
+  budget_m: number;
 }
 
 export interface FplRecentFormBreakdown {
@@ -889,6 +916,8 @@ export interface TeamRecommendationParams {
   chipPlayEventId?: number;
   /** Chip drafts only: dock template picks by ownership so the squad differs from the crowd. */
   differential?: boolean;
+  /** Wildcard only: which structural preset builds the draft (default balanced server-side). */
+  wildcardPreset?: WildcardPreset;
   /** When swaps tie, prefer selling the injured/doubtful player first. Default true server-side. */
   prioritizeInjured?: boolean;
   strategy?: string;
@@ -960,6 +989,7 @@ export const interpolateTeamRecommendationUrl = (template: string, params: TeamR
     chip_horizon_gws: params.chipHorizonGws,
     chip_play_event_id: params.chipPlayEventId,
     differential: params.differential,
+    wildcard_preset: params.wildcardPreset,
     prioritize_injured: params.prioritizeInjured,
     strategy: params.strategy,
     include_transfers: params.includeTransfers,
@@ -1030,6 +1060,9 @@ export const getTeamRecommendationUrlTemplate = getRecommendationUrlTemplate;
 
 export const getOptimizeUrlTemplate = (): string | undefined =>
   resolveTemplateWithApiBase(getEnvString("VITE_FPL_OPTIMIZE_URL") ?? "/squad/optimize");
+
+export const getWildcardDraftsUrlTemplate = (): string | undefined =>
+  resolveTemplateWithApiBase(getEnvString("VITE_FPL_WILDCARD_DRAFTS_URL") ?? "/wildcard/drafts");
 
 const parseJsonMaybe = (raw: unknown): unknown => {
   if (typeof raw !== "string") return raw;
@@ -1831,5 +1864,83 @@ export const fetchEntryIdentity = async (
   if (!isFplEntryIdentity(data)) {
     throw new Error("Invalid entry identity response");
   }
+  return data;
+};
+
+
+/* ── Wildcard v2: three preset squads on the real budget ─────────────────── */
+
+export interface WildcardDraftsRequest {
+  entryId: number;
+  playEventId?: number;
+  horizonGws?: number;
+  pinnedIds?: number[];
+  excludedIds?: number[];
+}
+
+export interface WildcardDraftPresetResult {
+  name: WildcardPreset;
+  label: string;
+  ok: boolean;
+  reason?: string | null;
+  squad: FplTeamRecommendationPlayer[];
+  xi_ids: number[];
+  bench_roles?: Record<string, string>;
+  captain_id?: number | null;
+  vice_id?: number | null;
+  objective_score_total?: number | null;
+  xi_xpts_horizon?: number | null;
+  bench_xpts_horizon?: number | null;
+  squad_cost_m?: number | null;
+  remaining_budget_m?: number | null;
+  premiums?: number | null;
+  avg_ownership?: number | null;
+  transfers_from_current?: number | null;
+  flags?: number | null;
+  notes: string[];
+  pins_conflict: number[];
+}
+
+export interface WildcardDraftsResponse {
+  entry_id: number;
+  event_id: number;
+  horizon_gws: number;
+  gws: number[];
+  budget_breakdown: FplBudgetBreakdown;
+  presets: WildcardDraftPresetResult[];
+  core_ids: number[];
+  notes: string[];
+}
+
+export const isWildcardDraftsResponse = (value: unknown): value is WildcardDraftsResponse => {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return typeof v.event_id === "number" && Array.isArray(v.presets) && Array.isArray(v.core_ids);
+};
+
+export const fetchWildcardDrafts = async (
+  params: WildcardDraftsRequest,
+  signal?: AbortSignal
+): Promise<WildcardDraftsResponse> => {
+  const url = getWildcardDraftsUrlTemplate() ?? "/wildcard/drafts";
+  const body = {
+    entry_id: params.entryId,
+    play_event_id: params.playEventId,
+    horizon_gws: params.horizonGws,
+    pinned_ids: params.pinnedIds ?? [],
+    excluded_ids: params.excludedIds ?? [],
+  };
+  const response = await authFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`Failed to build wildcard drafts (${response.status}): ${text.slice(0, 300)}`);
+  }
+  const data: unknown = await parseJsonResponse(response, url, "wildcard drafts endpoint");
+  if (!isWildcardDraftsResponse(data)) throw new Error("Invalid wildcard drafts response");
   return data;
 };

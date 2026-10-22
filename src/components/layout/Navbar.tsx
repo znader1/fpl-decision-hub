@@ -24,6 +24,7 @@ const appLinks = [
   { label: "Mini-league", to: "/app/league" },
   // Secondary route: off the strip below lg (five tabs + pill + Sign out don't fit at md).
   { label: "Draft squad", to: "/app/squad-picker", secondary: true },
+  { label: "Wildcard", to: "/app/wildcard", secondary: true },
 ];
 
 export interface PlanStatus {

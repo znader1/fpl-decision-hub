@@ -27,6 +27,8 @@ const Replay = /* @__PURE__ */ lazy(() => import("./pages/Replay"));
 // Lazy so the picker's panels stay out of the initial bundle; loaded on
 // first visit to /app/squad-picker.
 const SquadPicker = lazy(() => import("./pages/SquadPicker"));
+// Wildcard v2 comparison page: lazy, loaded on first visit to /app/wildcard.
+const Wildcard = lazy(() => import("./pages/Wildcard"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,6 +66,16 @@ const App = () => (
               <Route path="/app/plan/:step" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               {/* The standalone Captain Lab became the flow's captain step. */}
               <Route path="/app/captain" element={<Navigate to="/app/plan/captain" replace />} />
+              <Route
+                path="/app/wildcard"
+                element={
+                  <ProtectedRoute>
+                    <Suspense fallback={null}>
+                      <Wildcard />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/app/league" element={<ProtectedRoute><League /></ProtectedRoute>} />
               <Route path="/app/fixtures" element={<ProtectedRoute><Fixtures /></ProtectedRoute>} />
               {import.meta.env.DEV && import.meta.env.VITE_REPLAY_MODE === "1" && (
