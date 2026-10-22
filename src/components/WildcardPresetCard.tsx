@@ -13,11 +13,6 @@ import type { FplTeamRecommendationPlayer, WildcardPreset } from "@/lib/fplAssis
 interface Props {
   preset: WildcardDraftPreset;
   budgetM: number;
-  /** "summary": compact stats card (no pitch) for the side-by-side row;
-   *  "detail": the full pitch, bench roles and pin/ban list. Default detail. */
-  mode?: "summary" | "detail";
-  selected?: boolean;
-  onSelect?: (name: WildcardPreset) => void;
   /** Every player across the three squads, so dropped pins can be named. */
   allPlayers?: FplTeamRecommendationPlayer[];
   onUse: (name: WildcardPreset) => void;
@@ -31,12 +26,11 @@ const fmt1 = (n: number) => (Math.round(n * 10) / 10).toFixed(1);
 
 /** One of the three wildcard squads: headline stats, the pitch, bench roles,
  *  pin / ban controls per player, and the hand-off button. */
-export function WildcardPresetCard({ preset, budgetM, allPlayers = [], mode = "detail", selected = false, onSelect, onUse, pinned, excluded, onPin, onExclude }: Props) {
+export function WildcardPresetCard({ preset, budgetM, allPlayers = [], onUse, pinned, excluded, onPin, onExclude }: Props) {
   if (!preset.ok) {
     return (
       <div className="rounded-2xl border border-border bg-card p-4">
-        <p className="text-lg font-semibold">{preset.label}</p>
-        <p className="mt-2 text-sm text-muted-foreground">Could not build this squad: {preset.reason ?? "unknown reason"}</p>
+        <p className="text-sm text-muted-foreground">Could not build this squad: {preset.reason ?? "unknown reason"}</p>
       </div>
     );
   }
@@ -46,60 +40,19 @@ export function WildcardPresetCard({ preset, budgetM, allPlayers = [], mode = "d
   const xiIds = new Set(preset.xi_ids);
   const bench = preset.squad.filter((p) => !xiIds.has(p.player_id));
 
-  const header = (
-    <div>
-      <p className="text-lg font-semibold">{preset.label}</p>
-      <p className="text-xs text-muted-foreground">{PRESET_BLURB[preset.name]}</p>
-    </div>
-  );
-  const stats = (
-    <>
-      <div className="grid grid-cols-3 gap-2 text-center text-xs">
-        <div className="rounded-lg bg-muted px-2 py-1.5">
-          <p className="text-muted-foreground">XI xPts</p>
-          <p className="text-base font-semibold" data-testid="xi-xpts">{fmt1(s.xi)}</p>
-        </div>
-        <div className="rounded-lg bg-muted px-2 py-1.5">
-          <p className="text-muted-foreground">Bench xPts</p>
-          <p className="text-base font-semibold">{fmt1(s.bench)}</p>
-        </div>
-        <div className="rounded-lg bg-muted px-2 py-1.5">
-          <p className="text-muted-foreground">Cost</p>
-          <p className="text-base font-semibold">£{fmt1(s.cost)}m <span className="text-[10px] text-muted-foreground">/ {fmt1(s.budget)}</span></p>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-1.5 text-[11px]">
+  return (
+    <div className="flex flex-col gap-3">
+      <DraftPitch squad={pitch} xiIds={xiIds} captainId={preset.captain_id ?? null} viceId={preset.vice_id ?? null} />
+
+      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
         <span className="rounded-full bg-muted px-2 py-0.5">{s.premiums} premiums</span>
+        <span className="rounded-full bg-muted px-2 py-0.5">Bench {fmt1(s.bench)} xPts</span>
         {s.ownership !== null && <span className="rounded-full bg-muted px-2 py-0.5">{fmt1(s.ownership)}% avg owned</span>}
         {s.transfers !== null && <span className="rounded-full bg-muted px-2 py-0.5">{s.transfers} transfers</span>}
+        <span className="rounded-full bg-muted px-2 py-0.5">£{fmt1(s.left)}m left</span>
         {s.flags > 0 && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-700">{s.flags} flagged</span>}
+        <span className="ml-auto text-muted-foreground">{PRESET_BLURB[preset.name]}</span>
       </div>
-    </>
-  );
-
-  if (mode === "summary") {
-    return (
-      <div className={`flex flex-col gap-3 rounded-2xl border p-4 ${selected ? "border-primary bg-primary/5" : "border-border bg-card"}`}>
-        {header}
-        {stats}
-        <div className="flex gap-2">
-          <Button variant={selected ? "default" : "outline"} className="flex-1" onClick={() => onSelect?.(preset.name)}>
-            View squad
-          </Button>
-          <Button variant="secondary" className="flex-1" onClick={() => onUse(preset.name)}>
-            Use this squad
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
-      {header}
-      {stats}
-
-      <DraftPitch squad={pitch} xiIds={xiIds} captainId={preset.captain_id ?? null} viceId={preset.vice_id ?? null} />
 
       <div className="flex flex-wrap gap-1.5 text-[11px]">
         {bench.map((p) => {

@@ -26,12 +26,12 @@ const preset: WildcardDraftPreset = {
 };
 
 describe("WildcardPresetCard", () => {
-  it("renders the headline stats, the bench roles and the notes", () => {
-    render(<WildcardPresetCard preset={preset} budgetM={100.4} onUse={() => {}} pinned={new Set()} excluded={new Set()} onPin={() => {}} onExclude={() => {}} />);
-    expect(screen.getByText("Balanced")).toBeTruthy();
-    expect(screen.getByTestId("xi-xpts").textContent).toBe("61.2");
+  it("renders the pitch, the compact stat chips, the bench roles and the notes", () => {
+    const { container } = render(<WildcardPresetCard preset={preset} budgetM={100.4} onUse={() => {}} pinned={new Set()} excluded={new Set()} onPin={() => {}} onExclude={() => {}} />);
+    expect(container.querySelector("[data-testid='draft-pitch']")).not.toBeNull();
     expect(screen.getByText("2 premiums")).toBeTruthy();
     expect(screen.getByText("11 transfers")).toBeTruthy();
+    expect(screen.getByText("Bench 8.1 xPts")).toBeTruthy();
     expect(screen.getByText("DC mid")).toBeTruthy();
     expect(screen.getByText("dc_mid fallback: DEF")).toBeTruthy();
   });
@@ -52,18 +52,5 @@ describe("WildcardPresetCard", () => {
     fireEvent.click(screen.getAllByLabelText("Ban P5")[0]);
     expect(onExclude).toHaveBeenCalledWith(5);
     expect(screen.getAllByLabelText("Unpin P9").length).toBeGreaterThan(0);
-  });
-});
-
-describe("WildcardPresetCard summary mode", () => {
-  it("renders stats without a pitch and reports selection", () => {
-    const onSelect = vi.fn();
-    const { container } = render(
-      <WildcardPresetCard preset={preset} budgetM={100.4} mode="summary" selected={false} onSelect={onSelect} onUse={() => {}} pinned={new Set()} excluded={new Set()} onPin={() => {}} onExclude={() => {}} />,
-    );
-    expect(screen.getByTestId("xi-xpts").textContent).toBe("61.2");
-    expect(container.querySelector("[data-testid='draft-pitch']")).toBeNull();
-    fireEvent.click(screen.getByText("View squad"));
-    expect(onSelect).toHaveBeenCalledWith("balanced");
   });
 });

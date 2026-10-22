@@ -10,6 +10,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { QueryErrorCard } from "@/components/QueryErrorCard";
 import { WildcardPresetCard } from "@/components/WildcardPresetCard";
 import { WildcardCoreStrip } from "@/components/WildcardCoreStrip";
+import { WildcardPresetTabs } from "@/components/WildcardPresetTabs";
 import { useProfile } from "@/hooks/useProfile";
 import { getInitialEntryId } from "@/lib/entryId";
 import { fetchWildcardDrafts, type WildcardPreset } from "@/lib/fplAssistantApi";
@@ -92,18 +93,14 @@ export default function Wildcard() {
   const data = query.data;
   const allPlayers = data ? data.presets.flatMap((p) => p.squad) : [];
 
+  const current = data ? data.presets.find((p) => p.name === selected) ?? data.presets[0] : null;
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="mx-auto w-full max-w-7xl px-4 py-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold">Wildcard squads</h1>
-            <p className="text-sm text-muted-foreground">
-              Three ways to spend the same money{data ? ` from GW${data.event_id} over ${data.horizon_gws} gameweeks` : ""}. Pick the structure, not just the names.
-              {" "}"Use this squad" carries the preset, pins, bans and horizon into the plan, which rebuilds the squad with your plan settings.
-            </p>
-          </div>
+      <main className="mx-auto w-full max-w-3xl px-4 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-xl font-bold">Wildcard squads{data ? ` · GW${data.event_id}` : ""}</h1>
           <label className="flex items-center gap-2 text-sm">
             Horizon
             <select
@@ -117,13 +114,6 @@ export default function Wildcard() {
             </select>
           </label>
         </div>
-
-        {data && (
-          <p className="mt-2 text-xs text-muted-foreground" data-testid="budget-line">
-            Budget £{data.budget_breakdown.budget_m.toFixed(1)}m = £{data.budget_breakdown.squad_sell_value_m.toFixed(1)}m squad + £{data.budget_breakdown.bank_m.toFixed(1)}m bank ·{" "}
-            {BUDGET_SOURCE_LABEL[data.budget_breakdown.source] ?? data.budget_breakdown.source}
-          </p>
-        )}
 
         {entryId <= 0 && (
           <p className="mt-6 text-sm text-muted-foreground">Link your FPL entry on the Squad page first.</p>
@@ -144,52 +134,39 @@ export default function Wildcard() {
           </div>
         )}
 
-        {data && (
-          <div className="mt-4 space-y-4">
+        {data && current && (
+          <div className="mt-3 space-y-3">
+            <WildcardPresetTabs presets={data.presets} selected={current.name} onSelect={setSelected} />
+
+            <WildcardPresetCard
+              key={current.name}
+              preset={current}
+              budgetM={data.budget_breakdown.budget_m}
+              allPlayers={allPlayers}
+              onUse={usePreset}
+              pinned={pinned}
+              excluded={excluded}
+              onPin={togglePin}
+              onExclude={toggleExclude}
+            />
+
             <WildcardCoreStrip coreIds={data.core_ids} players={allPlayers} />
-            {/* Three compact summaries side by side; the full pitch of the
-                selected one below at full width, so player cards never crowd. */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {data.presets.map((preset) => (
-                <WildcardPresetCard
-                  key={preset.name}
-                  mode="summary"
-                  selected={selected === preset.name}
-                  onSelect={setSelected}
-                  preset={preset}
-                  budgetM={data.budget_breakdown.budget_m}
-                  onUse={usePreset}
-                  pinned={pinned}
-                  excluded={excluded}
-                  onPin={togglePin}
-                  onExclude={toggleExclude}
-                />
-              ))}
-            </div>
-            {(() => {
-              const current = data.presets.find((p) => p.name === selected) ?? data.presets[0];
-              return current ? (
-                <div className="mx-auto w-full max-w-3xl">
-                  <WildcardPresetCard
-                    key={current.name}
-                    mode="detail"
-                    preset={current}
-                    budgetM={data.budget_breakdown.budget_m}
-                    allPlayers={allPlayers}
-                    onUse={usePreset}
-                    pinned={pinned}
-                    excluded={excluded}
-                    onPin={togglePin}
-                    onExclude={toggleExclude}
-                  />
-                </div>
-              ) : null;
-            })()}
-            {data.notes.length > 0 && (
-              <ul className="space-y-0.5 text-[11px] text-muted-foreground">
-                {data.notes.map((n) => <li key={n}>{n}</li>)}
-              </ul>
-            )}
+
+            <details className="text-xs text-muted-foreground">
+              <summary className="cursor-pointer">About these squads and the budget</summary>
+              <p className="mt-1" data-testid="budget-line">
+                Budget £{data.budget_breakdown.budget_m.toFixed(1)}m = £{data.budget_breakdown.squad_sell_value_m.toFixed(1)}m squad + £{data.budget_breakdown.bank_m.toFixed(1)}m bank ·{" "}
+                {BUDGET_SOURCE_LABEL[data.budget_breakdown.source] ?? data.budget_breakdown.source}
+              </p>
+              <p className="mt-1">
+                Three ways to spend the same money over {data.horizon_gws} gameweeks. "Use this squad" carries the preset, pins, bans and horizon into the plan, which rebuilds the squad with your plan settings.
+              </p>
+              {data.notes.length > 0 && (
+                <ul className="mt-1 space-y-0.5">
+                  {data.notes.map((n) => <li key={n}>{n}</li>)}
+                </ul>
+              )}
+            </details>
           </div>
         )}
       </main>
