@@ -1505,6 +1505,8 @@ export type ChipNudge = {
   ev_gain: number;
   wait_for_team_news?: boolean;
   p_beats_bar?: number;
+  /** Wildcard only: the GWs its gain covers, [first, last]. Absent on older backends. */
+  window_gws?: [number, number];
 };
 
 export type ChipOutlookRow = {
