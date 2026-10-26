@@ -1,6 +1,7 @@
 import {
   CHIP_LABELS,
   type ChipName,
+  type ChipNudge,
   type ChipPlanResponse,
   type FplChipStrategy,
   type FplTeamRecommendation,
@@ -370,19 +371,17 @@ export function chipPick(chip: Exclude<PlanChip, null>, current: FplChipStrategy
   return { patch: { chip }, chipStrategy: null, goTo: null };
 }
 
-/** The pitch shows the wildcard draft only when the recommendation on screen was
- *  run as an active wildcard — the persisted chip strategy alone isn't enough
- *  (after a reload it says "wildcard" before anything has been fetched). */
-export function wildcardDraftShown(args: { pitchMode: "squad" | "recommendation"; rec: FplTeamRecommendation | undefined }): boolean {
-  const cs = args.rec?.chip_strategy;
-  return args.pitchMode === "recommendation" && cs?.selected === "wildcard" && cs.is_active === true;
-}
-
-/** The main-page wildcard card's button: start the preview, fetch the draft the
- *  strategy already asks for, or go back to the user's squad. */
-export function wildcardToggle(chipStrategy: FplChipStrategy, shown: boolean): "start" | "fetch" | "stop" {
-  if (chipStrategy !== "wildcard") return "start";
-  return shown ? "stop" : "fetch";
+/** The chip nudge above the pitch. A wildcard nudge also hides once the plan
+ *  already plays the wildcard (plan.chip is the source of truth, not the
+ *  persisted chip strategy). */
+export function showChipNudge(
+  nudge: ChipNudge | null | undefined,
+  chipStrategy: FplChipStrategy,
+  planChip: PlanChip,
+): boolean {
+  if (!nudge || nudge.chip === chipStrategy) return false;
+  if (nudge.chip === "wildcard" && planChip === "wildcard") return false;
+  return true;
 }
 
 /** Chips that make the backend rebuild the squad and skip the transfer planner. */
