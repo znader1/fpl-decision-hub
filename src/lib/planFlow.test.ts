@@ -5,8 +5,7 @@ import {
   chipPick,
   flowStrategy,
   recFitsPlan,
-  wildcardDraftShown,
-  wildcardToggle,
+  showChipNudge,
   firstUnfinishedStep,
   footerFor,
   reviewSummary,
@@ -273,23 +272,6 @@ describe("chipPick", () => {
   });
 });
 
-describe("wildcard preview", () => {
-  const wcRec = (selected: "wildcard" | "none", is_active: boolean) =>
-    ({ ...SAMPLE_TEAM_RECOMMENDATION, chip_strategy: { ...SAMPLE_TEAM_RECOMMENDATION.chip_strategy, selected, is_active } }) as FplTeamRecommendation;
-  it("the draft shows only when the recommendation on the pitch is an active wildcard", () => {
-    expect(wildcardDraftShown({ pitchMode: "recommendation", rec: wcRec("wildcard", true) })).toBe(true);
-    expect(wildcardDraftShown({ pitchMode: "squad", rec: wcRec("wildcard", true) })).toBe(false);
-    expect(wildcardDraftShown({ pitchMode: "recommendation", rec: wcRec("wildcard", false) })).toBe(false);
-    expect(wildcardDraftShown({ pitchMode: "recommendation", rec: wcRec("none", false) })).toBe(false);
-    expect(wildcardDraftShown({ pitchMode: "recommendation", rec: undefined })).toBe(false);
-  });
-  it("the card starts a preview, fetches a draft the persisted strategy never ran, or goes back", () => {
-    expect(wildcardToggle("none", false)).toBe("start");
-    expect(wildcardToggle("wildcard", false)).toBe("fetch");
-    expect(wildcardToggle("wildcard", true)).toBe("stop");
-  });
-});
-
 describe("flow strategy (a squad-rebuilding chip only when the plan plays it)", () => {
   it("a wildcard or free-hit setting the plan hasn't chosen runs the normal pick", () => {
     expect(flowStrategy("wildcard", null)).toBe("none");
@@ -330,5 +312,22 @@ describe("autoSubPreview", () => {
     // Henderson (GK) flagged → only the bench GK Dúbravka can come on.
     expect(autoSubPreview(resolvePlan(seed, []), flagged)).toBe("If Henderson (75% fit) doesn't play, Dúbravka comes on automatically. Order your bench by who you'd want first.");
     expect(autoSubPreview(resolvePlan(seed, []), lookup)).toBe("No flagged starters. Order your bench by who you'd want first.");
+  });
+});
+
+describe("showChipNudge", () => {
+  it("hides the wildcard banner once the plan plays the wildcard", () => {
+    const nudge = { chip: "wildcard" as const, event_id: 9, ev_gain: 14 };
+    expect(showChipNudge(nudge, "none", "wildcard")).toBe(false);
+    expect(showChipNudge(nudge, "none", "none")).toBe(true);
+    expect(showChipNudge(nudge, "none", null)).toBe(true);
+  });
+
+  it("hides a nudge for the chip already active", () => {
+    expect(showChipNudge({ chip: "triple_captain", event_id: 9, ev_gain: 6 }, "triple_captain", null)).toBe(false);
+  });
+
+  it("nothing to show without a nudge", () => {
+    expect(showChipNudge(null, "none", null)).toBe(false);
   });
 });

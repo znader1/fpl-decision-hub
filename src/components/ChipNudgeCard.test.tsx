@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { ChipNudgeCard } from "./ChipNudgeCard";
 import type { ChipNudge } from "@/lib/fplAssistantApi";
 
@@ -65,5 +66,50 @@ describe("ChipNudgeCard", () => {
       />
     );
     expect(screen.queryByText(/wait for team news/i)).toBeNull();
+  });
+});
+
+describe("ChipNudgeCard — wildcard verdict", () => {
+  const wc: ChipNudge = { chip: "wildcard", event_id: 9, ev_gain: 14.3, window_gws: [9, 13] };
+  const renderWc = (n: ChipNudge, onApply = vi.fn()) => {
+    render(
+      <MemoryRouter>
+        <ChipNudgeCard nudge={n} activeChipStrategy="none" onApplyChip={onApply} />
+      </MemoryRouter>,
+    );
+    return onApply;
+  };
+
+  it("renders the wildcard verdict in plain words", () => {
+    renderWc(wc);
+    expect(
+      screen.getByText("Play your wildcard this week · about +14 pts over GW9–13 vs your planned transfers"),
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: "See the squad" }).getAttribute("href")).toBe("/app/wildcard");
+  });
+
+  it("the wildcard link never applies the chip", () => {
+    const onApply = renderWc(wc);
+    fireEvent.click(screen.getByRole("link", { name: "See the squad" }));
+    expect(onApply).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: /apply/i })).toBeNull();
+  });
+
+  it("falls back without window_gws", () => {
+    renderWc({ chip: "wildcard", event_id: 9, ev_gain: 14.3 });
+    expect(
+      screen.getByText("Play your wildcard this week · about +14 pts over the next 5 GWs vs your planned transfers"),
+    ).toBeTruthy();
+  });
+
+  it("other chips are unchanged", () => {
+    const onApply = vi.fn();
+    render(
+      <MemoryRouter>
+        <ChipNudgeCard nudge={{ chip: "triple_captain", event_id: 9, ev_gain: 6 }} activeChipStrategy="none" onApplyChip={onApply} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /apply/i }));
+    expect(onApply).toHaveBeenCalledWith("triple_captain");
   });
 });

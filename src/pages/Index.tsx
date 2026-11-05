@@ -27,8 +27,7 @@ import {
   chipPick,
   flowStrategy,
   recFitsPlan,
-  wildcardDraftShown,
-  wildcardToggle,
+  showChipNudge,
   firstUnfinishedStep,
   footerFor,
   nextStep,
@@ -57,7 +56,6 @@ import { MobileParameterDrawer } from "@/components/MobileParameterDrawer";
 import { PitchVisualization } from "@/components/PitchVisualization";
 import { RecommendationsPanel } from "@/components/RecommendationsPanel";
 import { ChipNudgeCard } from "@/components/ChipNudgeCard";
-import { WildcardCard } from "@/components/WildcardCard";
 import { OptimizeSquadDialog } from "@/components/OptimizeSquadDialog";
 import { Navbar } from "@/components/layout/Navbar";
 import { QueryErrorCard } from "@/components/QueryErrorCard";
@@ -858,27 +856,6 @@ const Index = () => {
     if (pick.goTo) goStep(pick.goTo);
   };
 
-  // Main-page wildcard card: a preview — it switches the pitch to the wildcard
-  // draft without recording the chip; the Chip step is where it's committed.
-  // Shown while the wildcard is still in hand and in the user's plan, unless the
-  // nudge above already names it or the plan has already played it.
-  const wildcardRow = chipPlanQuery.data?.outlook?.find((row) => row.chip === "wildcard");
-  const showWildcardCard =
-    canUseWildcardDrafter &&
-    wildcardRow !== undefined &&
-    plan?.chip !== "wildcard" &&
-    chipPlanQuery.data?.nudge?.chip !== "wildcard";
-  const wildcardShown = wildcardDraftShown({ pitchMode, rec: recommendationMutation.data });
-  const toggleWildcardPreview = () => {
-    const action = wildcardToggle(chipStrategy, wildcardShown);
-    if (action === "fetch") {
-      // The strategy was persisted from an earlier visit but nothing has run yet.
-      if (typeof deadlineGw === "number") rerunPick();
-    } else {
-      switchStrategyForDeadline(action === "start" ? "wildcard" : "none");
-    }
-    goStep("squad");
-  };
 
   // Entering a step needs ZN Pick's answer for the deadline GW; run it once per
   // entry + deadline GW if the user hasn't, asking for that GW explicitly (the
@@ -1230,30 +1207,13 @@ const Index = () => {
         {/* Wrapper only renders when there's an actionable nudge (mirrors ChipNudgeCard's
             own null-return gate) — an unconditional wrapper would leave a blank padded
             strip above the pitch on every load where there's nothing to show. */}
-        {chipPlanQuery.data?.nudge && chipPlanQuery.data.nudge.chip !== chipStrategy && (
+        {showChipNudge(chipPlanQuery.data?.nudge, chipStrategy, plan?.chip ?? null) && chipPlanQuery.data?.nudge && (
           <div className="mx-auto w-full max-w-5xl px-4 pt-4">
             <ChipNudgeCard
               nudge={chipPlanQuery.data.nudge}
               activeChipStrategy={chipStrategy}
               onApplyChip={handleApplyChipNudge}
             />
-          </div>
-        )}
-        {showWildcardCard && (
-          <div className="mx-auto w-full max-w-5xl px-4 pt-4">
-            <WildcardCard
-              row={wildcardRow}
-              draftGw={deadlineGw}
-              previewing={wildcardShown}
-              busy={recommendationMutation.isPending}
-              onToggle={toggleWildcardPreview}
-            />
-            <p className="mt-1 px-1 text-xs text-muted-foreground">
-              <Link to="/app/wildcard" className="underline underline-offset-2 hover:text-foreground">
-                Compare three wildcard squads
-              </Link>
-              {" "}· current preset: {readStoredPreset()}
-            </p>
           </div>
         )}
         <PitchVisualization
