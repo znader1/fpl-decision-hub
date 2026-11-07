@@ -15,6 +15,9 @@ import type { SeasonRow } from "./monitorRemote";
 
 export type Tone = "app" | "scout" | "you";
 
+/** The scoring windows every contest is reported over, as the report keys them. */
+export const WINDOW_KEYS = ["1", "3", "5"] as const;
+
 export interface CardModel {
   id: number;
   name: string;
