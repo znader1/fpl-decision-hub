@@ -39,6 +39,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      monitor_owners: {
+        Row: {
+          user_id: string
+        }
+        Insert: {
+          user_id: string
+        }
+        Update: {
+          user_id?: string
+        }
+        Relationships: []
+      }
+      monitor_reports: {
+        Row: {
+          built_at: string
+          code_version: string | null
+          entry_id: number
+          gw: number
+          report: Json
+          season: string
+        }
+        Insert: {
+          built_at?: string
+          code_version?: string | null
+          entry_id: number
+          gw: number
+          report: Json
+          season: string
+        }
+        Update: {
+          built_at?: string
+          code_version?: string | null
+          entry_id?: number
+          gw?: number
+          report?: Json
+          season?: string
+        }
+        Relationships: []
+      }
       gw_plans: {
         Row: {
           base: Json

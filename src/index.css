@@ -55,6 +55,18 @@ input:-webkit-autofill:active {
     --pitch: 152 48% 40%;
     --pitch-dark: 152 52% 32%;
     --pitch-lines: 0 0% 100%;
+
+    /* Monitor page (owner-only): one colour per column, including its turf.
+       App = the brand pink, Scout = orange, You = blue. */
+    --monitor-app: 328 80% 48%;
+    --monitor-scout: 32 95% 44%;
+    --monitor-you: 190 80% 36%;
+    --monitor-app-turf: 328 46% 38%;
+    --monitor-app-turf-dark: 328 50% 30%;
+    --monitor-scout-turf: 28 62% 40%;
+    --monitor-scout-turf-dark: 28 66% 32%;
+    --monitor-you-turf: 198 58% 38%;
+    --monitor-you-turf-dark: 198 62% 30%;
     --player-card: 0 0% 100%;
 
     --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -116,6 +128,16 @@ input:-webkit-autofill:active {
     --pitch: 152 40% 25%;
     --pitch-dark: 152 44% 18%;
     --pitch-lines: 152 10% 45%;
+
+    --monitor-app: 328 75% 58%;
+    --monitor-scout: 36 95% 55%;
+    --monitor-you: 190 75% 52%;
+    --monitor-app-turf: 328 38% 25%;
+    --monitor-app-turf-dark: 328 42% 18%;
+    --monitor-scout-turf: 28 50% 26%;
+    --monitor-scout-turf-dark: 28 54% 19%;
+    --monitor-you-turf: 198 48% 25%;
+    --monitor-you-turf-dark: 198 52% 18%;
     --player-card: 248 15% 13%;
 
     /* Fixture difficulty 1 (easiest) → 5 (hardest); the handoff's rose for
