@@ -11,8 +11,13 @@ vi.mock("@/contexts/AuthContext", () => ({
 vi.mock("./DeadlineCountdown", () => ({
   DeadlineCountdown: () => <div data-testid="deadline-pill">GW29 deadline</div>,
 }));
+const ownerState = { owner: false as boolean | null, loading: false, error: null, refetch: () => {} };
+vi.mock("@/hooks/useMonitorOwner", () => ({ useMonitorOwner: () => ownerState }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  ownerState.owner = false;
+});
 
 const renderAt = (path: string, extras?: React.ReactNode, planStatus?: { changes: number; locked: boolean }) => {
   const client = new QueryClient();
@@ -87,5 +92,21 @@ describe("Navbar plan status pill (v2 flow)", () => {
     cleanup();
     renderAt("/app/plan/captain");
     expect(screen.getByTestId("app-tabs").querySelector('[aria-current="page"]')?.textContent).toBe("Captain");
+  });
+});
+
+describe("Navbar monitor link (owner only)", () => {
+  it("is absent for a non-owner", () => {
+    renderAt("/app");
+    expect(screen.getByTestId("app-tabs").querySelector('a[href="/app/monitor"]')).toBeNull();
+  });
+
+  it("appears, as a secondary tab, when the owner check succeeds", () => {
+    ownerState.owner = true;
+    renderAt("/app/monitor");
+    const link = screen.getByTestId("app-tabs").querySelector('a[href="/app/monitor"]');
+    expect(link?.textContent).toBe("Monitor");
+    expect(link?.className).toContain("hidden lg:inline-flex");
+    expect(link?.getAttribute("aria-current")).toBe("page");
   });
 });

@@ -29,6 +29,9 @@ const Replay = /* @__PURE__ */ lazy(() => import("./pages/Replay"));
 const SquadPicker = lazy(() => import("./pages/SquadPicker"));
 // Wildcard v2 comparison page: lazy, loaded on first visit to /app/wildcard.
 const Wildcard = lazy(() => import("./pages/Wildcard"));
+// Owner-only monitor (app vs The Scout vs the owner's team against real points):
+// lazy; the page itself shows NotFound unless the owner check passes.
+const Monitor = lazy(() => import("./pages/Monitor"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +75,16 @@ const App = () => (
                   <ProtectedRoute>
                     <Suspense fallback={null}>
                       <Wildcard />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/monitor"
+                element={
+                  <ProtectedRoute>
+                    <Suspense fallback={null}>
+                      <Monitor />
                     </Suspense>
                   </ProtectedRoute>
                 }
