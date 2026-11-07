@@ -318,3 +318,16 @@ export function seasonSummary(rows: SeasonRowModel[]): SeasonSummary {
     },
   };
 }
+
+/** Resolve the entry and gameweek the URL asks for against what the listing holds. */
+export function resolveSelection(rows: SeasonRow[], wantEntry: number | null, wantGw: number | null) {
+  const entries = [...new Set(rows.map((r) => r.entry_id))].sort((a, b) => a - b);
+  const entryId = wantEntry !== null && entries.includes(wantEntry) ? wantEntry : (entries[0] ?? null);
+  const gws = rows
+    .filter((r) => r.entry_id === entryId)
+    .map((r) => r.gw)
+    .sort((a, b) => a - b);
+  const gw = wantGw !== null && gws.includes(wantGw) ? wantGw : (gws[gws.length - 1] ?? null);
+  const season = rows.find((r) => r.entry_id === entryId)?.season ?? null;
+  return { entries, entryId, gws, gw, season };
+}

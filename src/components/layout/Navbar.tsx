@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMonitorOwner } from "@/hooks/useMonitorOwner";
 import { cn } from "@/lib/utils";
 import { LogOut, Menu } from "lucide-react";
 
@@ -26,6 +27,9 @@ const appLinks = [
   { label: "Draft squad", to: "/app/squad-picker", secondary: true },
   { label: "Wildcard", to: "/app/wildcard", secondary: true },
 ];
+// Owner-only page (reads monitor_reports under RLS); the link exists only when
+// the cheap owner check says so, so nobody else sees that the route exists.
+const monitorLink = { label: "Monitor", to: "/app/monitor", secondary: true };
 
 export interface PlanStatus {
   /** Things the user would have to change in the FPL app. */
@@ -76,6 +80,8 @@ export function Navbar({ extras, planStatus }: NavbarProps = {}) {
   const { user, signOut } = useAuth();
   const isApp = pathname.startsWith("/app");
   const activeTab = activeTabFor(pathname);
+  const { owner: monitorOwner } = useMonitorOwner();
+  const links = monitorOwner === true ? [...appLinks, monitorLink] : appLinks;
 
   const handleSignOut = async () => {
     await signOut();
@@ -124,7 +130,7 @@ export function Navbar({ extras, planStatus }: NavbarProps = {}) {
                 // The active page stays visible and lit instead of being filtered
                 // out — the handoff's tab strip, and the only cue for which hub you're in.
                 <nav data-testid="app-tabs" className="hidden md:flex items-center gap-1">
-                  {appLinks.map((l) => {
+                  {links.map((l) => {
                     const active = l.to === activeTab;
                     return (
                       <Link
@@ -166,7 +172,7 @@ export function Navbar({ extras, planStatus }: NavbarProps = {}) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {appLinks
+                    {links
                       .filter((l) => l.to !== activeTab)
                       .map((l) => (
                         <DropdownMenuItem key={l.to} asChild>
