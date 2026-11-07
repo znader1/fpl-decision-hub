@@ -36,3 +36,7 @@ Use this file for quick capture and prioritization. If you want collaboration/hi
 - [ ] **Strategy-aware hedge penalty** (2026-09-04) — the head-to-head conflict nudge (`TRANSFER_H2H_CONFLICT_PENALTY`) is a variance preference, not an EV fix: opposing own players hedge (lower ceiling, higher floor). Tie its sign/size to the mini-league mode — chase = penalize hedges harder, defend = allow or even favor them (`src/league_strategy.py` already has chase/defend/differential).
 - [ ] **Per-player home/away splits** (found 2026-09-04 via the Palmer question) — the model applies one global home-advantage multiplier; a player's personal home record (e.g. Palmer at Stamford Bridge) is invisible. Per-GW history carries venue — derive a per-player home/away factor with shrinkage, blend into projections behind a config flag, validate via SP3 backtest.
 
+## Monitor page (`/app/monitor`, owner-only, 2026-11)
+- [ ] **Entry names in the selector** — reports carry entry ids only; show "ZN Analytics" / "Nader z" once the backend stores the entry name in the report (or in `entry_gw_actuals`).
+- [ ] **Live capture (plan 3)** — advice rows are all `origin: "replay"` until the backend saves the app's advice before each deadline; the page already renders `origin: "live"` without the "rebuilt" tag.
+- [ ] **Retire `/replay`** once this page covers its ground (spec §11).
