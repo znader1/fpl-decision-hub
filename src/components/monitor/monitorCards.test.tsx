@@ -60,6 +60,10 @@ describe("BuyListsCard", () => {
     expect(card.textContent).toContain("Manzambi");
     expect(screen.getByTestId("buy-avg-app").textContent).toBe("5.0 · 5.0 · 5.0");
     expect(screen.getByTestId("buy-avg-scout").textContent).toBe("8.8 · 8.8 · 8.8");
+    expect(screen.getByTestId("buy-avgm-app").textContent).toBe("0.78 · 0.78 · 0.78");
+    expect(screen.getByTestId("buy-avgm-scout").textContent).toBe("1.69 · 1.69 · 1.69");
+    // each Scout tip also shows what the app projected for him that week
+    expect(screen.getByTestId("buy-xpts-scout-112").textContent).toBe("4.8");
   });
 
   it("shows the reason when a side is unavailable", () => {
@@ -102,6 +106,11 @@ describe("MonitorWildcardCard", () => {
     expect(card.textContent).toContain("You scored");
     expect(card.textContent).toContain("64");
     expect(screen.getByTestId("wildcard-verdict").textContent).toBe("Open (1 of 5 played)");
+  });
+
+  it("labels a chip week", () => {
+    render(<MonitorWildcardCard report={gw7} />);
+    expect(screen.getByTestId("wildcard-card").textContent).toContain("Free Hit week: the kept squad is the one you returned to");
   });
 
   it("shows the reasons and the absent players on GW1", () => {

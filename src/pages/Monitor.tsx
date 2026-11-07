@@ -113,7 +113,7 @@ export default function Monitor({ remote = supabaseMonitorRemote }: { remote?: M
   if (owner.owner === false) return <NotFound />;
 
   const gwIndex = sel.gw === null ? -1 : sel.gws.indexOf(sel.gw);
-  const seasonModels = sel.entryId === null ? [] : seasonRows(rows, sel.entryId);
+  const seasonModels = sel.entryId === null || sel.season === null ? [] : seasonRows(rows, sel.entryId, sel.season);
 
   let body: JSX.Element;
   if (owner.owner === null) {

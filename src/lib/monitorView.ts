@@ -41,6 +41,8 @@ export interface PitchModel {
   subtitle: string;
   total: number | null;
   totalNote: string | null;
+  /** The other basis, e.g. "72 with captain" on a week whose headline excludes captains. */
+  totalAlt: string | null;
   rows: CardModel[][];
   bench: CardModel[];
   unavailable: string | null;
@@ -54,6 +56,13 @@ const CHIP_NAMES: Record<string, string> = {
   wildcard: "Wildcard",
   "3xc": "Triple Captain",
 };
+
+/** FPL's chip code as a name; the code itself when unknown. */
+export const chipName = (chip: string | null | undefined): string | null =>
+  chip ? (Object.prototype.hasOwnProperty.call(CHIP_NAMES, chip) ? CHIP_NAMES[chip] : chip) : null;
+
+const fmtPrice = (m: number | null | undefined) => (typeof m === "number" ? `£${m.toFixed(1)}m` : null);
+const joinNotes = (...parts: (string | null)[]) => parts.filter((x): x is string => !!x).join(" · ") || null;
 
 const MINUS = "−";
 
@@ -93,11 +102,11 @@ const started = (state: MonitorState) => state !== "before_deadline";
 function card(
   report: MonitorReport,
   id: number,
-  ctx: { captainId: number | null; viceId: number | null; doubled: number | null; appIds: Set<number>; tone: Tone },
+  ctx: { captainId: number | null; viceId: number | null; doubled: number | null; multiplier: number; appIds: Set<number>; tone: Tone },
 ): CardModel {
   const p = playerOf(report, id);
   const doubled = ctx.doubled === id;
-  const points = typeof p.points === "number" ? (doubled ? p.points * 2 : p.points) : null;
+  const points = typeof p.points === "number" ? (doubled ? p.points * ctx.multiplier : p.points) : null;
   return {
     id,
     name: p.name ?? `#${id}`,
@@ -126,6 +135,7 @@ const unavailableModel = (tone: Tone, reason: string): PitchModel => ({
   subtitle: "",
   total: null,
   totalNote: null,
+  totalAlt: null,
   rows: [],
   bench: [],
   unavailable: reason,
@@ -146,39 +156,49 @@ export function pitchModel(report: MonitorReport, tone: Tone): PitchModel {
   let benchIds: number[] = [];
   let subtitle: string;
   let totalNote: string | null = null;
+  let totalAlt: string | null = null;
   let total: number | null;
+  let multiplier = 2;
 
   if (tone === "you") {
     const you = block as YouAvailable;
     captainId = you.captain_id;
     xiIds = you.xi_ids;
     benchIds = you.bench_ids;
-    const chip = you.chip ? CHIP_NAMES[you.chip] ?? you.chip : null;
+    const chip = chipName(you.chip);
     subtitle = chip ? `${chip} played` : "as picked";
+    if (you.chip === "3xc") multiplier = 3;
     total = report.headline.you;
     if (typeof you.points_on_bench === "number") totalNote = `${you.points_on_bench} on bench`;
   } else {
     const xi = block as XiAvailable;
     captainId = xi.captain_id ?? xi.captain_inferred_id ?? null;
     xiIds = xi.ids;
+    // The headline leaves captains out on a week the Scout did not state his;
+    // the with-captain figure is still worth a glance.
+    if (report.headline.basis === "no_captain" && typeof xi.points_with_captain === "number") {
+      totalAlt = `${xi.points_with_captain} with captain`;
+    }
     if (tone === "app") {
       subtitle = "best eleven from the app's projections";
       total = report.headline.app;
-      if (typeof xi.projected === "number") totalNote = `projected ${xi.projected.toFixed(1)}`;
+      totalNote = joinNotes(typeof xi.projected === "number" ? `projected ${xi.projected.toFixed(1)}` : null, fmtPrice(xi.price_m));
     } else {
       const when = xi.published_at ? fmtDate(xi.published_at) : "";
-      subtitle = when ? `published ${when}, premierleague.com` : "premierleague.com";
+      const inferred = xi.captain_id === null && xi.captain_inferred_id !== null && xi.captain_inferred_id !== undefined;
+      subtitle = joinNotes(when ? `published ${when}, premierleague.com` : "premierleague.com", inferred ? "captain inferred" : null) ?? "";
       if (xi.partial) {
         total = null;
-        totalNote = "partial";
+        totalNote = joinNotes("partial", fmtPrice(xi.price_m));
       } else {
         total = report.headline.scout;
+        totalNote = fmtPrice(xi.price_m);
       }
     }
   }
 
   const doubled = columnDoubles && started(report.state) ? doubledId({ captain_id: block.captain_id, vice_id: block.vice_id }, report) : null;
-  const ctx = { captainId, viceId: block.vice_id, doubled, appIds, tone };
+  const ctx = { captainId, viceId: block.vice_id, doubled, multiplier, appIds, tone };
   const cards = xiIds.map((id) => card(report, id, ctx));
   return {
     tone,
@@ -186,6 +206,7 @@ export function pitchModel(report: MonitorReport, tone: Tone): PitchModel {
     subtitle,
     total,
     totalNote,
+    totalAlt,
     rows: formationRows(cards),
     bench: benchIds.map((id) => card(report, id, ctx)),
     unavailable: null,
@@ -238,8 +259,8 @@ export interface SeasonRowModel {
   projectionError: number | null;
 }
 
-export function seasonRows(rows: SeasonRow[], entryId: number): SeasonRowModel[] {
-  const mine = rows.filter((r) => r.entry_id === entryId).sort((a, b) => a.gw - b.gw);
+export function seasonRows(rows: SeasonRow[], entryId: number, season: string): SeasonRowModel[] {
+  const mine = rows.filter((r) => r.entry_id === entryId && r.season === season).sort((a, b) => a.gw - b.gw);
   let runApp = 0;
   let runScout = 0;
   let runYou = 0;
@@ -320,7 +341,11 @@ export function seasonSummary(rows: SeasonRowModel[]): SeasonSummary {
 }
 
 /** Resolve the entry and gameweek the URL asks for against what the listing holds. */
-export function resolveSelection(rows: SeasonRow[], wantEntry: number | null, wantGw: number | null) {
+export function resolveSelection(allRows: SeasonRow[], wantEntry: number | null, wantGw: number | null) {
+  // One season at a time: the latest one listed. Without this, August's new
+  // rows would sit beside last season's under the same gameweek numbers.
+  const season = allRows.reduce<string | null>((best, r) => (best === null || r.season > best ? r.season : best), null);
+  const rows = allRows.filter((r) => r.season === season);
   const entries = [...new Set(rows.map((r) => r.entry_id))].sort((a, b) => a - b);
   const entryId = wantEntry !== null && entries.includes(wantEntry) ? wantEntry : (entries[0] ?? null);
   const gws = rows
@@ -328,6 +353,5 @@ export function resolveSelection(rows: SeasonRow[], wantEntry: number | null, wa
     .map((r) => r.gw)
     .sort((a, b) => a - b);
   const gw = wantGw !== null && gws.includes(wantGw) ? wantGw : (gws[gws.length - 1] ?? null);
-  const season = rows.find((r) => r.entry_id === entryId)?.season ?? null;
   return { entries, entryId, gws, gw, season };
 }

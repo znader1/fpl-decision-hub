@@ -1,5 +1,5 @@
 import type { MonitorReport, SquadWindow, SquadWindowAvailable } from "@/lib/monitorReport";
-import { verdictLabel } from "@/lib/monitorView";
+import { chipName, verdictLabel } from "@/lib/monitorView";
 import { MonitorCardShell } from "./MonitorCardShell";
 import { Muted } from "./shared";
 
@@ -54,8 +54,14 @@ export function MonitorWildcardCard({ report }: { report: MonitorReport }) {
     ? Object.entries(w.app.presets).sort(([a], [b]) => (a === headline ? -1 : b === headline ? 1 : a.localeCompare(b)))
     : [];
   const played = w.kept.available !== false ? w.kept.played : (w.actual?.played ?? 0);
+  const chip = report.you.available ? chipName(report.you.chip) : null;
   return (
     <MonitorCardShell title="Wildcard draft" subtitle={`${w.window} gameweeks from GW ${report.gw}`} testId="wildcard-card">
+      {chip && (
+        <p className="mb-2 text-muted-foreground">
+          {chip} week: the kept squad is the one you returned to
+        </p>
+      )}
       <div className="divide-y divide-border">
         <SquadRow label="Kept squad" squad={w.kept} window={w.window} />
         {w.app.available === false ? (

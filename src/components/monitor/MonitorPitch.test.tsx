@@ -20,7 +20,8 @@ describe("MonitorPitch", () => {
     expect(screen.getAllByTestId("monitor-card")).toHaveLength(11);
     expect(screen.getByRole("heading", { name: "App best XI" })).toBeTruthy();
     expect(screen.getByTestId("pitch-total").textContent).toBe("70");
-    expect(screen.getByText("projected 60.0")).toBeTruthy();
+    expect(screen.getByText("projected 60.0 · £79.9m")).toBeTruthy();
+    expect(screen.getByText("72 with captain")).toBeTruthy();
     expect(screen.queryByText("Bench")).toBeNull();
   });
 

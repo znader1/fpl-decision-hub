@@ -184,6 +184,33 @@ export function parseMonitorReport(json: unknown): MonitorReport | null {
   for (const key of sections) {
     if (!isObject(json[key])) return null;
   }
+  // Every array the page maps over must be an array when its block is available.
+  const arr = (o: Record<string, unknown>, keys: string[]) => keys.every((k) => Array.isArray(o[k]));
+  const avail = (o: Record<string, unknown>, keys: string[]) => o.available === false || arr(o, keys);
+  const app_xi = json.app_xi as Record<string, unknown>;
+  const scout_xi = json.scout_xi as Record<string, unknown>;
+  const you = json.you as Record<string, unknown>;
+  const best_xi = json.best_xi as Record<string, unknown>;
+  const replay = json.replay as Record<string, unknown>;
+  const transfers = json.transfers as Record<string, unknown>;
+  const buy_lists = json.buy_lists as Record<string, unknown>;
+  const wildcard = json.wildcard as Record<string, unknown>;
+  if (!avail(app_xi, ["ids"]) || !avail(scout_xi, ["ids"]) || !avail(you, ["xi_ids", "bench_ids"]) || !avail(best_xi, ["ids"])) return null;
+  if (!arr(replay, ["notes", "dropped_squad_ids"]) || !isObject(replay.parity)) return null;
+  for (const side of [transfers.app, transfers.you]) {
+    if (!isObject(side) || !avail(side, ["moves"]) || (side.available !== false && !isObject(side.windows))) return null;
+  }
+  for (const side of [buy_lists.app, buy_lists.scout]) {
+    if (!isObject(side) || !avail(side, ["players"])) return null;
+  }
+  for (const key of ["kept", "scout", "app"]) {
+    if (!isObject(wildcard[key])) return null;
+  }
+  const wapp = wildcard.app as Record<string, unknown>;
+  if (wapp.available !== false && !isObject(wapp.presets)) return null;
+  for (const sq of [wildcard.kept, wildcard.scout, ...(wapp.available !== false ? Object.values(wapp.presets as object) : [])]) {
+    if (!isObject(sq) || !avail(sq, ["ids"])) return null;
+  }
   return json as unknown as MonitorReport;
 }
 

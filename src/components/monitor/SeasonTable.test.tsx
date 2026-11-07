@@ -37,7 +37,7 @@ const SEASON: SeasonRow[] = [
   row({ gw: 10, state: "live", headline: { app: null, scout: null, you: null, best: null, basis: "with_captain" } }),
 ];
 
-const rows = seasonRows(SEASON, 107342);
+const rows = seasonRows(SEASON, 107342, "2026-27");
 
 describe("SeasonTable", () => {
   it("renders one row per gameweek with the running totals and opens a gameweek on click", () => {

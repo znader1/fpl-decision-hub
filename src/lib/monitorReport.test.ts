@@ -20,6 +20,21 @@ describe("parseMonitorReport", () => {
     expect(parseMonitorReport({ gw: 3, state: "done", players: {}, headline: {} })).toBeNull();
   });
 
+  it("returns null when an available block lacks the arrays the page maps over", () => {
+    const r = JSON.parse(JSON.stringify(gw9));
+    r.you = { available: true, captain_id: 411, vice_id: 154 };
+    expect(parseMonitorReport(r)).toBeNull();
+    const r2 = JSON.parse(JSON.stringify(gw9));
+    r2.best_xi = { available: true, points: 115 };
+    expect(parseMonitorReport(r2)).toBeNull();
+    const r3 = JSON.parse(JSON.stringify(gw9));
+    r3.replay = { parity: {}, dropped_squad_ids: [] };
+    expect(parseMonitorReport(r3)).toBeNull();
+    const r4 = JSON.parse(JSON.stringify(gw9));
+    r4.transfers.app = { available: true, windows: {} };
+    expect(parseMonitorReport(r4)).toBeNull();
+  });
+
   it("GW1 has no app column and a bench boost", () => {
     const r = parseMonitorReport(gw1)!;
     expect(r.app_xi.available).toBe(false);

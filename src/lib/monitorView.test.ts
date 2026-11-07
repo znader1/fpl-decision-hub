@@ -4,6 +4,7 @@ import type { SeasonRow } from "./monitorRemote";
 import {
   bestStrip,
   doubledId,
+  resolveSelection,
   fmtGain,
   pitchModel,
   seasonRows,
@@ -32,7 +33,8 @@ describe("pitchModel", () => {
     expect(h.doubled).toBe(false);
     expect(h.points).toBe(2);
     expect(m.total).toBe(70);
-    expect(m.totalNote).toBe("projected 60.0");
+    expect(m.totalNote).toBe("projected 60.0 · £79.9m");
+    expect(m.totalAlt).toBe("72 with captain");
     expect(m.subtitle).toBe("best eleven from the app's projections");
   });
 
@@ -42,6 +44,7 @@ describe("pitchModel", () => {
     expect(h.doubled).toBe(true);
     expect(h.points).toBe(26);
     expect(m.total).toBe(56);
+    expect(m.totalAlt).toBeNull();
   });
 
   it("GW9 scout pitch marks the inferred captain without doubling him", () => {
@@ -50,8 +53,29 @@ describe("pitchModel", () => {
     expect(c.isCaptain).toBe(true);
     expect(c.doubled).toBe(false);
     expect(m.total).toBe(69);
-    expect(m.subtitle).toBe("published 29 Oct, premierleague.com");
-    expect(m.totalNote).toBeNull();
+    expect(m.subtitle).toBe("published 29 Oct, premierleague.com · captain inferred");
+    expect(m.totalNote).toBe("£79.7m");
+    expect(m.totalAlt).toBe("71 with captain");
+  });
+
+  it("you pitch: the vice card is doubled when the captain has 0 minutes, the C badge stays on the captain", () => {
+    const r = clone(gw9);
+    r.players["411"].minutes = 0;
+    const cards = pitchModel(r, "you").rows.flat();
+    const captain = cards.find((c) => c.id === 411)!;
+    const vice = cards.find((c) => c.id === 154)!;
+    expect(captain.isCaptain).toBe(true);
+    expect(captain.doubled).toBe(false);
+    expect(captain.points).toBe(2);
+    expect(vice.isVice).toBe(true);
+    expect(vice.doubled).toBe(true);
+    expect(vice.points).toBe(16);
+  });
+
+  it("you pitch triples the captain on a Triple Captain week", () => {
+    const r = clone(gw9);
+    (r.you as YouAvailable).chip = "3xc";
+    expect(pitchModel(r, "you").rows.flat().find((c) => c.id === 411)!.points).toBe(6);
   });
 
   it("you pitch doubles the captain, marks app-shared players, keeps the bench in stored order", () => {
@@ -93,7 +117,7 @@ describe("pitchModel", () => {
     (r.scout_xi as { partial?: boolean }).partial = true;
     const m = pitchModel(r, "scout");
     expect(m.total).toBeNull();
-    expect(m.totalNote).toBe("partial");
+    expect(m.totalNote).toBe("partial · £79.7m");
   });
 
   it("an id missing from players renders as #id", () => {
@@ -195,11 +219,26 @@ const SEASON: SeasonRow[] = [
   row({ gw: 9, headline: { app: 70, scout: 69, you: 64, best: 115, basis: "no_captain" }, app_projected: 60, app_points_no_captain: 70, captain: cap(411, 112) }),
   row({ gw: 10, state: "live", headline: { app: null, scout: null, you: null, best: null, basis: "with_captain" } }),
   row({ gw: 9, entry_id: 5645321, headline: { app: 70, scout: 69, you: 40, best: 115, basis: "no_captain" } }),
+  row({ gw: 1, season: "2027-28", headline: { app: 50, scout: 40, you: 30, best: 100, basis: "with_captain" } }),
 ];
 
+describe("resolveSelection", () => {
+  it("uses the latest season only, the requested entry and gameweek when listed, else the entry's last gameweek", () => {
+    const sel = resolveSelection(SEASON, 107342, 9);
+    expect(sel.season).toBe("2027-28");
+    expect(sel.gws).toEqual([1]);
+    expect(sel.gw).toBe(1);
+    const older = SEASON.filter((r) => r.season === "2026-27");
+    const s2 = resolveSelection(older, null, null);
+    expect(s2).toMatchObject({ season: "2026-27", entryId: 107342, gw: 10, entries: [107342, 5645321] });
+    expect(resolveSelection(older, 5645321, 99)).toMatchObject({ entryId: 5645321, gw: 9 });
+    expect(resolveSelection([], 1, 1)).toMatchObject({ entryId: null, gw: null, season: null });
+  });
+});
+
 describe("seasonRows", () => {
-  it("keeps one entry, counts only gameweeks with both app and scout, and runs the totals", () => {
-    const rows = seasonRows(SEASON, 107342);
+  it("keeps one entry and season, counts only gameweeks with both app and scout, and runs the totals", () => {
+    const rows = seasonRows(SEASON, 107342, "2026-27");
     expect(rows.map((r) => r.gw)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(rows[0].counted).toBe(false);
     expect(rows[0].closer).toBeNull();
@@ -218,7 +257,7 @@ describe("seasonRows", () => {
 
 describe("seasonSummary", () => {
   it("tallies verdicts, captain hits and the projection error", () => {
-    const s = seasonSummary(seasonRows(SEASON, 107342));
+    const s = seasonSummary(seasonRows(SEASON, 107342, "2026-27"));
     expect(s.transfers).toEqual({ app: 0, you: 3, level: 2, open: 2 }); // GW8, GW9 open; GW1 no advice; GW7 chip week; GW10 live
     expect(s.wildcard).toEqual({ app: 0, kept: 4, level: 0, open: 4 }); // GW6–GW9 open
     expect(s.captain).toEqual({ hits: 1, of: 3 });

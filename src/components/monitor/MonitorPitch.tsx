@@ -37,6 +37,7 @@ export function MonitorPitch({ model }: { model: PitchModel }) {
           <b data-testid="pitch-total" className="text-2xl font-extrabold tabular-nums" style={{ color: "hsl(var(--tone))" }}>
             {model.total ?? "—"}
           </b>
+          {model.totalAlt && <span className="mt-0.5 block text-[10px] text-muted-foreground">{model.totalAlt}</span>}
           {model.totalNote && <span className="mt-0.5 block text-[10px] text-muted-foreground">{model.totalNote}</span>}
         </div>
       </header>
