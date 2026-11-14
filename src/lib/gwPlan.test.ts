@@ -15,6 +15,8 @@ import {
   seedPlan,
   swapCheck,
   swapPlayers,
+  suggestedBench,
+  transferChoicePatch,
   type GwPlan,
 } from "./gwPlan";
 import type {
@@ -294,5 +296,44 @@ describe("storage", () => {
     // updatedAt is optional (rows written before account sync had none) and kept when present.
     expect(parseStoredPlan(JSON.stringify({ ...stored, updatedAt: "2026-10-11T10:00:00.000Z" }))).toEqual({ ...stored, updatedAt: "2026-10-11T10:00:00.000Z" });
     expect(parseStoredPlan(JSON.stringify({ ...stored, updatedAt: 42 }))).toEqual(stored);
+  });
+});
+
+describe("transferChoicePatch", () => {
+  // Bench DEF 13 is sold for a DEF who projects 5 — above every starting DEF (3).
+  const benchMove = [{ sell: { id: 13, name: "P13", team: "AAA", price: 4 }, buy: { id: 98, name: "Konsa", team: "AVL", price: 5 }, this_gw_gain: 2, horizon_gain: 3.3 }];
+  const lookup = { ...buildPlayerLookup(SQUAD, undefined), 98: mkPlayer(98, "DEF", 5) };
+  const seed = seedPlan(SQUAD);
+
+  it("starts a benched seller's buy over the weakest same-position starter, and rolling swaps them back", () => {
+    const made = { ...seed, ...transferChoicePatch(seed, "make", benchMove, lookup) };
+    expect(made.promoted).toEqual({ seller: 13, starter: 2 });
+    expect(resolvePlan(made, benchMove).xi).toContain(98);
+    expect(resolvePlan(made, benchMove).bench).toContain(2);
+    const rolled = { ...made, ...transferChoicePatch(made, "roll", benchMove, lookup) };
+    expect(rolled.xi).toEqual(seed.xi);
+    expect(rolled.bench).toEqual(seed.bench);
+    expect(rolled.promoted).toBeNull();
+  });
+
+  it("leaves the lineup alone when the buy doesn't beat a starter, or the seller already starts", () => {
+    const weak = { ...lookup, 98: mkPlayer(98, "DEF", 2) };
+    expect(transferChoicePatch(seed, "make", benchMove, weak)).toMatchObject({ xi: seed.xi, promoted: null });
+    const starterMove = makeMoves(rec(detail()));
+    expect(transferChoicePatch(seed, "make", starterMove, lookup)).toMatchObject({ xi: seed.xi, promoted: null });
+  });
+
+  it("does not undo a promotion the user has since changed on the bench step", () => {
+    const made = { ...seed, ...transferChoicePatch(seed, "make", benchMove, lookup) };
+    const edited = swapPlayers(made, 2, 3); // user brings 2 back on for 3
+    const rolled = transferChoicePatch(edited, "roll", benchMove, lookup);
+    expect(rolled).toMatchObject({ xi: edited.xi, bench: edited.bench, promoted: null });
+  });
+});
+
+describe("suggestedBench", () => {
+  it("orders outfield subs by xPts and keeps the keeper first", () => {
+    const xpts: Record<number, number> = { 12: 2, 13: 1, 14: 4, 15: 3 };
+    expect(suggestedBench([12, 13, 14, 15], (id) => xpts[id])).toEqual([12, 14, 15, 13]);
   });
 });

@@ -18,6 +18,8 @@ interface BenchStepProps {
   /** The auto-sub preview tip. */
   autoSub: string;
   message: BenchMessage | null;
+  /** Set when the bench isn't in ZN Pick's order (outfield subs by xPts). */
+  onApplySuggested?: () => void;
 }
 
 const TONE: Record<BenchMessage["tone"], string> = {
@@ -29,15 +31,12 @@ const TONE: Record<BenchMessage["tone"], string> = {
 
 /** Step 3: bench rows (order badge, jersey, name · pos · xPts, ↑ ↓, Swap) plus the tip
  *  and the rule/outcome message. The pitch above it comes from Index. */
-export function BenchStep({ resolved, lookup, swapSelection, onSwapSelect, onMoveBench, autoSub, message }: BenchStepProps) {
+export function BenchStep({ resolved, lookup, swapSelection, onSwapSelect, onMoveBench, autoSub, message, onApplySuggested }: BenchStepProps) {
   return (
-    <div className="flex flex-col gap-3">
-      {autoSub && (
-        <div className="flex items-start gap-2.5 rounded-xl bg-muted/50 px-3.5 py-3">
-          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden />
-          <p className="text-xs leading-relaxed text-foreground/85">{autoSub}</p>
-        </div>
-      )}
+    <section aria-label="Bench order" className="flex flex-col gap-3 lg:sticky lg:top-0">
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[.08em] text-muted-foreground">Bench · 1st sub comes on first</h2>
+      </div>
       {message && (
         <div role="status" className={`rounded-[10px] border px-3.5 py-2.5 text-[13px] font-semibold ${TONE[message.tone]}`}>
           {message.text}
@@ -100,6 +99,19 @@ export function BenchStep({ resolved, lookup, swapSelection, onSwapSelect, onMov
           );
         })}
       </ul>
-    </div>
+      {onApplySuggested ? (
+        <Button type="button" variant="outline" size="sm" className="h-9 self-start text-xs" onClick={onApplySuggested}>
+          Use ZN Pick order (highest xPts first)
+        </Button>
+      ) : (
+        <p className="text-[11px] text-muted-foreground">Your subs are already in ZN Pick's order: highest xPts first.</p>
+      )}
+      {autoSub && (
+        <div className="flex items-start gap-2.5 rounded-xl bg-muted/50 px-3.5 py-3">
+          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden />
+          <p className="text-xs leading-relaxed text-foreground/85">{autoSub}</p>
+        </div>
+      )}
+    </section>
   );
 }

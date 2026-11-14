@@ -41,6 +41,9 @@ export interface GwPlan {
   reviewed: Partial<Record<PlanDecisionKey, true>>;
   /** "Saved". Any material edit clears it. */
   locked: boolean;
+  /** Set when "make" started a benched seller's buy over the weakest same-position
+   *  starter (plan ids); "roll" / undecided swaps them back. Absent on older plans. */
+  promoted?: { seller: number; starter: number } | null;
 }
 
 export type PlanPatch = Partial<GwPlan> | ((plan: GwPlan) => Partial<GwPlan>);
@@ -116,6 +119,52 @@ export function moveBench(plan: GwPlan, index: number, dir: -1 | 1): GwPlan {
 }
 
 // ---- transfers --------------------------------------------------------------
+
+/**
+ * The plan patch for a transfer decision. The planner credits a bench seller's
+ * buy only for the starter he displaces, so "make" starts him over the weakest
+ * same-position starter when he projects higher (a like-for-like swap keeps the
+ * formation legal); leaving "make" swaps that pair back if the user hasn't moved
+ * them since.
+ */
+export function transferChoicePatch(
+  plan: GwPlan,
+  choice: GwPlan["transfer"],
+  moves: FplTransferVerdictMove[],
+  lookup: PlayerLookup,
+): Partial<GwPlan> {
+  let { xi, bench } = plan;
+  let promoted = plan.promoted ?? null;
+  if (promoted && choice !== "make") {
+    if (xi.includes(promoted.seller) && bench.includes(promoted.starter)) {
+      ({ xi, bench } = swapPlayers(plan, promoted.starter, promoted.seller));
+    }
+    promoted = null;
+  }
+  if (choice === "make" && !promoted) {
+    for (const m of moves) {
+      if (!bench.includes(m.sell.id) || bench[0] === m.sell.id) continue;
+      const buy = lookup[m.buy.id];
+      const pos = buy?.pos ?? lookup[m.sell.id]?.pos;
+      if (!buy || typeof buy.xpts !== "number" || !pos) continue;
+      const weakest = xi
+        .filter((id) => id !== plan.cap && lookup[id]?.pos === pos && typeof lookup[id]?.xpts === "number")
+        .sort((a, b) => (lookup[a].xpts as number) - (lookup[b].xpts as number))[0];
+      if (weakest === undefined || (lookup[weakest].xpts as number) >= buy.xpts) continue;
+      ({ xi, bench } = swapPlayers({ ...plan, xi, bench }, m.sell.id, weakest));
+      promoted = { seller: m.sell.id, starter: weakest };
+      break;
+    }
+  }
+  return { transfer: choice, xi, bench, promoted };
+}
+
+/** Outfield subs ordered by this week's xPts (GK slot pinned): the bench order
+ *  ZN Pick would set. Plan ids in, plan ids out; `xptsOf` reads the shown player. */
+export function suggestedBench(bench: number[], xptsOf: (planId: number) => number | undefined): number[] {
+  const [gk, ...subs] = bench;
+  return [gk, ...[...subs].sort((a, b) => (xptsOf(b) ?? -Infinity) - (xptsOf(a) ?? -Infinity))];
+}
 
 /** The moves "Make the move" applies: the verdict's on spend, the rejected walk's on roll. */
 export function makeMoves(rec: FplTeamRecommendation | undefined): FplTransferVerdictMove[] {

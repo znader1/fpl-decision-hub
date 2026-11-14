@@ -157,15 +157,15 @@ describe("reviewWarnings / reviewSummary", () => {
 describe("transferOptions", () => {
   it("spend verdict: Make is the ZN Pick with the move, gain and horizon meta; Roll shows the FT progression", () => {
     const o = transferOptions(rec(detail()));
-    expect(o.make).toMatchObject({ zn: true, gain: 2.4, meta: "xPts over GW29–31 · free transfer", moves: [expect.objectContaining({ buy: expect.objectContaining({ name: "Solanke" }) })] });
+    expect(o.make).toMatchObject({ zn: true, gain: 2.4, meta: "expected pts gained over GW29–31 · free transfer", moves: [expect.objectContaining({ buy: expect.objectContaining({ name: "Solanke" }) })] });
     expect(o.make?.why).toBe("Haaland has LIV (A); Solanke gets WHU (H).");
     expect(o.roll).toMatchObject({ zn: false, gain: 0, meta: "this week · 2 FTs in GW30" });
     expect(o.roll.why).toContain("Rolling nets +1.1");
-    expect(o.alsoConsidered).toEqual([{ sell: "Rice", buy: "Rogers", net: 1.1, hit: false, bar: 2 }]);
+    expect(o.alsoConsidered).toEqual([{ sell: "Rice", buy: "Rogers", sellTeam: expect.any(String), buyTeam: expect.any(String), net: 1.1, hit: false, bar: 2 }]);
   });
   it("hit moves show the cost in the meta and net it from the gain", () => {
     const o = transferOptions(rec(detail({ ft_before: 0, ft_after: 0, hit_cost: 4, horizon_gain: 6.5 })));
-    expect(o.make).toMatchObject({ gain: 2.5, meta: "xPts over GW29–31 · −4 hit" });
+    expect(o.make).toMatchObject({ gain: 2.5, meta: "expected pts gained over GW29–31 · −4 hit" });
   });
   it("roll verdict: Roll is the ZN Pick; Make is the rejected alternative when there is one", () => {
     const alt = detail({ action: "roll", moves: [], ft_after: 2, plan_net: 3.0, roll_alternative: { net: 1.9, gw: 29, moves: detail().moves } });
@@ -185,8 +185,9 @@ describe("chipOptions", () => {
   const r = resolvePlan(seed, []);
   it("lists Save, Bench Boost, Free Hit and Triple Captain with this week's gain and the best week", () => {
     const opts = chipOptions({ resolved: r, lookup, chipPlan: chipPlan(), gw: 29 });
-    expect(opts.map((o) => o.chip)).toEqual(["none", "bench_boost", "free_hit", "triple_captain", "wildcard"]);
-    const [save, bb, fh, tc] = opts;
+    // ZN Pick first; a played chip (Triple Captain here) goes last.
+    expect(opts.map((o) => o.chip)).toEqual(["none", "bench_boost", "free_hit", "wildcard", "triple_captain"]);
+    const [save, bb, fh, , tc] = opts;
     expect(save).toMatchObject({ zn: true, gain: 0 });
     expect(save.why).toBe("Bench Boost is worth +15.1 in GW32, the best week left for any chip.");
     // Bench xPts in the sample: Dúbravka + Thiago + Calvert-Lewin + Estève.
@@ -194,7 +195,7 @@ describe("chipOptions", () => {
     expect(bb.why).toContain("GW32");
     expect(fh).toMatchObject({ gain: null, used: false });
     expect(fh.why).toBe("Hold it for the GW33 blank.");
-    expect(tc).toMatchObject({ gain: lookup[449].xpts, used: true });
+    expect(tc).toMatchObject({ gain: null, used: true });
   });
   it("the nudge makes its chip the ZN Pick and Free Hit takes the engine's gain for this week", () => {
     const opts = chipOptions({
@@ -203,19 +204,26 @@ describe("chipOptions", () => {
       chipPlan: chipPlan({ nudge: { chip: "free_hit", event_id: 29, ev_gain: 6.2 }, recommendations: [{ chip: "free_hit", event_id: 29, ev_gain: 6.2, provisional: false, reasons: [], ev_curve: [] }] }),
       gw: 29,
     });
-    expect(opts[0].zn).toBe(false);
-    expect(opts[2]).toMatchObject({ zn: true, gain: 6.2 });
+    expect(opts[0]).toMatchObject({ chip: "free_hit", zn: true, gain: 6.2 });
+    expect(opts.find((o) => o.chip === "none")?.zn).toBe(false);
   });
   it("without a chip plan, Save is still the pick and unknown gains are null", () => {
     const opts = chipOptions({ resolved: r, lookup, chipPlan: null, gw: 29 });
-    expect(opts[0].zn).toBe(true);
-    expect(opts[2].gain).toBeNull();
-    expect(opts[3].used).toBe(false);
+    const by = (c: string) => opts.find((o) => o.chip === c);
+    expect(opts[0]).toMatchObject({ chip: "none", zn: true });
+    expect(by("free_hit")?.gain).toBeNull();
+    expect(by("triple_captain")?.used).toBe(false);
+  });
+  it("warns against Triple Captain on a defender", () => {
+    const def = Object.values(lookup).find((p) => p.pos === "DEF" && r.xi.includes(p.player_id))!;
+    const opts = chipOptions({ resolved: { ...r, cap: def.player_id }, lookup, chipPlan: null, gw: 29 });
+    expect(opts.find((o) => o.chip === "triple_captain")?.why).toContain("ceiling is too low");
   });
   it("a benched captain makes Triple Captain unavailable this week", () => {
     const opts = chipOptions({ resolved: resolvePlan(swapPlayers(seed, 136, 449), []), lookup, chipPlan: null, gw: 29 });
-    expect(opts[3].gain).toBeNull();
-    expect(opts[3].why).toBe("Your captain is on the bench.");
+    const tc = opts.find((o) => o.chip === "triple_captain");
+    expect(tc?.gain).toBeNull();
+    expect(tc?.why).toBe("Your captain is on the bench.");
   });
 });
 

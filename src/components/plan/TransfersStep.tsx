@@ -74,7 +74,9 @@ export function TransfersStep({ options, value, onPick, loading = false, onRun =
                   <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
                   <JerseyIcon team={m.buy.team} size="sm" />
                   <span className="ml-1 text-[13px]">
-                    <span className="text-muted-foreground line-through">{m.sell.name}</span> <b>{m.buy.name}</b>
+                    <span className="text-muted-foreground line-through">{m.sell.name}</span>{" "}
+                    <span className="text-[11px] text-muted-foreground">({m.sell.team})</span> → <b>{m.buy.name}</b>{" "}
+                    <span className="text-[11px] text-muted-foreground">({m.buy.team})</span>
                   </span>
                 </div>
               ))}
@@ -107,10 +109,10 @@ export function TransfersStep({ options, value, onPick, loading = false, onRun =
         <div key={`${a.sell}-${a.buy}`} className="flex flex-wrap items-center gap-2.5 rounded-xl border border-border px-3.5 py-3 text-xs text-muted-foreground">
           <span className="text-[10px] font-semibold uppercase tracking-[.08em]">Also considered</span>
           <span className="flex-1">
-            {a.sell} → {a.buy}
+            {a.sell} ({a.sellTeam}) → {a.buy} ({a.buyTeam})
             {a.hit ? " · −4 hit" : ""} · net <b className={a.net < 0 ? "text-fdr-4" : "text-foreground"}>{fmtGain(a.net)}</b>
           </span>
-          <span>below the {fmtGain(a.bar)} bar</span>
+          <span>under the {fmtGain(a.bar)} pts needed</span>
         </div>
       ))}
     </div>
