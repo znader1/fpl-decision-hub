@@ -43,7 +43,7 @@ export interface GwPlan {
   locked: boolean;
   /** Set when "make" started a benched seller's buy over the weakest same-position
    *  starter (plan ids); "roll" / undecided swaps them back. Absent on older plans. */
-  promoted?: { seller: number; starter: number } | null;
+  promoted?: { seller: number; starter: number; buy?: number } | null;
 }
 
 export type PlanPatch = Partial<GwPlan> | ((plan: GwPlan) => Partial<GwPlan>);
@@ -152,11 +152,31 @@ export function transferChoicePatch(
         .sort((a, b) => (lookup[a].xpts as number) - (lookup[b].xpts as number))[0];
       if (weakest === undefined || (lookup[weakest].xpts as number) >= buy.xpts) continue;
       ({ xi, bench } = swapPlayers({ ...plan, xi, bench }, m.sell.id, weakest));
-      promoted = { seller: m.sell.id, starter: weakest };
+      promoted = { seller: m.sell.id, starter: weakest, buy: m.buy.id };
       break;
     }
   }
   return { transfer: choice, xi, bench, promoted };
+}
+
+/**
+ * Keeps a "make" plan's promotion in step with the moves on screen: a rerun
+ * (horizon change, new recommendation) may bring a different move, and a plan
+ * saved before promotions existed has none. Null when nothing needs to change.
+ */
+export function reconcilePromotion(plan: GwPlan, moves: FplTransferVerdictMove[], lookup: PlayerLookup): Partial<GwPlan> | null {
+  if (plan.transfer !== "make" || moves.length === 0) return null;
+  const pr = plan.promoted;
+  if (pr && moves.some((m) => m.sell.id === pr.seller && (pr.buy === undefined || m.buy.id === pr.buy))) return null;
+  // A promotion the user already undid by hand (seller back on the bench) is theirs to keep.
+  const base = pr ? { ...plan, ...transferChoicePatch(plan, null, moves, lookup), transfer: plan.transfer } : plan;
+  const next = transferChoicePatch(base, "make", moves, lookup);
+  const same =
+    next.promoted?.seller === pr?.seller &&
+    next.promoted?.starter === pr?.starter &&
+    next.xi!.every((id, i) => id === plan.xi[i]) &&
+    next.bench!.every((id, i) => id === plan.bench[i]);
+  return same ? null : next;
 }
 
 /** Outfield subs ordered by this week's xPts (GK slot pinned): the bench order

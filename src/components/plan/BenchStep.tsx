@@ -101,10 +101,10 @@ export function BenchStep({ resolved, lookup, swapSelection, onSwapSelect, onMov
       </ul>
       {onApplySuggested ? (
         <Button type="button" variant="outline" size="sm" className="h-9 self-start text-xs" onClick={onApplySuggested}>
-          Use ZN Pick order (highest xPts first)
+          Sort subs by xPts (highest first)
         </Button>
       ) : (
-        <p className="text-[11px] text-muted-foreground">Your subs are already in ZN Pick's order: highest xPts first.</p>
+        <p className="text-[11px] text-muted-foreground">Subs are already in xPts order, highest first.</p>
       )}
       {autoSub && (
         <div className="flex items-start gap-2.5 rounded-xl bg-muted/50 px-3.5 py-3">

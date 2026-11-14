@@ -15,6 +15,7 @@ import {
   seedPlan,
   swapCheck,
   swapPlayers,
+  reconcilePromotion,
   suggestedBench,
   transferChoicePatch,
   type GwPlan,
@@ -307,7 +308,7 @@ describe("transferChoicePatch", () => {
 
   it("starts a benched seller's buy over the weakest same-position starter, and rolling swaps them back", () => {
     const made = { ...seed, ...transferChoicePatch(seed, "make", benchMove, lookup) };
-    expect(made.promoted).toEqual({ seller: 13, starter: 2 });
+    expect(made.promoted).toEqual({ seller: 13, starter: 2, buy: 98 });
     expect(resolvePlan(made, benchMove).xi).toContain(98);
     expect(resolvePlan(made, benchMove).bench).toContain(2);
     const rolled = { ...made, ...transferChoicePatch(made, "roll", benchMove, lookup) };
@@ -328,6 +329,30 @@ describe("transferChoicePatch", () => {
     const edited = swapPlayers(made, 2, 3); // user brings 2 back on for 3
     const rolled = transferChoicePatch(edited, "roll", benchMove, lookup);
     expect(rolled).toMatchObject({ xi: edited.xi, bench: edited.bench, promoted: null });
+  });
+});
+
+describe("reconcilePromotion", () => {
+  const benchMove = [{ sell: { id: 13, name: "P13", team: "AAA", price: 4 }, buy: { id: 98, name: "Konsa", team: "AVL", price: 5 }, this_gw_gain: 2, horizon_gain: 3.3 }];
+  const otherMove = [{ sell: { id: 15, name: "P15", team: "AAA", price: 4 }, buy: { id: 97, name: "Wood", team: "NFO", price: 6 }, this_gw_gain: 1, horizon_gain: 2 }];
+  const lookup = { ...buildPlayerLookup(SQUAD, undefined), 98: mkPlayer(98, "DEF", 5), 97: mkPlayer(97, "FWD", 9) };
+  const seed = seedPlan(SQUAD);
+
+  it("promotes a plan saved as make before promotions existed", () => {
+    const patch = reconcilePromotion({ ...seed, transfer: "make" }, benchMove, lookup);
+    expect(patch?.promoted).toEqual({ seller: 13, starter: 2, buy: 98 });
+  });
+  it("is a no-op once in step, and when not making", () => {
+    const made = { ...seed, ...transferChoicePatch(seed, "make", benchMove, lookup) };
+    expect(reconcilePromotion(made, benchMove, lookup)).toBeNull();
+    expect(reconcilePromotion({ ...seed, transfer: "roll" }, benchMove, lookup)).toBeNull();
+  });
+  it("undoes a stale promotion and applies the new move's when a rerun changes the moves", () => {
+    const made = { ...seed, ...transferChoicePatch(seed, "make", benchMove, lookup) };
+    const next = { ...made, ...reconcilePromotion(made, otherMove, lookup) };
+    expect(next.xi).toContain(2); // the DEF benched for Konsa is back
+    expect(next.promoted).toEqual({ seller: 15, starter: 11, buy: 97 });
+    expect(next.transfer).toBe("make");
   });
 });
 

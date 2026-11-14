@@ -334,7 +334,9 @@ export function chipOptions(args: {
       : `On ${capName}.${
           tcBest
             ? tcBest.gw === gw
-              ? " This is the best week left for it on current projections."
+              ? nudge === "triple_captain"
+                ? " This is the best week left for it."
+                : " The best week left on current projections, but under the bar ZN Pick needs to play it."
               : ` Worth ${fmtGain(tcBest.gain)} in GW${tcBest.gw}.`
             : " No double gameweek this week, so the upside is capped."
         }`;
@@ -375,7 +377,10 @@ export function chipOptions(args: {
   const options = raw.map((o) => (o.used ? { ...o, gain: null, gainNote: undefined } : o));
   // ZN Pick first, then a chip whose best week is this one (the decision is now),
   // then the rest as listed; chips already played go last.
-  const rank = (o: ChipOption) => (o.used ? 3 : o.zn ? 0 : o.chip !== "none" && bestWeek(chipPlan, o.chip as ChipName)?.gw === gw ? 1 : 2);
+  // Among chips whose best week is now, the wildcard leads: it is the one that
+  // reshapes the squad, so it is the call to see first.
+  const rank = (o: ChipOption) =>
+    o.used ? 4 : o.zn ? 0 : o.chip !== "none" && bestWeek(chipPlan, o.chip as ChipName)?.gw === gw ? (o.chip === "wildcard" ? 1 : 2) : 3;
   return options.map((o, i) => ({ o, i })).sort((a, b) => rank(a.o) - rank(b.o) || a.i - b.i).map(({ o }) => o);
 }
 

@@ -16,6 +16,7 @@ import {
   resolvePlan,
   swapCheck,
   swapPlayers,
+  reconcilePromotion,
   suggestedBench,
   transferChoicePatch,
   toPlanId,
@@ -661,6 +662,12 @@ const Index = () => {
     const next = moveBench(plan, index, dir);
     if (next !== plan) setPlan({ bench: next.bench });
   };
+  // A rerun can change the moves under a "make" plan; keep the promoted starter in step.
+  useEffect(() => {
+    if (!plan || plan.locked || Object.keys(playerLookup).length === 0) return;
+    const patch = reconcilePromotion(plan, planMoves, playerLookup);
+    if (patch) setPlan(patch);
+  }, [plan, planMoves, playerLookup, setPlan]);
   const benchSuggestion = useMemo(() => {
     if (!plan || !resolvedPlan) return null;
     const shown = new Map(plan.bench.map((id, i) => [id, resolvedPlan.bench[i]]));

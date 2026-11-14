@@ -227,6 +227,32 @@ describe("chipOptions", () => {
   });
 });
 
+describe("chipOptions — the user-testing week (wildcard and TC both peak now, ZN Pick saves)", () => {
+  // Mirrors the GW11 screen: BB/FH played, TC and WC both rate this week their best.
+  const now = chipPlan({
+    chips_remaining: [
+      { name: "bench_boost", available: false, half: 1, expires_gw: 19 },
+      { name: "free_hit", available: false, half: 1, expires_gw: 19 },
+      { name: "triple_captain", available: true, half: 1, expires_gw: 19 },
+      { name: "wildcard", available: true, half: 1, expires_gw: 19 },
+    ],
+    recommendations: [{ chip: "triple_captain", event_id: 29, ev_gain: 8.7, provisional: false, reasons: [], ev_curve: [] }],
+    outlook: [{ chip: "wildcard", event_id: 29, ev_gain: 37.7, bar: 40, status: "hold", reasons: [], guidance: "Keep it. This week (GW29) is the best wildcard week." }],
+  });
+  const opts = chipOptions({ resolved: resolvePlan(seed, []), lookup, chipPlan: now, gw: 29 });
+
+  it("orders Save (ZN Pick), Wildcard, Triple Captain, then the played chips", () => {
+    expect(opts.map((o) => o.chip)).toEqual(["none", "wildcard", "triple_captain", "bench_boost", "free_hit"]);
+  });
+  it("no card reads as 'play it now' beside a Save pick", () => {
+    const tc = opts.find((o) => o.chip === "triple_captain")!;
+    expect(tc.why).toContain("under the bar");
+    expect(tc.why).not.toMatch(/Worth \+8\.7 in GW29/);
+    expect(opts[0].why).toContain("best week is this one");
+    expect(opts.filter((o) => o.used).every((o) => o.gain === null)).toBe(true);
+  });
+});
+
 describe("chipOptions — wildcard", () => {
   const r = resolvePlan(seed, []);
   const wcOutlook = { chip: "wildcard" as const, event_id: 31, ev_gain: 18.4, bar: 120, status: "hold" as const, reasons: [], guidance: "Hold for now. GW31 is the best week so far (+18.4 pts)." };
