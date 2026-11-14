@@ -34,6 +34,8 @@ interface PitchVisualizationProps {
   substitutionNotice?: string;
   fixturesByTeam?: Record<string, FplTeamFixture[]>;
   pitchMode?: "squad" | "recommendation";
+  /** Label of the first view toggle; "Your plan" when it shows the GW plan. */
+  squadLabel?: string;
   onPitchModeChange?: (mode: "squad" | "recommendation") => void;
   hasRecommendation?: boolean;
   isLiveGw?: boolean;
@@ -178,6 +180,7 @@ export const PitchVisualization = ({
   substitutionNotice,
   fixturesByTeam,
   pitchMode = "squad",
+  squadLabel = "Squad",
   onPitchModeChange,
   hasRecommendation = false,
   isLiveGw = false,
@@ -326,7 +329,7 @@ export const PitchVisualization = ({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Squad
+                  {squadLabel}
                 </button>
                 <button
                   onClick={() => hasRecommendation && onPitchModeChange("recommendation")}

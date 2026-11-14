@@ -320,13 +320,18 @@ const Index = () => {
   };
 
   const autoRecommendFired = useRef<string | null>(null);
+  // True while the pitch can show the user's GW plan. A ZN Pick run then keeps
+  // the pitch on the plan instead of flipping to the engine's own lineup, which
+  // disagreed with the plan rail (user testing, 2026-11); the toggle still shows it.
+  const planOnPitchRef = useRef(false);
+  const recommendationView = () => setPitchMode(planOnPitchRef.current ? "squad" : "recommendation");
   const recommendationMutation = useMutation<FplTeamRecommendation, unknown, TeamRecommendationParams>({
     mutationFn: async (params) => fetchTeamRecommendation(params),
     onSuccess: (data) => {
       if (data.chip_strategy?.selected === "wildcard" && typeof data.chip_strategy.play_event_id === "number") {
         setChipPlayEventId(data.chip_strategy.play_event_id);
       }
-      setPitchMode("recommendation");
+      recommendationView();
     },
   });
   const resetRecommendation = () => {
@@ -488,7 +493,7 @@ const Index = () => {
         chipPlayEventId: nextChipPlayEventId,
       })
     );
-    setPitchMode("recommendation");
+    recommendationView();
   }, [horizonGws, chipStrategy, includeTransfers]);
 
   // Don't render the app until we know which GW to show — avoids the fallback flash.
@@ -581,6 +586,23 @@ const Index = () => {
   const planDelta =
     typeof planProjected === "number" && typeof baseProjected === "number" ? Math.round((planProjected - baseProjected) * 10) / 10 : undefined;
   const planChanges = plan && basePlan ? countChanges(plan, basePlan, planMoves) : 0;
+  // The right-hand Summary reads the same plan as the rail and the pitch.
+  const planSummary = useMemo(() => {
+    if (!plan || !resolvedPlan) return null;
+    const p = (id: number) => playerLookup[id];
+    const cap = p(resolvedPlan.cap);
+    const vice = p(resolvedPlan.vice);
+    if (!cap || !vice) return null;
+    const count = (pos: string) => resolvedPlan.xi.filter((id) => p(id)?.pos === pos).length;
+    return {
+      projected: planProjected,
+      delta: planDelta,
+      captain: { name: cap.web_name, team: cap.team_short, xpts: cap.xpts },
+      vice: { name: vice.web_name, team: vice.team_short },
+      chip: plan.chip && plan.chip !== "none" ? CHIP_LABELS[plan.chip] : null,
+      formation: [count("DEF"), count("MID"), count("FWD")],
+    };
+  }, [plan, resolvedPlan, playerLookup, planProjected, planDelta]);
   const planDirty = Boolean(plan && (planChanges > 0 || plan.transfer !== null || plan.chip !== null || Object.keys(plan.reviewed).length > 0));
 
   // Steps route as /app/plan/:step; /app is the squad overview.
@@ -725,6 +747,7 @@ const Index = () => {
     () => (plan && resolvedPlan && latestSquad && selectedGW === deadlineGw ? planToTeam(latestSquad, resolvedPlan, playerLookup) : undefined),
     [plan, resolvedPlan, latestSquad, selectedGW, deadlineGw, playerLookup],
   );
+  planOnPitchRef.current = Boolean(planTeam);
   // The bench step always shows the plan, whatever GW the squad view is on.
   const benchTeam = useMemo(
     () => (plan && resolvedPlan && latestSquad ? planToTeam(latestSquad, resolvedPlan, playerLookup) : undefined),
@@ -770,7 +793,7 @@ const Index = () => {
         chipStrategy === "wildcard"
           ? chipPlayEventId ?? recommendationMutation.data?.chip_strategy?.play_event_id ?? gw
           : undefined;
-      setPitchMode("recommendation");
+      recommendationView();
       recommendationMutation.mutate(
         buildRecommendationParams(gw, { chipPlayEventId: nextChipPlayEventId })
       );
@@ -818,7 +841,7 @@ const Index = () => {
     if (chipStrategy === "wildcard") {
       setChipPlayEventId(nextChipPlayEventId);
     }
-    setPitchMode("recommendation");
+    recommendationView();
     recommendationMutation.mutate(
       buildRecommendationParams(resolvedGW, { chipPlayEventId: nextChipPlayEventId })
     );
@@ -1283,6 +1306,7 @@ const Index = () => {
           fixturesByTeam={fixturesByTeam}
           pitchMode={pitchMode}
           onPitchModeChange={setPitchMode}
+          squadLabel={planTeam ? "Your plan" : "Squad"}
           incoming={activeTeam === planTeam && resolvedPlan ? resolvedPlan.incoming : undefined}
           hasRecommendation={Boolean(recommendationMutation.data)}
           isLiveGw={isLiveGw}
@@ -1350,6 +1374,7 @@ const Index = () => {
       )}
       {step === "squad" && (
       <RecommendationsPanel
+        planSummary={planSummary}
         squad={squadQuery.data}
         recommendation={activeRecommendation}
         isRecommending={recommendationMutation.isPending}

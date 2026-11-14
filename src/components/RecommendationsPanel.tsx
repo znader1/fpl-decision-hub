@@ -35,6 +35,19 @@ interface RecommendationsPanelProps {
   chipPlan?: ChipPlanResponse | null;
   isChipPlanLoading?: boolean;
   isChipPlanError?: boolean;
+  /** The user's GW plan, when there is one: the Summary shows it instead of the
+   *  engine's own lineup, so it agrees with the plan rail and the pitch. */
+  planSummary?: PlanSummary | null;
+}
+
+export interface PlanSummary {
+  projected: number | null;
+  /** vs. the squad with no changes. */
+  delta?: number;
+  captain: { name: string; team: string; xpts?: number };
+  vice: { name: string; team: string };
+  chip: string | null;
+  formation: number[];
 }
 
 type Tab = "summary" | "transfers" | "watchlist" | "chips";
@@ -103,6 +116,7 @@ function StatCard({
 
 /* ── Summary tab ──────────────────────────────────────────────────────────── */
 function SummaryTab({
+  planSummary,
   recommendation,
   squad,
   horizonGws,
@@ -111,6 +125,7 @@ function SummaryTab({
   currentGw,
   chipsRemaining,
 }: {
+  planSummary?: PlanSummary | null;
   recommendation?: FplTeamRecommendation;
   squad?: FplSquad;
   horizonGws?: number;
@@ -138,11 +153,19 @@ function SummaryTab({
     );
   }
 
-  const captain = getSuggestedCaptain(recommendation);
-  const captainName = captain?.web_name ?? findName(recommendation, recommendation.captain_player_id);
-  const viceName = findName(recommendation, recommendation.vice_player_id);
-  const chip = chipLabel(recommendation.chip_strategy?.selected);
-  const delta = fmtDelta(recommendation.transfer_impact?.delta_projected_points_with_captain);
+  // With a plan, every figure here is the plan's (same numbers as the plan
+  // rail); without one, the engine's own pick as before.
+  const engineCaptain = getSuggestedCaptain(recommendation);
+  const ps = planSummary ?? null;
+  const captainName = ps ? ps.captain.name : engineCaptain?.web_name ?? findName(recommendation, recommendation.captain_player_id);
+  const captainTeam = ps ? ps.captain.team : engineCaptain?.team_short ?? "";
+  const captainXpts = ps ? ps.captain.xpts : engineCaptain?.xpts;
+  const viceName = ps ? ps.vice.name : findName(recommendation, recommendation.vice_player_id);
+  const viceTeam = ps ? ps.vice.team : recommendation.starting_xi.find((p) => p.player_id === recommendation.vice_player_id)?.team_short ?? "";
+  const chip = ps ? ps.chip : chipLabel(recommendation.chip_strategy?.selected);
+  const projectedValue = ps ? ps.projected ?? undefined : recommendation.projected_points_with_captain;
+  const formation = ps ? ps.formation : recommendation.formation;
+  const delta = ps ? fmtDelta(ps.delta) : fmtDelta(recommendation.transfer_impact?.delta_projected_points_with_captain);
   const withTransfers = fmt1(recommendation.transfer_impact?.with_transfers_projected_points_with_captain);
 
   return (
@@ -150,11 +173,16 @@ function SummaryTab({
       {/* Projected xPts hero */}
       <div className="rounded-xl border border-primary/30 bg-primary/[0.08] p-4 flex items-center justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-primary/70 mb-0.5">Projected xPts</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-primary/70 mb-0.5">{ps ? "Your plan · projected xPts" : "Projected xPts"}</p>
           <p className="text-4xl font-black text-primary leading-none">
-            {fmt1(recommendation.projected_points_with_captain)}
+            {fmt1(projectedValue)}
           </p>
-          {delta && (
+          {ps && delta && (
+            <p className="text-xs text-muted-foreground mt-1">
+              <span className={`font-bold ${delta.startsWith("-") ? "text-destructive" : "text-accent"}`}>{delta}</span> vs. your squad with no changes
+            </p>
+          )}
+          {!ps && delta && (
             <p className="text-xs text-muted-foreground mt-1">
               With transfers: <span className="text-foreground font-semibold">{withTransfers}</span>
               <span className={`ml-1 font-bold ${delta.startsWith("+") ? "text-accent" : "text-destructive"}`}>
@@ -170,16 +198,16 @@ function SummaryTab({
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl border border-border bg-card p-3 flex items-center gap-2">
           <div className="relative shrink-0">
-            <JerseyIcon team={captain?.team_short ?? ""} size="sm" isCaptain />
+            <JerseyIcon team={captainTeam} size="sm" isCaptain />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Captain</p>
             <p className="text-sm font-bold text-foreground truncate">{captainName}</p>
-            <p className="text-[11px] text-primary">{fmt1(captain?.xpts)} xPts</p>
+            {typeof captainXpts === "number" && <p className="text-[11px] text-primary">{fmt1(captainXpts)} xPts</p>}
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-3 flex items-center gap-2">
-          <JerseyIcon team={recommendation.starting_xi.find(p => p.player_id === recommendation.vice_player_id)?.team_short ?? ""} size="sm" />
+          <JerseyIcon team={viceTeam} size="sm" />
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Vice</p>
             <p className="text-sm font-bold text-foreground truncate">{viceName}</p>
@@ -189,7 +217,7 @@ function SummaryTab({
 
       {/* Formation + Chip + Horizon */}
       <div className="grid grid-cols-3 gap-2">
-        <StatCard label="Formation" value={recommendation.formation.join("-")} />
+        <StatCard label="Formation" value={formation.join("-")} />
         <StatCard
           label="Horizon"
           value={`${horizonGws ?? recommendation.horizon_gws}GW`}
@@ -588,6 +616,7 @@ export const RecommendationsPanel = ({
   chipPlan,
   isChipPlanLoading = false,
   isChipPlanError = false,
+  planSummary = null,
 }: RecommendationsPanelProps) => {
   const [activeTab, setActiveTab] = useState<Tab>("summary");
 
@@ -651,6 +680,7 @@ export const RecommendationsPanel = ({
       <div className="flex-1 overflow-y-auto p-4">
         {activeTab === "summary" && (
           <SummaryTab
+            planSummary={planSummary}
             recommendation={recommendation}
             squad={squad}
             horizonGws={horizonGws}

@@ -329,8 +329,13 @@ export function chipOptions(args: {
   const nowChip = (["wildcard", "free_hit", "bench_boost", "triple_captain"] as ChipName[]).find(
     (c) => c !== nudge && !used(c) && bestWeek(chipPlan, c)?.gw === gw,
   );
+  // Lead with the verdict: "its best week is this one" read as "play it" (user testing, 2026-11).
+  const nowGain = nowChip ? thisWeek(chipPlan, nowChip, gw) : null;
+  const nowBar = nowChip ? chipPlan?.outlook?.find((x) => x.chip === nowChip)?.bar : undefined;
   const saveWhy = nowChip
-    ? `${CHIP_LABELS[nowChip]}'s best week is this one, but its gain is under the bar ZN Pick needs to play it. Saving keeps it for a bigger swing.`
+    ? `No chip clears its bar this week. ${CHIP_LABELS[nowChip]} comes closest${
+        nowGain !== null ? ` at ${fmtGain(nowGain)}${typeof nowBar === "number" ? ` against a ${nowBar.toFixed(0)}-pt bar` : ""}` : ""
+      }, so keep it for a bigger swing.`
     : bestAny
     ? `${CHIP_LABELS[bestAny.chip]} is worth ${fmtGain(bestAny.ev_gain as number)} in GW${bestAny.event_id}, the best week left for any chip.`
     : chipPlan
@@ -360,7 +365,7 @@ export function chipOptions(args: {
           ? tcBest.gw === gw
             ? nudge === "triple_captain"
               ? " This is the best week left for it."
-              : " The best week left on current projections, but under the bar ZN Pick needs to play it."
+              : " Not this week: the gain is under the bar ZN Pick needs to play it, and no later week projects higher."
             : ` Its best week left is GW${tcBest.gw}.`
           : " No double gameweek this week, so the upside is capped."
       }`;

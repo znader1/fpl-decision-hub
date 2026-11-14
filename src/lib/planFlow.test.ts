@@ -257,7 +257,8 @@ describe("chipOptions — the user-testing week (wildcard and TC both peak now, 
     const tc = opts.find((o) => o.chip === "triple_captain")!;
     expect(tc.why).toContain("under the bar");
     expect(tc.why).not.toMatch(/Worth \+8\.7 in GW29/);
-    expect(opts[0].why).toContain("best week is this one");
+    expect(opts[0].why).toMatch(/^No chip clears its bar this week\. \w[\w ]* comes closest/);
+    expect(opts.map((o) => o.why).join(" ")).not.toMatch(/best week is this one|best week left on current projections/);
     expect(opts.filter((o) => o.used).every((o) => o.gain === null)).toBe(true);
   });
 });

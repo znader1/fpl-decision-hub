@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { HorizonTransferPlan, RecommendationsPanel } from "./RecommendationsPanel";
-import type { FplTeamRecommendation, FplTransferPlanHorizon } from "@/lib/fplAssistantApi";
+import { SAMPLE_TEAM_RECOMMENDATION, type FplTeamRecommendation, type FplTransferPlanHorizon } from "@/lib/fplAssistantApi";
 
 afterEach(cleanup);
 
@@ -282,5 +282,35 @@ describe("RecommendationsPanel transfers tab wiring", () => {
     fireEvent.click(screen.getByRole("button", { name: /transfers/i }));
     fireEvent.click(screen.getByRole("button", { name: /apply this move/i }));
     expect(onApply).toHaveBeenCalledWith(0);
+  });
+});
+
+describe("Summary tab with a GW plan", () => {
+  const rec = {
+    ...SAMPLE_TEAM_RECOMMENDATION,
+    projected_points_with_captain: 58.5,
+  } as FplTeamRecommendation;
+
+  it("shows the plan's captain, vice and projection, not the engine's", () => {
+    render(
+      <RecommendationsPanel
+        recommendation={rec}
+        planSummary={{
+          projected: 59.5,
+          delta: 1.2,
+          captain: { name: "PlanCap", team: "EVE", xpts: 5.8 },
+          vice: { name: "PlanVice", team: "CHE" },
+          chip: null,
+          formation: [4, 4, 2],
+        }}
+      />,
+    );
+    expect(screen.getByText("Your plan · projected xPts")).toBeTruthy();
+    expect(screen.getByText("59.5")).toBeTruthy();
+    expect(screen.queryByText("58.5")).toBeNull();
+    expect(screen.getByText("PlanCap")).toBeTruthy();
+    expect(screen.getByText("PlanVice")).toBeTruthy();
+    expect(screen.getByText("4-4-2")).toBeTruthy();
+    expect(screen.getByText(/vs\. your squad with no changes/)).toBeTruthy();
   });
 });

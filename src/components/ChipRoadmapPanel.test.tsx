@@ -153,6 +153,11 @@ describe("chip outlook", () => {
     expect(screen.getByText(/\+11\.2 vs bar 15/)).toBeTruthy();
   });
 
+  it("names the deadline week as this week, not a bare GW number", () => {
+    render(<ChipRoadmapPanel plan={{ ...outlookPlan, current_gw: 8 }} isLoading={false} />);
+    expect(screen.getByText("This week (GW8)")).toBeTruthy();
+  });
+
   it("renders a no-window outlook row without a GW", () => {
     render(<ChipRoadmapPanel plan={outlookPlan} isLoading={false} />);
     fireEvent.click(screen.getByText("Free Hit"));
