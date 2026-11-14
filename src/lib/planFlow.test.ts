@@ -161,7 +161,11 @@ describe("transferOptions", () => {
     expect(o.make?.why).toBe("Haaland has LIV (A); Solanke gets WHU (H).");
     expect(o.roll).toMatchObject({ zn: false, gain: 0, meta: "this week · 2 FTs in GW30" });
     expect(o.roll.why).toContain("Rolling nets +1.1");
-    expect(o.alsoConsidered).toEqual([{ sell: "Rice", buy: "Rogers", sellTeam: expect.any(String), buyTeam: expect.any(String), net: 1.1, hit: false, bar: 2 }]);
+    // Every runner-up is pickable, the one clearing the bar included.
+    expect(o.alsoConsidered).toEqual([
+      { sellId: 21, buyId: 50, clearsBar: false, sell: "Rice", buy: "Rogers", sellTeam: "ARS", buyTeam: "AVL", net: 1.1, hit: false, bar: 2 },
+      { sellId: 5, buyId: 51, clearsBar: true, sell: "Gabriel", buy: "Guéhi", sellTeam: "ARS", buyTeam: "CRY", net: 2.9, hit: false, bar: 2 },
+    ]);
   });
   it("hit moves show the cost in the meta and net it from the gain", () => {
     const o = transferOptions(rec(detail({ ft_before: 0, ft_after: 0, hit_cost: 4, horizon_gain: 6.5 })));

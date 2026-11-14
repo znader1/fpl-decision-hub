@@ -105,7 +105,7 @@ const tOpts: TransferOptions = {
     moves: [{ sell: { id: 1, name: "Isak", team: "NEW", price: 8 }, buy: { id: 2, name: "Solanke", team: "BOU", price: 7 }, this_gw_gain: 0.8, horizon_gain: 2.4 }],
   },
   roll: { zn: false, gain: 0, meta: "this week · 2 FTs in GW30", why: "Bank it.", moves: [] },
-  alsoConsidered: [{ sell: "Gordon", buy: "Rogers", sellTeam: "NEW", buyTeam: "AVL", net: -2.9, hit: true, bar: 4 }],
+  alsoConsidered: [{ sellId: 3, buyId: 4, clearsBar: false, sell: "Gordon", buy: "Rogers", sellTeam: "NEW", buyTeam: "AVL", net: -2.9, hit: true, bar: 4 }],
 };
 
 describe("TransfersStep", () => {
@@ -113,15 +113,29 @@ describe("TransfersStep", () => {
     const onPick = vi.fn();
     render(<TransfersStep options={tOpts} value={null} onPick={onPick} />);
     const radios = screen.getAllByRole("radio");
-    expect(radios).toHaveLength(2);
+    expect(radios).toHaveLength(3);
     expect(within(radios[0]).getByText("ZN Pick")).toBeTruthy();
     expect(within(radios[0]).getByText("Solanke")).toBeTruthy();
     expect(within(radios[0]).getByText("+2.4")).toBeTruthy();
     expect(within(radios[1]).getByText("+0.0")).toBeTruthy();
     fireEvent.click(radios[1]);
     expect(onPick).toHaveBeenCalledWith("roll");
-    expect(screen.getByText(/Gordon \(NEW\) → Rogers \(AVL\)/).textContent).toContain("−4 hit");
+    const alt = within(radios[2]);
+    expect(radios[2].textContent).toMatch(/Gordon \(NEW\) → Rogers \(AVL\)/);
+    expect(alt.getByText(/−4 hit/)).toBeTruthy();
     expect(screen.getByText("under the +4.0 pts needed")).toBeTruthy();
+  });
+
+  it("lets the user pick an also-considered move instead of ZN Pick's", () => {
+    const onPick = vi.fn();
+    const { rerender } = render(<TransfersStep options={tOpts} value="make" onPick={onPick} />);
+    const alt = screen.getByRole("radio", { name: "Make Gordon to Rogers instead" });
+    expect(alt.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(alt);
+    expect(onPick).toHaveBeenCalledWith("make", { sell: 3, buy: 4 });
+    rerender(<TransfersStep options={tOpts} value="make" pick={{ sell: 3, buy: 4 }} onPick={onPick} />);
+    expect(screen.getByRole("radio", { name: "Make Gordon to Rogers instead" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("radio", { name: "Make the move" }).getAttribute("aria-checked")).toBe("false");
   });
 
   it("marks the chosen card checked and disables Make when there is no move", () => {

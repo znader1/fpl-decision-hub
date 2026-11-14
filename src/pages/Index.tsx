@@ -18,7 +18,9 @@ import {
   swapPlayers,
   reconcilePromotion,
   suggestedBench,
-  transferChoicePatch,
+  transferPickPatch,
+  pickIsStale,
+  planHitCost,
   toPlanId,
   type PlanChip,
   type PlanStep,
@@ -550,11 +552,14 @@ const Index = () => {
       // ignore
     }
   }, [stepStrategy, planLoaded]);
-  const planMoves = useMemo(() => makeMoves(planRec), [planRec]);
+  // A saved (locked) plan isn't rewritten by the stale-pick effect; read past a stale pick here too.
+  const planPick = plan && !pickIsStale(plan, planRec) ? plan.pick ?? null : null;
+  const planMoves = useMemo(() => makeMoves(planRec, planPick), [planRec, planPick]);
   const playerLookup = useMemo(() => buildPlayerLookup(latestSquad ?? squadQuery.data, planRec), [latestSquad, squadQuery.data, planRec]);
   const resolvedPlan = useMemo(() => (plan ? resolvePlan(plan, planMoves) : null), [plan, planMoves]);
   // Derived, never stored: "make" applies the verdict's moves, nothing else does.
-  const appliedTransferCount = plan?.transfer === "make" ? planMoves.length : 0;
+  // The backend's step squads follow ZN Pick's moves, so a picked runner-up uses none.
+  const appliedTransferCount = plan?.transfer === "make" && !planPick ? planMoves.length : 0;
   const { canUseWildcardDrafter } = useEntitlement();
   const chipOpts = useMemo(
     () =>
@@ -665,9 +670,14 @@ const Index = () => {
   // A rerun can change the moves under a "make" plan; keep the promoted starter in step.
   useEffect(() => {
     if (!plan || plan.locked || Object.keys(playerLookup).length === 0) return;
+    // A rerun that no longer lists the picked runner-up falls back to ZN Pick's move, visibly.
+    if (pickIsStale(plan, planRec)) {
+      setPlan((p) => transferPickPatch(p, p.transfer, null, planRec, playerLookup));
+      return;
+    }
     const patch = reconcilePromotion(plan, planMoves, playerLookup);
     if (patch) setPlan(patch);
-  }, [plan, planMoves, playerLookup, setPlan]);
+  }, [plan, planRec, planMoves, playerLookup, setPlan]);
   const benchSuggestion = useMemo(() => {
     if (!plan || !resolvedPlan) return null;
     const shown = new Map(plan.bench.map((id, i) => [id, resolvedPlan.bench[i]]));
@@ -679,12 +689,12 @@ const Index = () => {
   // DecisionCard's Apply/Undo write the plan's transfer decision; the per-move
   // index no longer matters — the plan applies the verdict's moves as one.
   const applyTransferAtIndex = () => {
-    if (planMoves.length === 0) return;
-    setPlan((p) => transferChoicePatch(p, "make", planMoves, playerLookup));
+    if (makeMoves(planRec).length === 0) return;
+    setPlan((p) => transferPickPatch(p, "make", null, planRec, playerLookup));
   };
 
   const resetAppliedTransfers = () => {
-    setPlan((p) => transferChoicePatch(p, null, planMoves, playerLookup));
+    setPlan((p) => transferPickPatch(p, null, null, planRec, playerLookup));
   };
 
   const activeRecommendation = useMemo(() => {
@@ -954,7 +964,7 @@ const Index = () => {
   );
   const reviewRows = plan && basePlan ? reviewSummary(plan, basePlan, planMoves, playerLookup, weekDecisions) : [];
   const planTodo =
-    plan && basePlan ? buildTodo(plan, basePlan, planMoves, playerLookup, planRec?.transfer_plan_horizon?.verdict_detail?.hit_cost ?? 0) : [];
+    plan && basePlan ? buildTodo(plan, basePlan, planMoves, playerLookup, planHitCost(plan, planRec)) : [];
   const footer = footerFor({ step, plan, decisions: weekDecisions, warnings: planWarnings, gw: deadlineGw ?? planGw });
   const onFooterNext = () => {
     if (!plan) return;
@@ -1108,7 +1118,8 @@ const Index = () => {
                 <TransfersStep
                   options={transferOpts}
                   value={plan?.transfer ?? null}
-                  onPick={(choice) => setPlan((p) => transferChoicePatch(p, choice, planMoves, playerLookup))}
+                  pick={planPick}
+                  onPick={(choice, pick) => setPlan((p) => transferPickPatch(p, choice, pick ?? null, planRec, playerLookup))}
                   loading={recommendationMutation.isPending}
                   error={recommendErrorMessage}
                   onRun={rerunPick}

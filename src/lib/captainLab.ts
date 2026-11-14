@@ -32,7 +32,7 @@ export interface CaptainCandidate {
   pos?: string;
   /** A defender/keeper offered only because he clears the best attacker by the margin. */
   lowCeiling?: boolean;
-  /** Last GW's armband (the squad as seeded); kept as a card even outside the top three. */
+  /** The squad's armband before any plan edit; always a card, shown first. */
   current?: boolean;
 }
 
@@ -223,5 +223,8 @@ export function buildCaptainLab(rec: FplTeamRecommendation, goal: CaptainGoal, m
       : base;
 
   const eoEventId = num((opts.pool ?? rec.starting_xi).find((p) => typeof p.eo_top10k_event_id === "number")?.eo_top10k_event_id) ?? null;
-  return { candidates, znPickId, captainId, viceId, headline, subcopy, rankAware, ownershipBasis, eoEventId, projected };
+  // The current captain leads the row: the pick to beat (user testing, 2026-11).
+  // Done last so the copy above still reads candidates in xPts order.
+  const ordered = [...candidates.filter((c) => c.current), ...candidates.filter((c) => !c.current)];
+  return { candidates: ordered, znPickId, captainId, viceId, headline, subcopy, rankAware, ownershipBasis, eoEventId, projected };
 }

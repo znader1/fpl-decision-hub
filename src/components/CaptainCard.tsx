@@ -47,32 +47,30 @@ export function CaptainCard({ c, role, znPick, onMakeCaptain, onMakeVice, owners
           : "border-border bg-card"
       } ${c.benched ? "opacity-50" : ""}`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <JerseyIcon team={c.team} size="md" isCaptain={isCap} />
-          <div>
-            <div className="text-[17px] font-extrabold text-foreground">
-              {c.name}
-              <span className="ml-1.5 text-[11px] font-semibold text-muted-foreground">
-                {c.team}
-                {c.pos ? ` · ${c.pos}` : ""}
-              </span>
-            </div>
-            {c.fixture && (
-              <div className="mt-1.5">
-                <FixtureChip opponent={c.fixture.opponent} isHome={c.fixture.isHome} difficulty={c.fixture.difficulty} className="text-[10px]" />
-              </div>
-            )}
+      {/* Badge row: fixed height on every card, so names, numbers and buttons line up across the row. */}
+      <div className="flex min-h-[22px] flex-wrap items-center gap-1">
+        {znPick && <Badge className="bg-primary text-white hover:bg-primary">ZN Pick</Badge>}
+        {role && <Badge className="bg-accent text-white hover:bg-accent">{role}</Badge>}
+        {c.current && (
+          <Badge variant="outline" className="text-muted-foreground">
+            Current captain
+          </Badge>
+        )}
+      </div>
+
+      <div className="flex min-w-0 items-center gap-3">
+        <JerseyIcon team={c.team} size="md" isCaptain={isCap} />
+        <div className="min-w-0">
+          <div className="truncate text-[17px] font-extrabold text-foreground" title={c.name}>
+            {c.name}
           </div>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          {znPick && <Badge className="bg-primary text-white hover:bg-primary">ZN Pick</Badge>}
-          {role && <Badge className="bg-accent text-white hover:bg-accent">{role}</Badge>}
-          {c.current && !isCap && (
-            <Badge variant="outline" className="text-muted-foreground">
-              Last GW captain
-            </Badge>
-          )}
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+            <span>
+              {c.team}
+              {c.pos ? ` · ${c.pos}` : ""}
+            </span>
+            {c.fixture && <FixtureChip opponent={c.fixture.opponent} isHome={c.fixture.isHome} difficulty={c.fixture.difficulty} className="text-[10px]" />}
+          </div>
         </div>
       </div>
 
@@ -130,7 +128,7 @@ export function CaptainCard({ c, role, znPick, onMakeCaptain, onMakeVice, owners
 
       <p className="text-xs leading-relaxed text-foreground/80">{note}</p>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="mt-auto grid grid-cols-2 gap-2">
         <Button
           type="button"
           size="sm"
