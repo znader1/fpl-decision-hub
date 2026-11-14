@@ -4,16 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-```bash
-npm install        # install dependencies
-npm run dev        # dev server on :8080
-npm run build      # production build (also type-checks)
-npm run typecheck  # tsc only, no bundle
-npm run lint       # ESLint
-npm test           # vitest run (whole suite)
-npx vitest run src/components/DecisionCard.test.tsx   # single file
-npx vitest run -t "runner-ups"                        # tests matching a name
-```
+Scripts are in `package.json`; the dev server runs on :8080 and `npm run build` also type-checks.
 
 Tests are Vitest + Testing Library, colocated as `*.test.ts(x)` (plus `src/lib/__tests__/`). Default environment is node — component tests opt into the DOM with a `// @vitest-environment jsdom` pragma on line 1. `vitest.config.ts` restricts `include` to `src/**` because stale `.claude/worktrees/*` checkouts were once collected; keep that.
 
@@ -37,19 +28,9 @@ Dev-only flags (never set in production): `VITE_REPLAY_MODE=1` (+ `VITE_REPLAY_E
 
 ## Architecture
 
-**Stack:** React + TypeScript + Vite, Tailwind CSS, shadcn/ui, TanStack Query, Supabase auth, React Router.
-
 **Backend:** Separate repo (`FPL/`) running FastAPI on Fly.io. This frontend is purely a consumer — no data processing happens here.
 
-### Request flow
-
-```
-Index.tsx (state + TanStack Query)
-  → src/lib/fplAssistantApi.ts  (typed fetch wrappers + URL resolution)
-  → FastAPI backend (/squad, /recommendations, /explain, /league/*)
-```
-
-`fplAssistantApi.ts` is the single API layer. All types (`FplSquad`, `FplTeamRecommendation`, `LeagueStrategyResponse`, etc.) live there. URL templates are read from env vars and interpolated at call time — never hardcode backend URLs in components.
+`src/lib/fplAssistantApi.ts` is the single API layer: every API type and fetch function lives there, and new endpoints go there. URL templates are read from env vars and interpolated at call time — never hardcode backend URLs in components.
 
 ### Auth
 
@@ -59,26 +40,9 @@ The backend verifies the Supabase JWT, so API calls go through `authFetch` (`src
 
 `useProfile` (`src/hooks/useProfile.ts`) loads the user's `profiles` row (linked FPL entry id + identity snapshot + `plan` tier). `plan` is read-only on the client (locked by migration `supabase/migrations/*_lock_plan_column.sql`). Feature gating goes through `useEntitlement` / `computeEntitlements` (`src/lib/entitlements.ts`) — components read boolean flags, never plan strings. `BETA_ALL_ACCESS = true` currently grants everything.
 
-### Pages
+### State
 
-- `/` — Landing; `/privacy`, `/terms`
-- `/auth` — Login/signup (Supabase); `/auth/confirm` email confirmation; `/login`, `/signup` are legacy aliases
-- `/app` — Main squad + recommendations (`Index.tsx`)
-- `/app/plan/:step` — the GW flow's steps (`transfers | captain | bench | chip | confirm`), rendered by `Index.tsx` so state survives step changes; `/app/captain` redirects to `/app/plan/captain`. See GW plan section
-- `/app/league` — Mini-league strategy (mobile-friendly)
-- `/app/fixtures` — Fixture Planner (handoff 1c): 6-GW heatmap of the squad, chip windows, weakest links; the old all-teams ticker sits behind an "All teams" `<details>`
-- `/app/squad-picker` — Squad picker (lazy-loaded)
-- `/replay` — dev-only GW replay (see Environment)
-
-### Key components
-
-- `src/pages/Index.tsx` — owns all state (entryId, GW, chip strategy, applied transfers). Orchestrates TanStack Query for squad, fixtures, next event, and recommendations. User settings persist to `localStorage` under `fpl_*` keys (`fpl_entry_id`, `fpl_selected_gw`, `fpl_chip_strategy`, `fpl_horizon_gws`, …) read/written here; `League.tsx` shares `fpl_entry_id`.
-- `src/lib/fplAssistantApi.ts` — all API types and fetch functions. Add new endpoints here.
-- `src/components/RecommendationsPanel.tsx` — tabbed panel (summary / transfers / watchlist) + `ExplanationPanel` (Phase 1 LLM rationale, lazy-loads on expand).
-- `src/components/ExplanationPanel.tsx` — calls `POST /explain` on first open, caches in component state.
-- `src/pages/League.tsx` — calls `GET /league/list` then `POST /league/strategy` with chase/defend/differential mode.
-- `src/components/CommandRail.tsx` — desktop left rail: `WeekChecklist` (step navigation), `ProjectedCard`, `ParameterForm` behind a collapsed toggle.
-- `src/components/plan/*` — the flow's step views (`TransfersStep`, `CaptainStep`, `BenchStep`, `ChipStep`, `ReviewStep`), `PlanFooter`, `StepChips`, `StepHeader`, `RadioCard`.
+`src/pages/Index.tsx` owns all state (entryId, GW, chip strategy, plan) and renders the `/app/plan/:step` steps itself so state survives step changes. User settings persist to `localStorage` under `fpl_*` keys; `League.tsx` shares `fpl_entry_id`.
 
 ### GW selection and flash prevention
 
@@ -96,7 +60,7 @@ The recommendation tab on `PitchVisualization.tsx` is labelled **"ZN Pick"** (no
 
 ### Command Center (2026-10 design handoff, 1a)
 
-`/app` follows the design handoff (`docs/superpowers/specs/2026-10-10-fpledge-redesign-handoff.md`) (1a + shared deadline countdown + 1b Captain Lab + 1c Fixture Planner). Layout on lg+: `CommandRail` (240px, 280px at xl) | pitch column | `RecommendationsPanel` (340px). The rail stacks `WeekChecklist` ("THIS WEEK · n of 4 decisions made", rows derived by `deriveWeekDecisions()` in `src/lib/weekDecisions.ts` — never stored), `ProjectedCard` (plan total + delta vs the no-change squad; percentile ring and benchmark bars once the backend's sample job has run — `projected_top10k_avg` / `projected_overall_avg` are the sampled field scored against the request's xPts, and the ring's "top N%" is `percentileFromQuantiles` (`src/lib/fieldPercentile.ts`) placing the plan's client-side total on `projected_field.overall_quantiles`, falling back to the active transfer step's `projected_percentile`, then the base squad's; backend branch `feature/top10k-eo`, one-GW lag like the EO tile) and the `ParameterForm` behind a collapsed "Parameters" toggle. `ParameterSidebar` was deleted; phones use `MobileParameterDrawer`; there is no checklist strip above the pitch on phones since the step chips under the navbar carry the ✓ per decision (2026-10-11), and `GameweekNav` is one non-wrapping row below sm (GW chevrons hidden, select narrower, rank truncates). The navbar (`layout/Navbar.tsx`) shows all app tabs with the active one lit, a `DeadlineCountdown` pill (ticks 1s from `/events/next` `deadline_time_utc`, shares the `["next-event"]` query key, hidden once passed) and an `extras` slot Index fills with FT (and Bank when `entry_history.bank` exists). Pitch starters carry an xPts aura (`PlayerCard` `aura` prop, 30 + xPts × 11 px) and newly applied signings an `IN +x` pill (`src/lib/incomingPlayers.ts`); the bench eyebrow is "Bench". `--fdr-1…5` tokens live in `index.css` (`text-fdr-4` = rose for negatives). `fmtGain`/`gwRange` live in `src/lib/format.ts` (re-exported from `DecisionCard`).
+`/app` follows the design handoff (`docs/superpowers/specs/2026-10-10-fpledge-redesign-handoff.md`) (1a + shared deadline countdown + 1b Captain Lab + 1c Fixture Planner). Layout on lg+: `CommandRail` (240px, 280px at xl) | pitch column | `RecommendationsPanel` (340px). The rail stacks `WeekChecklist` ("THIS WEEK · n of 4 decisions made", rows derived by `deriveWeekDecisions()` in `src/lib/weekDecisions.ts` — never stored), `ProjectedCard` (plan total + delta vs the no-change squad; percentile ring and benchmark bars once the backend's sample job has run — `projected_top10k_avg` / `projected_overall_avg` are the sampled field scored against the request's xPts, and the ring's "top N%" is `percentileFromQuantiles` (`src/lib/fieldPercentile.ts`) placing the plan's client-side total on `projected_field.overall_quantiles`, falling back to the active transfer step's `projected_percentile`, then the base squad's; one-GW lag like the EO tile) and the `ParameterForm` behind a collapsed "Parameters" toggle. `ParameterSidebar` was deleted; phones use `MobileParameterDrawer`; there is no checklist strip above the pitch on phones since the step chips under the navbar carry the ✓ per decision (2026-10-11), and `GameweekNav` is one non-wrapping row below sm (GW chevrons hidden, select narrower, rank truncates). The navbar (`layout/Navbar.tsx`) shows all app tabs with the active one lit, a `DeadlineCountdown` pill (ticks 1s from `/events/next` `deadline_time_utc`, shares the `["next-event"]` query key, hidden once passed) and an `extras` slot Index fills with FT (and Bank when `entry_history.bank` exists). Pitch starters carry an xPts aura (`PlayerCard` `aura` prop, 30 + xPts × 11 px) and newly applied signings an `IN +x` pill (`src/lib/incomingPlayers.ts`); the bench eyebrow is "Bench". `--fdr-1…5` tokens live in `index.css` (`text-fdr-4` = rose for negatives). `fmtGain`/`gwRange` live in `src/lib/format.ts` (re-exported from `DecisionCard`).
 
 ### GW plan + connected flow (v2 handoff, 2026-10-11)
 
@@ -104,7 +68,7 @@ Spec: `docs/superpowers/specs/2026-10-11-fpledge-v2-flow-handoff.md`. **One clie
 
 ### Captain step (`/app/plan/captain`; was the Captain Lab page, handoff 1b)
 
-`CaptainStep` + `CaptainCard` (separate **Make captain / Make vice** buttons, no whole-card click; captaining the vice swaps roles; a benched candidate is dimmed and disabled with a note) derive everything in `src/lib/captainLab.ts` (`buildCaptainLab(rec, goal, plan.cap, { pool, benchedIds, viceId })`): candidates = the three highest-xPts of the plan's 15 (benched ones never the ZN Pick); **Protect rank** → highest `eo_top10k`, **Chase rank** → highest `rank_gain_if_haul` (the subcopy then quotes both swings — "Groß projects higher, but his haul moves you about +711k. De Cuyper's moves you +738k" — never the EO, since a 94%-EO player can still carry a big swing when the basis is the field around *your* rank, `rank_gain_basis`; `fmtRankSwing` in `captainLab.ts` is the one "+711k" formatter; when no candidate has a swing, chase = `p90 × (1 − min(eo_top10k, 100)/100)`, the ceiling the fewest top-10k rivals share); `eo_top10k` is sampled by the backend from the current GW's top-10k picks (`POST /admin/refresh-top10k`, branch `feature/top10k-eo` in `FPL-Assistant/FPL`), lags the planned GW by one and the tile says so via `eo_top10k_event_id` ("Top 10k EO · GW6"); when only `ownership_pct` (FPL overall selected_by_percent, which the backend now sends — branch `feature/captain-lab-fields` in `FPL-Assistant/FPL`) is present, protect = most owned and chase = highest `p90 × (1 − ownership)` and the tile is labelled "Ownership" instead of "Top 10k EO" (`ownershipBasis`); with neither, both goals fall back to the `is_captain_suggested` player and the page says so under the headline. Range bar (0–20 axis) uses `xpts_p10/p90` when sent, else `score_breakdown.distribution.p80_low/high` (the backend's 80% band *is* p10–p90). Captain and vice are the plan's; the goal persists as `fpl_captain_goal`. Nav tabs are Squad · Captain · Planner · Mini-league · Draft squad (Draft squad hidden from the strip below lg); `activeTabFor()` lights Squad on every plan step except the captain's.
+`CaptainStep` + `CaptainCard` (separate **Make captain / Make vice** buttons, no whole-card click; captaining the vice swaps roles; a benched candidate is dimmed and disabled with a note) derive everything in `src/lib/captainLab.ts` (`buildCaptainLab(rec, goal, plan.cap, { pool, benchedIds, viceId })`): candidates = the three highest-xPts of the plan's 15 (benched ones never the ZN Pick); **Protect rank** → highest `eo_top10k`, **Chase rank** → highest `rank_gain_if_haul` (the subcopy then quotes both swings — "Groß projects higher, but his haul moves you about +711k. De Cuyper's moves you +738k" — never the EO, since a 94%-EO player can still carry a big swing when the basis is the field around *your* rank, `rank_gain_basis`; `fmtRankSwing` in `captainLab.ts` is the one "+711k" formatter; when no candidate has a swing, chase = `p90 × (1 − min(eo_top10k, 100)/100)`, the ceiling the fewest top-10k rivals share); `eo_top10k` is sampled by the backend from the current GW's top-10k picks (`POST /admin/refresh-top10k`), lags the planned GW by one and the tile says so via `eo_top10k_event_id` ("Top 10k EO · GW6"); when only `ownership_pct` (FPL overall selected_by_percent) is present, protect = most owned and chase = highest `p90 × (1 − ownership)` and the tile is labelled "Ownership" instead of "Top 10k EO" (`ownershipBasis`); with neither, both goals fall back to the `is_captain_suggested` player and the page says so under the headline. Range bar (0–20 axis) uses `xpts_p10/p90` when sent, else `score_breakdown.distribution.p80_low/high` (the backend's 80% band *is* p10–p90). Captain and vice are the plan's; the goal persists as `fpl_captain_goal`. Nav tabs are Squad · Captain · Planner · Mini-league · Draft squad (Draft squad hidden from the strip below lg); `activeTabFor()` lights Squad on every plan step except the captain's.
 
 ### Fixture Planner (`/app/fixtures`, handoff 1c, 2026-10)
 
@@ -137,18 +101,3 @@ Vercel auto-deploys on push to `main`. `vercel.json` rewrites all paths to `inde
 
 For feature branch testing, create a Vercel preview environment variable pointing `VITE_FPL_API_BASE_URL` at `fpl-assistant-api-dev.fly.dev`.
 
-### Backend endpoints consumed
-
-| Endpoint | Used by |
-|---|---|
-| `GET /squad` | Index.tsx squad fetch |
-| `GET /recommendations` | Index.tsx recommendation mutation |
-| `GET /events/next` | Index.tsx next event |
-| `POST /explain` | ExplanationPanel |
-| `GET /league/list` | League.tsx |
-| `POST /league/strategy` | League.tsx |
-| `GET /chips/plan` | Index.tsx chip plan query (Chips tab + nudge card) |
-| `GET /entry/identity` | entry-id linking (manager/team name snapshot) |
-| `POST /squad/optimize` | OptimizeSquadDialog |
-| `GET /fixtures/difficulty` | Fixtures.tsx |
-| `POST /chat`, `POST /chat/{captain,transfer,chip}` | AiAdvisorPanel |
