@@ -439,7 +439,9 @@ const Index = () => {
     ? undefined
     : typeof freeHitRevertedFrom === "number"
       ? `Your GW ${freeHitRevertedFrom} Free Hit squad lasted one week — showing your permanent squad (GW ${returnedSquadGw}).`
-      : `Showing your latest squad (GW ${returnedSquadGw}) — your GW ${squadGW} picks aren't available yet.`;
+      : // FPL publishes a GW's team only after its deadline; "aren't available
+        // yet" read like an error (user testing, 2026-11).
+        `FPL shows your GW ${squadGW} team after the deadline, so this starts from your GW ${returnedSquadGw} squad.`;
 
   useEffect(() => {
     if (chipStrategy !== "wildcard" && chipPlayEventId !== undefined) {
