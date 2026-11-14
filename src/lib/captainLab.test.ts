@@ -172,11 +172,11 @@ describe("buildCaptainLab from the plan (v2 flow)", () => {
     const vh = lab2.candidates.find((c) => c.name === "Van Hecke");
     expect(vh?.lowCeiling).toBe(true);
   });
-  it("keeps the squad's current captain as a card when he falls outside the top three", () => {
+  it("keeps the squad's current captain as the first card when he falls outside the top three", () => {
     const low = p(7, "Barry", "EVE", 4.1);
     const lab = buildCaptainLab(rec([...withEo, low]), "chase", null, { pool: [...withEo, low], currentCaptainId: 7 });
-    expect(lab.candidates.map((c) => c.name)).toEqual(["Haaland", "Saka", "Palmer", "Barry"]);
-    expect(lab.candidates[3].current).toBe(true);
+    expect(lab.candidates.map((c) => c.name)).toEqual(["Barry", "Haaland", "Saka", "Palmer"]);
+    expect(lab.candidates[0].current).toBe(true);
     expect(lab.candidates.filter((c) => c.current)).toHaveLength(1);
   });
 });

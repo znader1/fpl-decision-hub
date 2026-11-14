@@ -44,6 +44,9 @@ export interface GwPlan {
   /** Set when "make" started a benched seller's buy over the weakest same-position
    *  starter (plan ids); "roll" / undecided swaps them back. Absent on older plans. */
   promoted?: { seller: number; starter: number; buy?: number } | null;
+  /** A runner-up ("Also considered") the user chose over ZN Pick's move; "make"
+   *  applies it instead of the verdict's moves. Null / absent = ZN Pick's move. */
+  pick?: { sell: number; buy: number } | null;
 }
 
 export type PlanPatch = Partial<GwPlan> | ((plan: GwPlan) => Partial<GwPlan>);
@@ -121,11 +124,10 @@ export function moveBench(plan: GwPlan, index: number, dir: -1 | 1): GwPlan {
 // ---- transfers --------------------------------------------------------------
 
 /**
- * The plan patch for a transfer decision. The planner credits a bench seller's
- * buy only for the starter he displaces, so "make" starts him over the weakest
- * same-position starter when he projects higher (a like-for-like swap keeps the
- * formation legal); leaving "make" swaps that pair back if the user hasn't moved
- * them since.
+ * The plan patch for a transfer decision. A buy is meant to play, so "make"
+ * starts a benched seller's buy over the weakest same-position non-captain
+ * starter (a like-for-like swap keeps the formation legal); leaving "make"
+ * swaps that pair back if the user hasn't moved them since.
  */
 export function transferChoicePatch(
   plan: GwPlan,
@@ -144,13 +146,13 @@ export function transferChoicePatch(
   if (choice === "make" && !promoted) {
     for (const m of moves) {
       if (!bench.includes(m.sell.id) || bench[0] === m.sell.id) continue;
-      const buy = lookup[m.buy.id];
-      const pos = buy?.pos ?? lookup[m.sell.id]?.pos;
-      if (!buy || typeof buy.xpts !== "number" || !pos) continue;
-      const weakest = xi
-        .filter((id) => id !== plan.cap && lookup[id]?.pos === pos && typeof lookup[id]?.xpts === "number")
-        .sort((a, b) => (lookup[a].xpts as number) - (lookup[b].xpts as number))[0];
-      if (weakest === undefined || (lookup[weakest].xpts as number) >= buy.xpts) continue;
+      // A transfer is bought to play (user testing, 2026-11): the buy starts
+      // whatever this week's projection says, over the weakest same-position starter.
+      const pos = lookup[m.buy.id]?.pos ?? (m.position as FplPosition | undefined) ?? lookup[m.sell.id]?.pos;
+      if (!pos) continue;
+      const xp = (id: number) => lookup[id]?.xpts ?? Infinity;
+      const weakest = xi.filter((id) => id !== plan.cap && lookup[id]?.pos === pos).sort((a, b) => xp(a) - xp(b))[0];
+      if (weakest === undefined) continue;
       ({ xi, bench } = swapPlayers({ ...plan, xi, bench }, m.sell.id, weakest));
       promoted = { seller: m.sell.id, starter: weakest, buy: m.buy.id };
       break;
@@ -186,11 +188,48 @@ export function suggestedBench(bench: number[], xptsOf: (planId: number) => numb
   return [gk, ...[...subs].sort((a, b) => (xptsOf(b) ?? -Infinity) - (xptsOf(a) ?? -Infinity))];
 }
 
-/** The moves "Make the move" applies: the verdict's on spend, the rejected walk's on roll. */
-export function makeMoves(rec: FplTeamRecommendation | undefined): FplTransferVerdictMove[] {
+/** The moves "Make the move" applies: the verdict's on spend, the rejected walk's
+ *  on roll, or the one runner-up the user picked instead. */
+export function makeMoves(rec: FplTeamRecommendation | undefined, pick?: GwPlan["pick"]): FplTransferVerdictMove[] {
   const d = rec?.transfer_plan_horizon?.verdict_detail;
   if (!d) return [];
+  if (pick) {
+    const alt = (d.runner_ups ?? []).find((m) => m.sell.id === pick.sell && m.buy.id === pick.buy);
+    if (alt) return [alt];
+  }
   return d.action === "roll" ? d.roll_alternative?.moves ?? [] : d.moves;
+}
+
+/** The plan's runner-up pick is gone from a fresh recommendation (a rerun ranked
+ *  other moves): "make" would silently apply ZN Pick's move under a stale pick. */
+export function pickIsStale(plan: GwPlan, rec: FplTeamRecommendation | undefined): boolean {
+  const d = rec?.transfer_plan_horizon?.verdict_detail;
+  if (!plan.pick || !d) return false;
+  return !(d.runner_ups ?? []).some((m) => m.sell.id === plan.pick!.sell && m.buy.id === plan.pick!.buy);
+}
+
+/** The hit a "make" plan pays: the verdict's own, or −4 for a runner-up with no FT left. */
+export function planHitCost(plan: GwPlan, rec: FplTeamRecommendation | undefined): number {
+  const d = rec?.transfer_plan_horizon?.verdict_detail;
+  if (!d) return 0;
+  return plan.pick ? (d.ft_before === 0 ? 4 : 0) : d.hit_cost;
+}
+
+/**
+ * The plan patch for picking a transfer card: ZN Pick's move, a runner-up
+ * (`pick`), "roll" or undecided. Undoes the old move's promotion before
+ * applying the new one, so switching between moves never strands a starter.
+ */
+export function transferPickPatch(
+  plan: GwPlan,
+  choice: GwPlan["transfer"],
+  pick: GwPlan["pick"],
+  rec: FplTeamRecommendation | undefined,
+  lookup: PlayerLookup,
+): Partial<GwPlan> {
+  const cleared = { ...plan, ...transferChoicePatch(plan, null, [], lookup) };
+  const nextPick = choice === "make" ? pick ?? null : null;
+  return { ...transferChoicePatch(cleared, choice, makeMoves(rec, nextPick), lookup), pick: nextPick };
 }
 
 export interface ResolvedPlan {
@@ -244,7 +283,8 @@ export function buildPlayerLookup(squad: FplSquad | undefined, rec: FplTeamRecom
   if (rec?.squad_with_transfers) {
     for (const p of [...rec.squad_with_transfers.starting_xi, ...rec.squad_with_transfers.bench]) if (!out[p.player_id]) out[p.player_id] = p;
   }
-  for (const m of makeMoves(rec)) {
+  const d = rec?.transfer_plan_horizon?.verdict_detail;
+  for (const m of [...makeMoves(rec), ...(d?.runner_ups ?? [])]) {
     if (out[m.buy.id]) continue;
     const seller = out[m.sell.id];
     out[m.buy.id] = {

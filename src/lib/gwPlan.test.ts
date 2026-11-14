@@ -6,6 +6,9 @@ import {
   buildTodo,
   countChanges,
   makeMoves,
+  transferPickPatch,
+  pickIsStale,
+  planHitCost,
   moveBench,
   parseStoredPlan,
   planStorageKey,
@@ -302,7 +305,7 @@ describe("storage", () => {
 
 describe("transferChoicePatch", () => {
   // Bench DEF 13 is sold for a DEF who projects 5 — above every starting DEF (3).
-  const benchMove = [{ sell: { id: 13, name: "P13", team: "AAA", price: 4 }, buy: { id: 98, name: "Konsa", team: "AVL", price: 5 }, this_gw_gain: 2, horizon_gain: 3.3 }];
+  const benchMove = [{ sell: { id: 13, name: "P13", team: "AAA", price: 4 }, buy: { id: 98, name: "P98", team: "BBB", price: 5 }, this_gw_gain: 2, horizon_gain: 3.3 }];
   const lookup = { ...buildPlayerLookup(SQUAD, undefined), 98: mkPlayer(98, "DEF", 5) };
   const seed = seedPlan(SQUAD);
 
@@ -317,13 +320,17 @@ describe("transferChoicePatch", () => {
     expect(rolled.promoted).toBeNull();
   });
 
-  it("leaves the lineup alone when the buy doesn't beat a starter, or the seller already starts", () => {
+  it("starts the buy even when he projects below every starter: a transfer is bought to play", () => {
     const weak = { ...lookup, 98: mkPlayer(98, "DEF", 2) };
-    expect(transferChoicePatch(seed, "make", benchMove, weak)).toMatchObject({ xi: seed.xi, promoted: null });
+    const made = { ...seed, ...transferChoicePatch(seed, "make", benchMove, weak) };
+    expect(made.promoted).toEqual({ seller: 13, starter: 2, buy: 98 });
+    expect(resolvePlan(made, benchMove).xi).toContain(98);
+  });
+
+  it("leaves the lineup alone when the seller already starts", () => {
     const starterMove = makeMoves(rec(detail()));
     expect(transferChoicePatch(seed, "make", starterMove, lookup)).toMatchObject({ xi: seed.xi, promoted: null });
   });
-
   it("does not undo a promotion the user has since changed on the bench step", () => {
     const made = { ...seed, ...transferChoicePatch(seed, "make", benchMove, lookup) };
     const edited = swapPlayers(made, 2, 3); // user brings 2 back on for 3
@@ -332,8 +339,55 @@ describe("transferChoicePatch", () => {
   });
 });
 
+describe("runner-up picks", () => {
+  // Starter 11 → Solanke is ZN Pick's move; bench DEF 13 → 98 is a runner-up.
+  const alt = { sell: { id: 13, name: "P13", team: "AAA", price: 4 }, buy: { id: 98, name: "P98", team: "BBB", price: 5 }, this_gw_gain: 1, horizon_gain: 1.5, clears_bar: false };
+  const r = rec(detail({ runner_ups: [alt] }));
+  const lookup = buildPlayerLookup(SQUAD, r);
+  const seed = seedPlan(SQUAD);
+
+  it("makeMoves applies the picked runner-up instead of the verdict's moves", () => {
+    expect(makeMoves(r, { sell: 13, buy: 98 })).toEqual([alt]);
+    expect(makeMoves(r, { sell: 13, buy: 4242 })).toEqual(makeMoves(r));
+    expect(makeMoves(r, null)).toEqual(makeMoves(r));
+  });
+
+  it("buildPlayerLookup carries a record for every runner-up buy", () => {
+    expect(lookup[98]).toMatchObject({ web_name: "P98", team_short: "BBB" });
+  });
+
+  it("switching between ZN Pick's move and a runner-up re-syncs the lineup", () => {
+    const altPlan = { ...seed, ...transferPickPatch(seed, "make", { sell: 13, buy: 98 }, r, lookup) };
+    expect(altPlan).toMatchObject({ transfer: "make", pick: { sell: 13, buy: 98 } });
+    expect(resolvePlan(altPlan, makeMoves(r, altPlan.pick)).xi).toContain(98);
+    const zn = { ...altPlan, ...transferPickPatch(altPlan, "make", null, r, lookup) };
+    expect(zn.pick).toBeNull();
+    expect(zn.xi).toEqual(seed.xi);
+    expect(zn.bench).toEqual(seed.bench);
+    expect(zn.promoted).toBeNull();
+    const rolled = { ...altPlan, ...transferPickPatch(altPlan, "roll", { sell: 13, buy: 98 }, r, lookup) };
+    expect(rolled).toMatchObject({ transfer: "roll", pick: null, xi: seed.xi });
+  });
+
+  it("flags a pick a rerun no longer lists, and charges a runner-up's hit only without an FT", () => {
+    const altPlan = { ...seed, transfer: "make" as const, pick: { sell: 13, buy: 98 } };
+    expect(pickIsStale(altPlan, r)).toBe(false);
+    expect(pickIsStale(altPlan, rec(detail({ runner_ups: [] })))).toBe(true);
+    expect(pickIsStale(altPlan, undefined)).toBe(false); // no answer yet is not a rerun
+    expect(pickIsStale({ ...seed, transfer: "make" }, rec(detail({ runner_ups: [] })))).toBe(false);
+    expect(planHitCost(altPlan, r)).toBe(0);
+    expect(planHitCost(altPlan, rec(detail({ ft_before: 0, hit_cost: 4, runner_ups: [alt] })))).toBe(4);
+  });
+
+  it("round-trips the pick through storage", () => {
+    const stored = { plan: { ...seed, transfer: "make" as const, pick: { sell: 13, buy: 98 } }, base: seed };
+    expect(parseStoredPlan(JSON.stringify(stored))?.plan.pick).toEqual({ sell: 13, buy: 98 });
+  });
+
+});
+
 describe("reconcilePromotion", () => {
-  const benchMove = [{ sell: { id: 13, name: "P13", team: "AAA", price: 4 }, buy: { id: 98, name: "Konsa", team: "AVL", price: 5 }, this_gw_gain: 2, horizon_gain: 3.3 }];
+  const benchMove = [{ sell: { id: 13, name: "P13", team: "AAA", price: 4 }, buy: { id: 98, name: "P98", team: "BBB", price: 5 }, this_gw_gain: 2, horizon_gain: 3.3 }];
   const otherMove = [{ sell: { id: 15, name: "P15", team: "AAA", price: 4 }, buy: { id: 97, name: "Wood", team: "NFO", price: 6 }, this_gw_gain: 1, horizon_gain: 2 }];
   const lookup = { ...buildPlayerLookup(SQUAD, undefined), 98: mkPlayer(98, "DEF", 5), 97: mkPlayer(97, "FWD", 9) };
   const seed = seedPlan(SQUAD);
@@ -350,7 +404,7 @@ describe("reconcilePromotion", () => {
   it("undoes a stale promotion and applies the new move's when a rerun changes the moves", () => {
     const made = { ...seed, ...transferChoicePatch(seed, "make", benchMove, lookup) };
     const next = { ...made, ...reconcilePromotion(made, otherMove, lookup) };
-    expect(next.xi).toContain(2); // the DEF benched for Konsa is back
+    expect(next.xi).toContain(2); // the DEF benched for P98 is back
     expect(next.promoted).toEqual({ seller: 15, starter: 11, buy: 97 });
     expect(next.transfer).toBe("make");
   });

@@ -179,6 +179,10 @@ export interface TransferOption {
 }
 
 export interface AlsoConsidered {
+  sellId: number;
+  buyId: number;
+  /** Clears ZN Pick's bar too, just by less than the pick. */
+  clearsBar: boolean;
   sell: string;
   buy: string;
   sellTeam: string;
@@ -200,17 +204,34 @@ const fixturesLine = (moves: FplTransferVerdictMove[]) =>
     .map((m) => `${m.sell.name} has ${m.sell.next_fixture ?? "no fixture"}; ${m.buy.name} gets ${m.buy.next_fixture ?? "no fixture"}.`)
     .join(" ");
 
-/** The two radio cards and the "Also considered" row, from `verdict_detail`. */
+const ALSO_CONSIDERED = 3;
+
+/** The two radio cards and the "Also considered" rows, from `verdict_detail`. */
 export function transferOptions(rec: FplTeamRecommendation | undefined): TransferOptions {
   const d = rec?.transfer_plan_horizon?.verdict_detail;
   const empty: TransferOption = { zn: false, gain: 0, meta: "", why: "", moves: [] };
   if (!d) return { make: null, roll: empty, alsoConsidered: [] };
   const range = gwRange(d.horizon);
   const rollMeta = `this week · ${d.action === "roll" ? d.ft_after : Math.min(5, d.ft_before + 1)} FT${(d.action === "roll" ? d.ft_after : d.ft_before + 1) === 1 ? "" : "s"} in GW${(d.horizon.start_gw ?? 0) + 1}`;
+  // Up to three pickable alternatives, best first (user testing, 2026-11). A
+  // runner-up repeating a buy the Make card already shows is the same pick restated.
+  const shownBuys = new Set((d.action === "roll" ? d.roll_alternative?.moves ?? [] : d.moves).map((m) => m.buy.id));
+  const hit = d.ft_before === 0;
   const alsoConsidered: AlsoConsidered[] = (d.runner_ups ?? [])
-    .filter((m) => !m.clears_bar)
-    .slice(0, 2)
-    .map((m) => ({ sell: m.sell.name, buy: m.buy.name, sellTeam: m.sell.team, buyTeam: m.buy.team, net: m.horizon_gain, hit: d.ft_before === 0, bar: d.threshold }));
+    .filter((m) => !shownBuys.has(m.buy.id))
+    .slice(0, ALSO_CONSIDERED)
+    .map((m) => ({
+      sellId: m.sell.id,
+      buyId: m.buy.id,
+      clearsBar: m.clears_bar,
+      sell: m.sell.name,
+      buy: m.buy.name,
+      sellTeam: m.sell.team,
+      buyTeam: m.buy.team,
+      net: Math.round((m.horizon_gain - (hit ? 4 : 0)) * 10) / 10,
+      hit,
+      bar: d.threshold,
+    }));
 
   if (d.action === "roll") {
     const alt = d.roll_alternative;

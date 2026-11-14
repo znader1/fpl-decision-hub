@@ -4,7 +4,7 @@ import {
   type FplTeamRecommendation,
 } from "@/lib/fplAssistantApi";
 import { fmtGain } from "@/lib/format";
-import { makeMoves, resolvePlan, type GwPlan, type PlanDecisionKey, type PlayerLookup } from "@/lib/gwPlan";
+import { makeMoves, pickIsStale, resolvePlan, type GwPlan, type PlanDecisionKey, type PlayerLookup } from "@/lib/gwPlan";
 
 export type WeekDecisionKey = PlanDecisionKey;
 
@@ -39,7 +39,7 @@ const chipRow = row("chip", "Chip");
 
 function transfers(plan: GwPlan, rec: FplTeamRecommendation | undefined): WeekDecision {
   const d = rec?.transfer_plan_horizon?.verdict_detail;
-  const moves = makeMoves(rec);
+  const moves = makeMoves(rec, plan.pick);
   if (plan.transfer === "roll") {
     if (!d) return transfersRow("Roll the transfer", true);
     const nextGw = d.horizon.start_gw != null ? ` for GW${d.horizon.start_gw + 1}` : "";
@@ -48,7 +48,12 @@ function transfers(plan: GwPlan, rec: FplTeamRecommendation | undefined): WeekDe
   if (plan.transfer === "make" && d && moves.length > 0) {
     // Spend: the verdict's own total net of the hit. Roll: the rejected walk's
     // moves summed — the verdict's totals describe rolling, not them.
-    const gain = d.action === "roll" ? moves.reduce((s, m) => s + m.horizon_gain, 0) : d.horizon_gain - d.hit_cost;
+    // A picked runner-up: its own horizon gain, less the hit with no FT in hand.
+    const gain = plan.pick && !pickIsStale(plan, rec)
+      ? moves[0].horizon_gain - (d.ft_before === 0 ? 4 : 0)
+      : d.action === "roll"
+        ? moves.reduce((s, m) => s + m.horizon_gain, 0)
+        : d.horizon_gain - d.hit_cost;
     if (moves.length === 1) return transfersRow(`${moves[0].sell.name} → ${moves[0].buy.name} · ${fmtGain(gain)}`, true);
     const hit = d.hit_cost > 0 && d.action !== "roll" ? ` after a −${d.hit_cost} hit` : "";
     return transfersRow(`${plural(moves.length, "move")} · ${fmtGain(gain)}${hit}`, true);
@@ -59,14 +64,14 @@ function transfers(plan: GwPlan, rec: FplTeamRecommendation | undefined): WeekDe
 }
 
 function captain(plan: GwPlan, rec: FplTeamRecommendation | undefined, lookup: PlayerLookup): WeekDecision {
-  const r = resolvePlan(plan, makeMoves(rec));
+  const r = resolvePlan(plan, makeMoves(rec, plan.pick));
   if (!r.xi.includes(r.cap)) return captainRow("Captain is on the bench", false, true);
   const name = (id: number) => lookup[id]?.web_name ?? `#${id}`;
   return captainRow(`${name(r.cap)} (C) · ${name(r.vice)} (VC)`, Boolean(plan.reviewed.captain));
 }
 
 function bench(plan: GwPlan, rec: FplTeamRecommendation | undefined, lookup: PlayerLookup): WeekDecision {
-  const r = resolvePlan(plan, makeMoves(rec));
+  const r = resolvePlan(plan, makeMoves(rec, plan.pick));
   const first = r.bench[1];
   const name = first != null ? lookup[first]?.web_name ?? `#${first}` : undefined;
   return benchRow(name ? `${name} first sub` : "No bench returned", Boolean(plan.reviewed.bench));
