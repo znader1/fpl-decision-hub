@@ -214,16 +214,21 @@ describe("chipOptions", () => {
     expect(by("free_hit")?.gain).toBeNull();
     expect(by("triple_captain")?.used).toBe(false);
   });
-  it("warns against Triple Captain on a defender", () => {
+  it("puts Triple Captain on the XI's highest-projected attacker, whoever is captain", () => {
     const def = Object.values(lookup).find((p) => p.pos === "DEF" && r.xi.includes(p.player_id))!;
-    const opts = chipOptions({ resolved: { ...r, cap: def.player_id }, lookup, chipPlan: null, gw: 29 });
-    expect(opts.find((o) => o.chip === "triple_captain")?.why).toContain("ceiling is too low");
+    const top = r.xi
+      .filter((id) => lookup[id]?.pos === "MID" || lookup[id]?.pos === "FWD")
+      .sort((a, b) => lookup[b].xpts - lookup[a].xpts)[0];
+    const tc = chipOptions({ resolved: { ...r, cap: def.player_id }, lookup, chipPlan: null, gw: 29 }).find((o) => o.chip === "triple_captain")!;
+    expect(tc.capId).toBe(top);
+    expect(tc.gain).toBe(lookup[top].xpts);
+    expect(tc.why).toContain(`On ${lookup[top].web_name}`);
+    expect(tc.why).toContain(`instead of ${def.web_name}`);
   });
-  it("a benched captain makes Triple Captain unavailable this week", () => {
-    const opts = chipOptions({ resolved: resolvePlan(swapPlayers(seed, 136, 449), []), lookup, chipPlan: null, gw: 29 });
-    const tc = opts.find((o) => o.chip === "triple_captain");
-    expect(tc?.gain).toBeNull();
-    expect(tc?.why).toBe("Your captain is on the bench.");
+  it("stays available when the captain is benched: it brings its own captain", () => {
+    const tc = chipOptions({ resolved: resolvePlan(swapPlayers(seed, 136, 449), []), lookup, chipPlan: null, gw: 29 }).find((o) => o.chip === "triple_captain")!;
+    expect(tc.gain).not.toBeNull();
+    expect(tc.capId).toBeDefined();
   });
 });
 

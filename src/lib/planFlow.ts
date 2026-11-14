@@ -265,6 +265,8 @@ export interface ChipOption {
   used: boolean;
   /** Can't be picked right now (ZN Pick is still answering). */
   disabled?: boolean;
+  /** Triple Captain: who wears the armband when it is played (resolved id). */
+  capId?: number;
 }
 
 const bestWeek = (plan: ChipPlanResponse | null | undefined, chip: ChipName) => {
@@ -296,7 +298,6 @@ export function chipOptions(args: {
   const nudge = chipPlan?.nudge && chipPlan.nudge.event_id === gw ? chipPlan.nudge.chip : null;
   const used = (chip: ChipName) => chipPlan?.chips_remaining.some((c) => c.name === chip && !c.available) ?? false;
   const capIn = r.xi.includes(r.cap);
-  const capX = lookup[r.cap]?.xpts;
   const capName = lookup[r.cap]?.web_name ?? "your captain";
 
   const bestAny = (chipPlan?.recommendations ?? [])
@@ -324,22 +325,24 @@ export function chipOptions(args: {
   const fhWhy = fhOutlook?.guidance ?? (fhBest ? `Better saved for GW${fhBest.gw}, where it is worth ${fmtGain(fhBest.gain)}.` : "A one-week squad rebuild; the engine has no window for it yet.");
 
   const tcBest = bestWeek(chipPlan, "triple_captain");
-  // The planner's TC figure is its own top captain in that week, not necessarily
-  // the plan's — so this week only names the week, never a second number.
-  const capPos = lookup[r.cap]?.pos;
-  const tcWhy = !capIn
-    ? "Your captain is on the bench."
-    : capPos === "DEF" || capPos === "GKP"
-      ? `On ${capName}, a ${capPos === "DEF" ? "defender" : "goalkeeper"}: his ceiling is too low to spend Triple Captain on. Save it for a premium attacker.`
-      : `On ${capName}.${
-          tcBest
-            ? tcBest.gw === gw
-              ? nudge === "triple_captain"
-                ? " This is the best week left for it."
-                : " The best week left on current projections, but under the bar ZN Pick needs to play it."
-              : ` Worth ${fmtGain(tcBest.gain)} in GW${tcBest.gw}.`
-            : " No double gameweek this week, so the upside is capped."
-        }`;
+  // Triple Captain is about one player's points, not this week's captain pick:
+  // it goes on the XI's highest-projected attacker, and playing it makes him captain.
+  const attackerXi = r.xi.filter((id) => (lookup[id]?.pos === "MID" || lookup[id]?.pos === "FWD") && typeof lookup[id]?.xpts === "number");
+  const tcId = attackerXi.sort((a, b) => (lookup[b].xpts as number) - (lookup[a].xpts as number))[0];
+  const tcP = tcId !== undefined ? lookup[tcId] : undefined;
+  const tcWhy = !tcP
+    ? "No attacker in your XI has a projection yet."
+    : `On ${tcP.web_name} (${tcP.team_short}), your highest-projected attacker at ${(tcP.xpts as number).toFixed(1)} xPts.${
+        tcId !== r.cap ? ` Playing it makes him your captain${capIn ? ` instead of ${capName}` : ""}.` : ""
+      }${
+        tcBest
+          ? tcBest.gw === gw
+            ? nudge === "triple_captain"
+              ? " This is the best week left for it."
+              : " The best week left on current projections, but under the bar ZN Pick needs to play it."
+            : ` Its best week left is GW${tcBest.gw}.`
+          : " No double gameweek this week, so the upside is capped."
+      }`;
 
   // The wildcard's EV is its uplift over the whole wildcard window (net of the
   // transfer plan), not this week's points — gainNote says so on the card.
@@ -367,9 +370,10 @@ export function chipOptions(args: {
       chip: "triple_captain",
       title: CHIP_LABELS.triple_captain,
       zn: nudge === "triple_captain",
-      gain: capIn && typeof capX === "number" ? capX : null,
+      gain: tcP ? (tcP.xpts as number) : null,
       why: tcWhy,
       used: used("triple_captain"),
+      ...(tcId !== undefined && { capId: tcId }),
     },
     ...(wildcardAllowed ? [wildcard] : []),
   ];

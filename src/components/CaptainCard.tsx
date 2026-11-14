@@ -68,7 +68,7 @@ export function CaptainCard({ c, role, znPick, onMakeCaptain, onMakeVice, owners
           {role && <Badge className="bg-accent text-white hover:bg-accent">{role}</Badge>}
           {c.current && !isCap && (
             <Badge variant="outline" className="text-muted-foreground">
-              Current captain
+              Last GW captain
             </Badge>
           )}
         </div>

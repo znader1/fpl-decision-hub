@@ -30,7 +30,7 @@ export interface CaptainCandidate {
   /** v2 flow: the player sits on the plan's bench, so he can't wear the armband yet. */
   benched: boolean;
   pos?: string;
-  /** The armband the squad carries now; kept as a card even outside the top three. */
+  /** Last GW's armband (the squad as seeded); kept as a card even outside the top three. */
   current?: boolean;
 }
 
@@ -116,8 +116,12 @@ const best = <T,>(xs: T[], score: (x: T) => number | undefined): T | undefined =
 /** Everything the Captain Lab renders, from one recommendation + the user's goal and pick. */
 export function buildCaptainLab(rec: FplTeamRecommendation, goal: CaptainGoal, manualCaptainId: number | null, opts: CaptainLabOptions = {}): CaptainLab {
   const benchedIds = opts.benchedIds ?? new Set<number>();
-  const candidates = [...(opts.pool ?? rec.starting_xi)]
-    .sort((a, b) => b.xpts - a.xpts)
+  // Captaincy is about ceiling: a defender's or keeper's haul is capped well below
+  // an attacker's, so they are never offered (user testing, 2026-11). Squads with
+  // too few attackers fall back to the whole pool.
+  const fullPool = [...(opts.pool ?? rec.starting_xi)].sort((a, b) => b.xpts - a.xpts);
+  const attackers = fullPool.filter((p) => p.pos === "MID" || p.pos === "FWD");
+  const candidates = (attackers.length >= CANDIDATES ? attackers : fullPool)
     .slice(0, CANDIDATES)
     .map((p) => ({ ...toCandidate(p), benched: benchedIds.has(p.player_id) }));
   const currentId = opts.currentCaptainId ?? null;

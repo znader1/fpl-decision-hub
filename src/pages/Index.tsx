@@ -872,7 +872,14 @@ const Index = () => {
   const handlePickChip = (chip: Exclude<PlanChip, null>) => {
     const pick = chipPick(chip, chipStrategy);
     if (pick.chipStrategy !== null) switchStrategyForDeadline(pick.chipStrategy);
-    setPlan(pick.patch);
+    // Triple Captain goes on its own player: playing it hands him the armband.
+    const tcCap = chip === "triple_captain" ? chipOpts.find((o) => o.chip === "triple_captain")?.capId : undefined;
+    if (tcCap !== undefined) {
+      const pid = toPlanId(tcCap, planMoves);
+      setPlan((p) => ({ ...pick.patch, cap: pid, vice: p.vice === pid ? p.cap : p.vice }));
+    } else {
+      setPlan(pick.patch);
+    }
     if (pick.goTo) goStep(pick.goTo);
   };
 
@@ -1157,6 +1164,19 @@ const Index = () => {
                 </div>
               )}
               {step === "chip" && plan && <ChipStep options={chipOpts} value={plan.chip} onPick={handlePickChip} />}
+              {step === "confirm" && plan && benchTeam && (
+                // The squad as planned — XI, bench order, armbands, buys — so the
+                // last screen shows exactly what to set in the FPL app.
+                <PitchVisualization
+                  team={benchTeam}
+                  requestedGw={deadlineGw ?? planGw}
+                  onRequestedGwChange={() => {}}
+                  gwSelectable={false}
+                  compact
+                  fixturesByTeam={fixturesByTeam}
+                  incoming={resolvedPlan?.incoming}
+                />
+              )}
               {step === "confirm" && plan && (
                 <ReviewStep
                   rows={reviewRows}
