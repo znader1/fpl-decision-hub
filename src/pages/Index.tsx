@@ -16,6 +16,9 @@ import {
   resolvePlan,
   swapCheck,
   swapPlayers,
+  reconcilePromotion,
+  suggestedBench,
+  transferChoicePatch,
   toPlanId,
   type PlanChip,
   type PlanStep,
@@ -610,8 +613,13 @@ const Index = () => {
   const captainLab = useMemo(() => {
     if (!planRec || !resolvedPlan) return null;
     const pool = [...resolvedPlan.xi, ...resolvedPlan.bench].map((id) => playerLookup[id]).filter(Boolean);
-    return buildCaptainLab(planRec, captainGoal, resolvedPlan.cap, { pool, benchedIds: new Set(resolvedPlan.bench), viceId: resolvedPlan.vice });
-  }, [planRec, resolvedPlan, playerLookup, captainGoal]);
+    return buildCaptainLab(planRec, captainGoal, resolvedPlan.cap, {
+      pool,
+      benchedIds: new Set(resolvedPlan.bench),
+      viceId: resolvedPlan.vice,
+      currentCaptainId: basePlan?.cap ?? null,
+    });
+  }, [planRec, resolvedPlan, playerLookup, captainGoal, basePlan?.cap]);
   const planWarnings = resolvedPlan ? reviewWarnings(resolvedPlan) : [];
   const deadlineRemaining = useCountdown(nextEventQuery.data?.deadline_time_utc);
   const countdownText = deadlineRemaining !== null && deadlineRemaining > 0 ? formatCountdown(deadlineRemaining) : "";
@@ -654,17 +662,29 @@ const Index = () => {
     const next = moveBench(plan, index, dir);
     if (next !== plan) setPlan({ bench: next.bench });
   };
+  // A rerun can change the moves under a "make" plan; keep the promoted starter in step.
+  useEffect(() => {
+    if (!plan || plan.locked || Object.keys(playerLookup).length === 0) return;
+    const patch = reconcilePromotion(plan, planMoves, playerLookup);
+    if (patch) setPlan(patch);
+  }, [plan, planMoves, playerLookup, setPlan]);
+  const benchSuggestion = useMemo(() => {
+    if (!plan || !resolvedPlan) return null;
+    const shown = new Map(plan.bench.map((id, i) => [id, resolvedPlan.bench[i]]));
+    const order = suggestedBench(plan.bench, (id) => playerLookup[shown.get(id) ?? id]?.xpts);
+    return order.every((id, i) => id === plan.bench[i]) ? null : order;
+  }, [plan, resolvedPlan, playerLookup]);
 
 
   // DecisionCard's Apply/Undo write the plan's transfer decision; the per-move
   // index no longer matters — the plan applies the verdict's moves as one.
   const applyTransferAtIndex = () => {
     if (planMoves.length === 0) return;
-    setPlan({ transfer: "make" });
+    setPlan((p) => transferChoicePatch(p, "make", planMoves, playerLookup));
   };
 
   const resetAppliedTransfers = () => {
-    setPlan({ transfer: null });
+    setPlan((p) => transferChoicePatch(p, null, planMoves, playerLookup));
   };
 
   const activeRecommendation = useMemo(() => {
@@ -852,7 +872,14 @@ const Index = () => {
   const handlePickChip = (chip: Exclude<PlanChip, null>) => {
     const pick = chipPick(chip, chipStrategy);
     if (pick.chipStrategy !== null) switchStrategyForDeadline(pick.chipStrategy);
-    setPlan(pick.patch);
+    // Triple Captain goes on its own player: playing it hands him the armband.
+    const tcCap = chip === "triple_captain" ? chipOpts.find((o) => o.chip === "triple_captain")?.capId : undefined;
+    if (tcCap !== undefined) {
+      const pid = toPlanId(tcCap, planMoves);
+      setPlan((p) => ({ ...pick.patch, cap: pid, vice: p.vice === pid ? p.cap : p.vice }));
+    } else {
+      setPlan(pick.patch);
+    }
     if (pick.goTo) goStep(pick.goTo);
   };
 
@@ -1075,13 +1102,13 @@ const Index = () => {
       {step !== "squad" && entryId > 0 ? (
         <div className="flex flex-1 flex-col lg:min-h-0 lg:min-w-0">
           <div className="flex-1 px-4 py-5 lg:overflow-y-auto lg:px-8 lg:py-6">
-            <div className="mx-auto flex max-w-[880px] flex-col gap-4">
+            <div className={`mx-auto flex flex-col gap-4 ${step === "bench" ? "max-w-[1180px]" : "max-w-[880px]"}`}>
               <StepHeader copy={stepHeader} savedBanner={false} />
               {step === "transfers" && (
                 <TransfersStep
                   options={transferOpts}
                   value={plan?.transfer ?? null}
-                  onPick={(choice) => setPlan({ transfer: choice })}
+                  onPick={(choice) => setPlan((p) => transferChoicePatch(p, choice, planMoves, playerLookup))}
                   loading={recommendationMutation.isPending}
                   error={recommendErrorMessage}
                   onRun={rerunPick}
@@ -1107,7 +1134,9 @@ const Index = () => {
                   />
                 ))}
               {step === "bench" && resolvedPlan && plan && (
-                <>
+                // Pitch and bench side by side on desktop, so the bench order is in view
+                // without scrolling past the pitch; stacked on a phone.
+                <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
                   {benchTeam && (
                     <PitchVisualization
                       team={benchTeam}
@@ -1130,10 +1159,24 @@ const Index = () => {
                     onMoveBench={onMoveBench}
                     autoSub={autoSubPreview(resolvedPlan, playerLookup)}
                     message={benchMessage}
+                    onApplySuggested={benchSuggestion ? () => setPlan({ bench: benchSuggestion }) : undefined}
                   />
-                </>
+                </div>
               )}
               {step === "chip" && plan && <ChipStep options={chipOpts} value={plan.chip} onPick={handlePickChip} />}
+              {step === "confirm" && plan && benchTeam && (
+                // The squad as planned — XI, bench order, armbands, buys — so the
+                // last screen shows exactly what to set in the FPL app.
+                <PitchVisualization
+                  team={benchTeam}
+                  requestedGw={deadlineGw ?? planGw}
+                  onRequestedGwChange={() => {}}
+                  gwSelectable={false}
+                  compact
+                  fixturesByTeam={fixturesByTeam}
+                  incoming={resolvedPlan?.incoming}
+                />
+              )}
               {step === "confirm" && plan && (
                 <ReviewStep
                   rows={reviewRows}

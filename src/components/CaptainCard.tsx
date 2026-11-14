@@ -49,7 +49,13 @@ export function CaptainCard({ c, role, znPick, onMakeCaptain, onMakeVice, owners
         <div className="flex items-center gap-3">
           <JerseyIcon team={c.team} size="md" isCaptain={isCap} />
           <div>
-            <div className="text-[17px] font-extrabold text-foreground">{c.name}</div>
+            <div className="text-[17px] font-extrabold text-foreground">
+              {c.name}
+              <span className="ml-1.5 text-[11px] font-semibold text-muted-foreground">
+                {c.team}
+                {c.pos ? ` · ${c.pos}` : ""}
+              </span>
+            </div>
             {c.fixture && (
               <div className="mt-1.5">
                 <FixtureChip opponent={c.fixture.opponent} isHome={c.fixture.isHome} difficulty={c.fixture.difficulty} className="text-[10px]" />
@@ -60,6 +66,11 @@ export function CaptainCard({ c, role, znPick, onMakeCaptain, onMakeVice, owners
         <div className="flex shrink-0 flex-col items-end gap-1">
           {znPick && <Badge className="bg-primary text-white hover:bg-primary">ZN Pick</Badge>}
           {role && <Badge className="bg-accent text-white hover:bg-accent">{role}</Badge>}
+          {c.current && !isCap && (
+            <Badge variant="outline" className="text-muted-foreground">
+              Last GW captain
+            </Badge>
+          )}
         </div>
       </div>
 

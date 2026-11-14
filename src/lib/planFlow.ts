@@ -181,6 +181,8 @@ export interface TransferOption {
 export interface AlsoConsidered {
   sell: string;
   buy: string;
+  sellTeam: string;
+  buyTeam: string;
   net: number;
   hit: boolean;
   bar: number;
@@ -208,7 +210,7 @@ export function transferOptions(rec: FplTeamRecommendation | undefined): Transfe
   const alsoConsidered: AlsoConsidered[] = (d.runner_ups ?? [])
     .filter((m) => !m.clears_bar)
     .slice(0, 2)
-    .map((m) => ({ sell: m.sell.name, buy: m.buy.name, net: m.horizon_gain, hit: d.ft_before === 0, bar: d.threshold }));
+    .map((m) => ({ sell: m.sell.name, buy: m.buy.name, sellTeam: m.sell.team, buyTeam: m.buy.team, net: m.horizon_gain, hit: d.ft_before === 0, bar: d.threshold }));
 
   if (d.action === "roll") {
     const alt = d.roll_alternative;
@@ -217,7 +219,7 @@ export function transferOptions(rec: FplTeamRecommendation | undefined): Transfe
         ? {
             zn: false,
             gain: alt.moves.reduce((s, m) => s + m.horizon_gain, 0),
-            meta: `xPts over ${range} · ${d.ft_before > 0 ? "free transfer" : "−4 hit"}`,
+            meta: `expected pts gained over ${range} · ${d.ft_before > 0 ? "free transfer" : "−4 hit"}`,
             why: `${fixturesLine(alt.moves)} Moving now nets ${fmtGain(alt.net)} over ${range}; rolling nets ${fmtGain(d.plan_net)}.`.trim(),
             moves: alt.moves,
           }
@@ -233,8 +235,8 @@ export function transferOptions(rec: FplTeamRecommendation | undefined): Transfe
   const make: TransferOption = {
     zn: true,
     gain: Math.round((d.horizon_gain - d.hit_cost) * 10) / 10,
-    meta: `xPts over ${range} · ${d.hit_cost > 0 ? `−${d.hit_cost} hit` : "free transfer"}`,
-    why: fixturesLine(d.moves) || `Clears the ${fmtGain(d.threshold)} bar over ${range}.`,
+    meta: `expected pts gained over ${range} · ${d.hit_cost > 0 ? `−${d.hit_cost} hit` : "free transfer"}`,
+    why: fixturesLine(d.moves) || `Beats the ${fmtGain(d.threshold)} pts ZN Pick needs over ${range} before spending a transfer.`,
     moves: d.moves,
   };
   const alt = d.roll_alternative;
@@ -263,6 +265,8 @@ export interface ChipOption {
   used: boolean;
   /** Can't be picked right now (ZN Pick is still answering). */
   disabled?: boolean;
+  /** Triple Captain: who wears the armband when it is played (resolved id). */
+  capId?: number;
 }
 
 const bestWeek = (plan: ChipPlanResponse | null | undefined, chip: ChipName) => {
@@ -294,13 +298,19 @@ export function chipOptions(args: {
   const nudge = chipPlan?.nudge && chipPlan.nudge.event_id === gw ? chipPlan.nudge.chip : null;
   const used = (chip: ChipName) => chipPlan?.chips_remaining.some((c) => c.name === chip && !c.available) ?? false;
   const capIn = r.xi.includes(r.cap);
-  const capX = lookup[r.cap]?.xpts;
   const capName = lookup[r.cap]?.web_name ?? "your captain";
 
   const bestAny = (chipPlan?.recommendations ?? [])
     .filter((x) => typeof x.ev_gain === "number")
     .sort((a, b) => (b.ev_gain ?? 0) - (a.ev_gain ?? 0))[0];
-  const saveWhy = bestAny
+  // A chip whose best week is this one, but which ZN Pick still doesn't play: the
+  // Save card must say why, or it contradicts that chip's own card.
+  const nowChip = (["wildcard", "free_hit", "bench_boost", "triple_captain"] as ChipName[]).find(
+    (c) => c !== nudge && !used(c) && bestWeek(chipPlan, c)?.gw === gw,
+  );
+  const saveWhy = nowChip
+    ? `${CHIP_LABELS[nowChip]}'s best week is this one, but its gain is under the bar ZN Pick needs to play it. Saving keeps it for a bigger swing.`
+    : bestAny
     ? `${CHIP_LABELS[bestAny.chip]} is worth ${fmtGain(bestAny.ev_gain as number)} in GW${bestAny.event_id}, the best week left for any chip.`
     : chipPlan
       ? "No chip window stands out ahead; keep them."
@@ -315,9 +325,24 @@ export function chipOptions(args: {
   const fhWhy = fhOutlook?.guidance ?? (fhBest ? `Better saved for GW${fhBest.gw}, where it is worth ${fmtGain(fhBest.gain)}.` : "A one-week squad rebuild; the engine has no window for it yet.");
 
   const tcBest = bestWeek(chipPlan, "triple_captain");
-  const tcWhy = !capIn
-    ? "Your captain is on the bench."
-    : `On ${capName}.${tcBest ? ` Worth ${fmtGain(tcBest.gain)} in GW${tcBest.gw}.` : " No double gameweek this week, so the upside is capped."}`;
+  // Triple Captain is about one player's points, not this week's captain pick:
+  // it goes on the XI's highest-projected attacker, and playing it makes him captain.
+  const attackerXi = r.xi.filter((id) => (lookup[id]?.pos === "MID" || lookup[id]?.pos === "FWD") && typeof lookup[id]?.xpts === "number");
+  const tcId = attackerXi.sort((a, b) => (lookup[b].xpts as number) - (lookup[a].xpts as number))[0];
+  const tcP = tcId !== undefined ? lookup[tcId] : undefined;
+  const tcWhy = !tcP
+    ? "No attacker in your XI has a projection yet."
+    : `On ${tcP.web_name} (${tcP.team_short}), your highest-projected attacker at ${(tcP.xpts as number).toFixed(1)} xPts.${
+        tcId !== r.cap ? ` Playing it makes him your captain${capIn ? ` instead of ${capName}` : ""}.` : ""
+      }${
+        tcBest
+          ? tcBest.gw === gw
+            ? nudge === "triple_captain"
+              ? " This is the best week left for it."
+              : " The best week left on current projections, but under the bar ZN Pick needs to play it."
+            : ` Its best week left is GW${tcBest.gw}.`
+          : " No double gameweek this week, so the upside is capped."
+      }`;
 
   // The wildcard's EV is its uplift over the whole wildcard window (net of the
   // transfer plan), not this week's points — gainNote says so on the card.
@@ -337,7 +362,7 @@ export function chipOptions(args: {
     ...(pickPending && { disabled: true }),
   };
 
-  return [
+  const raw: ChipOption[] = [
     { chip: "none", title: "Save chips", zn: nudge === null, gain: 0, why: saveWhy, used: false },
     { chip: "bench_boost", title: CHIP_LABELS.bench_boost, zn: nudge === "bench_boost", gain: bbGain, why: bbWhy, used: used("bench_boost") },
     { chip: "free_hit", title: CHIP_LABELS.free_hit, zn: nudge === "free_hit", gain: thisWeek(chipPlan, "free_hit", gw), why: fhWhy, used: used("free_hit") },
@@ -345,12 +370,22 @@ export function chipOptions(args: {
       chip: "triple_captain",
       title: CHIP_LABELS.triple_captain,
       zn: nudge === "triple_captain",
-      gain: capIn && typeof capX === "number" ? capX : null,
+      gain: tcP ? (tcP.xpts as number) : null,
       why: tcWhy,
       used: used("triple_captain"),
+      ...(tcId !== undefined && { capId: tcId }),
     },
     ...(wildcardAllowed ? [wildcard] : []),
   ];
+  // A played chip has no gain to show.
+  const options = raw.map((o) => (o.used ? { ...o, gain: null, gainNote: undefined } : o));
+  // ZN Pick first, then a chip whose best week is this one (the decision is now),
+  // then the rest as listed; chips already played go last.
+  // Among chips whose best week is now, the wildcard leads: it is the one that
+  // reshapes the squad, so it is the call to see first.
+  const rank = (o: ChipOption) =>
+    o.used ? 4 : o.zn ? 0 : o.chip !== "none" && bestWeek(chipPlan, o.chip as ChipName)?.gw === gw ? (o.chip === "wildcard" ? 1 : 2) : 3;
+  return options.map((o, i) => ({ o, i })).sort((a, b) => rank(a.o) - rank(b.o) || a.i - b.i).map(({ o }) => o);
 }
 
 export interface ChipPick {

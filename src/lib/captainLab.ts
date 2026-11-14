@@ -29,6 +29,9 @@ export interface CaptainCandidate {
   suggested: boolean;
   /** v2 flow: the player sits on the plan's bench, so he can't wear the armband yet. */
   benched: boolean;
+  pos?: string;
+  /** Last GW's armband (the squad as seeded); kept as a card even outside the top three. */
+  current?: boolean;
 }
 
 export interface CaptainLab {
@@ -82,6 +85,7 @@ function toCandidate(p: FplTeamRecommendationPlayer): CaptainCandidate {
     fixture: parseFixtureLabel(p.next_fixtures ?? p.fixtures_horizon?.[0]?.fixtures),
     suggested: Boolean(p.is_captain_suggested),
     benched: false,
+    pos: p.pos,
   };
 }
 
@@ -92,6 +96,8 @@ export interface CaptainLabOptions {
   benchedIds?: Set<number>;
   /** The plan's vice; when given it replaces the best-remaining derivation. */
   viceId?: number | null;
+  /** The squad's captain before any plan edit; always gets a card. */
+  currentCaptainId?: number | null;
 }
 
 const best = <T,>(xs: T[], score: (x: T) => number | undefined): T | undefined => {
@@ -110,10 +116,20 @@ const best = <T,>(xs: T[], score: (x: T) => number | undefined): T | undefined =
 /** Everything the Captain Lab renders, from one recommendation + the user's goal and pick. */
 export function buildCaptainLab(rec: FplTeamRecommendation, goal: CaptainGoal, manualCaptainId: number | null, opts: CaptainLabOptions = {}): CaptainLab {
   const benchedIds = opts.benchedIds ?? new Set<number>();
-  const candidates = [...(opts.pool ?? rec.starting_xi)]
-    .sort((a, b) => b.xpts - a.xpts)
+  // Captaincy is about ceiling: a defender's or keeper's haul is capped well below
+  // an attacker's, so they are never offered (user testing, 2026-11). Squads with
+  // too few attackers fall back to the whole pool.
+  const fullPool = [...(opts.pool ?? rec.starting_xi)].sort((a, b) => b.xpts - a.xpts);
+  const attackers = fullPool.filter((p) => p.pos === "MID" || p.pos === "FWD");
+  const candidates = (attackers.length >= CANDIDATES ? attackers : fullPool)
     .slice(0, CANDIDATES)
     .map((p) => ({ ...toCandidate(p), benched: benchedIds.has(p.player_id) }));
+  const currentId = opts.currentCaptainId ?? null;
+  if (currentId !== null && !candidates.some((c) => c.id === currentId)) {
+    const cur = (opts.pool ?? rec.starting_xi).find((p) => p.player_id === currentId);
+    if (cur) candidates.push({ ...toCandidate(cur), benched: benchedIds.has(cur.player_id) });
+  }
+  for (const c of candidates) if (c.id === currentId) c.current = true;
   const eligible = candidates.filter((c) => !c.benched);
 
   const hasTop10k = candidates.some((c) => typeof c.eoTop10k === "number" || typeof c.rankGainIfHaul === "number");

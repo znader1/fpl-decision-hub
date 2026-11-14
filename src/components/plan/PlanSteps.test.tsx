@@ -105,7 +105,7 @@ const tOpts: TransferOptions = {
     moves: [{ sell: { id: 1, name: "Isak", team: "NEW", price: 8 }, buy: { id: 2, name: "Solanke", team: "BOU", price: 7 }, this_gw_gain: 0.8, horizon_gain: 2.4 }],
   },
   roll: { zn: false, gain: 0, meta: "this week · 2 FTs in GW30", why: "Bank it.", moves: [] },
-  alsoConsidered: [{ sell: "Gordon", buy: "Rogers", net: -2.9, hit: true, bar: 4 }],
+  alsoConsidered: [{ sell: "Gordon", buy: "Rogers", sellTeam: "NEW", buyTeam: "AVL", net: -2.9, hit: true, bar: 4 }],
 };
 
 describe("TransfersStep", () => {
@@ -120,8 +120,8 @@ describe("TransfersStep", () => {
     expect(within(radios[1]).getByText("+0.0")).toBeTruthy();
     fireEvent.click(radios[1]);
     expect(onPick).toHaveBeenCalledWith("roll");
-    expect(screen.getByText(/Gordon → Rogers/).textContent).toContain("−4 hit");
-    expect(screen.getByText("below the +4.0 bar")).toBeTruthy();
+    expect(screen.getByText(/Gordon \(NEW\) → Rogers \(AVL\)/).textContent).toContain("−4 hit");
+    expect(screen.getByText("under the +4.0 pts needed")).toBeTruthy();
   });
 
   it("marks the chosen card checked and disables Make when there is no move", () => {

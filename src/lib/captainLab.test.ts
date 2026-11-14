@@ -160,4 +160,18 @@ describe("buildCaptainLab from the plan (v2 flow)", () => {
     // A benched player is never the ZN Pick.
     expect(lab.znPickId).toBe(2);
   });
+
+  it("never offers a defender or keeper while three attackers are available", () => {
+    const def = p(8, "Van Hecke", "BHA", 9.9, { pos: "DEF" });
+    const lab = buildCaptainLab(rec([...withEo, def]), "chase", null, { pool: [...withEo, def] });
+    expect(lab.candidates.map((c) => c.name)).not.toContain("Van Hecke");
+    expect(lab.znPickId).not.toBe(8);
+  });
+  it("keeps the squad's current captain as a card when he falls outside the top three", () => {
+    const low = p(7, "Barry", "EVE", 4.1);
+    const lab = buildCaptainLab(rec([...withEo, low]), "chase", null, { pool: [...withEo, low], currentCaptainId: 7 });
+    expect(lab.candidates.map((c) => c.name)).toEqual(["Haaland", "Saka", "Palmer", "Barry"]);
+    expect(lab.candidates[3].current).toBe(true);
+    expect(lab.candidates.filter((c) => c.current)).toHaveLength(1);
+  });
 });
