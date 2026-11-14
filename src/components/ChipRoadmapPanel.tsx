@@ -97,7 +97,11 @@ const DistributionLine = ({ d, chip }: { d: ChipDistribution; chip: ChipPlanReco
   );
 };
 
-const RecommendationRow = ({ rec }: { rec: ChipPlanRecommendation }) => {
+/** "This week (GW11)" for the deadline week: a bare "GW11" read as a future
+ *  date while GW11 is the week being planned (user testing, 2026-11). */
+const gwLabel = (gw: number, currentGw?: number) => (gw === currentGw ? `This week (GW${gw})` : `GW${gw}`);
+
+const RecommendationRow = ({ rec, currentGw }: { rec: ChipPlanRecommendation; currentGw?: number }) => {
   const [open, setOpen] = useState(false);
   const expected = rec.provisional && rec.likelihood !== undefined && rec.likelihood < 1;
   return (
@@ -128,7 +132,7 @@ const RecommendationRow = ({ rec }: { rec: ChipPlanRecommendation }) => {
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-sm font-bold">GW{rec.event_id}</span>
+          <span className="text-sm font-bold">{gwLabel(rec.event_id, currentGw)}</span>
           {rec.ev_gain !== null && (
             <span className="text-sm font-semibold text-primary">+{rec.ev_gain.toFixed(1)} xPts</span>
           )}
@@ -157,7 +161,7 @@ const RecommendationRow = ({ rec }: { rec: ChipPlanRecommendation }) => {
   );
 };
 
-const OutlookRow = ({ row, expiresGw }: { row: ChipOutlookRow; expiresGw?: number }) => {
+const OutlookRow = ({ row, expiresGw, currentGw }: { row: ChipOutlookRow; expiresGw?: number; currentGw?: number }) => {
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-lg border border-border/60 p-2.5">
@@ -179,7 +183,7 @@ const OutlookRow = ({ row, expiresGw }: { row: ChipOutlookRow; expiresGw?: numbe
         <div className="flex items-center gap-2 shrink-0 text-xs text-muted-foreground">
           {row.event_id !== null ? (
             <>
-              <span className="font-semibold text-foreground">GW{row.event_id}</span>
+              <span className="font-semibold text-foreground">{gwLabel(row.event_id, currentGw)}</span>
               {row.ev_gain !== null && (
                 <span className="whitespace-nowrap">
                   +{row.ev_gain.toFixed(1)} vs bar {row.bar.toFixed(0)}
@@ -397,7 +401,7 @@ export const ChipRoadmapPanel = ({ plan, isLoading, isError = false }: Props) =>
       {plan.recommendations.length > 0 ? (
         <div className="space-y-2">
           {plan.recommendations.map((rec) => (
-            <RecommendationRow key={`${rec.chip}-${rec.event_id}`} rec={rec} />
+            <RecommendationRow key={`${rec.chip}-${rec.event_id}`} rec={rec} currentGw={plan.current_gw} />
           ))}
         </div>
       ) : (
@@ -414,7 +418,7 @@ export const ChipRoadmapPanel = ({ plan, isLoading, isError = false }: Props) =>
           </h4>
           <div className="space-y-1.5">
             {outlookHolds.map((row) => (
-              <OutlookRow key={row.chip} row={row} expiresGw={expiresByChip.get(row.chip)} />
+              <OutlookRow key={row.chip} row={row} expiresGw={expiresByChip.get(row.chip)} currentGw={plan.current_gw} />
             ))}
           </div>
         </div>
