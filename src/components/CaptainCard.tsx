@@ -31,7 +31,9 @@ export function CaptainCard({ c, role, znPick, onMakeCaptain, onMakeVice, owners
   const isVice = role === "VC";
   const note = c.benched
     ? `${c.name} is on your bench. Bring him on in the Bench step first.`
-    : typeof c.pHaul === "number"
+    : c.lowCeiling
+      ? `A rare ${c.pos === "GKP" ? "keeper" : "defender"} captain: he projects well clear of your attackers, but his points hang on a clean sheet, so the ceiling is lower.`
+      : typeof c.pHaul === "number"
       ? `${Math.round(c.pHaul * 100)}% chance of a 10+ haul${typeof ownership === "number" ? (ownership > (ownershipBasis === "overall" ? 60 : 100) ? "; most rivals already have him, so a haul only keeps pace." : ownership < 40 ? "; few rivals hold him, so a haul is a real rank swing." : ".") : "."}`
       : "Range from the xG model's points distribution.";
   return (

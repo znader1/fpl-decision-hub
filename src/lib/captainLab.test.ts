@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCaptainLab, parseFixtureLabel, type CaptainGoal } from "./captainLab";
+import { DEF_CAPTAIN_MARGIN, buildCaptainLab, parseFixtureLabel, type CaptainGoal } from "./captainLab";
 import type { FplTeamRecommendation, FplTeamRecommendationPlayer } from "./fplAssistantApi";
 
 const p = (id: number, name: string, team: string, xpts: number, over: Partial<FplTeamRecommendationPlayer> = {}): FplTeamRecommendationPlayer => ({
@@ -161,11 +161,16 @@ describe("buildCaptainLab from the plan (v2 flow)", () => {
     expect(lab.znPickId).toBe(2);
   });
 
-  it("never offers a defender or keeper while three attackers are available", () => {
-    const def = p(8, "Van Hecke", "BHA", 9.9, { pos: "DEF" });
-    const lab = buildCaptainLab(rec([...withEo, def]), "chase", null, { pool: [...withEo, def] });
+  it("offers a defender only when he clears the best attacker by the margin", () => {
+    const top = Math.max(...withEo.filter((x) => x.pos !== "GKP" && x.pos !== "DEF").map((x) => x.xpts));
+    const close = p(8, "Van Hecke", "BHA", top + 1.2, { pos: "DEF" });
+    const lab = buildCaptainLab(rec([...withEo, close]), "chase", null, { pool: [...withEo, close] });
     expect(lab.candidates.map((c) => c.name)).not.toContain("Van Hecke");
-    expect(lab.znPickId).not.toBe(8);
+
+    const clear = p(8, "Van Hecke", "BHA", top + DEF_CAPTAIN_MARGIN + 0.1, { pos: "DEF" });
+    const lab2 = buildCaptainLab(rec([...withEo, clear]), "chase", null, { pool: [...withEo, clear] });
+    const vh = lab2.candidates.find((c) => c.name === "Van Hecke");
+    expect(vh?.lowCeiling).toBe(true);
   });
   it("keeps the squad's current captain as a card when he falls outside the top three", () => {
     const low = p(7, "Barry", "EVE", 4.1);

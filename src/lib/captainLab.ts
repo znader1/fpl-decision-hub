@@ -30,6 +30,8 @@ export interface CaptainCandidate {
   /** v2 flow: the player sits on the plan's bench, so he can't wear the armband yet. */
   benched: boolean;
   pos?: string;
+  /** A defender/keeper offered only because he clears the best attacker by the margin. */
+  lowCeiling?: boolean;
   /** Last GW's armband (the squad as seeded); kept as a card even outside the top three. */
   current?: boolean;
 }
@@ -52,6 +54,8 @@ export interface CaptainLab {
 }
 
 const CANDIDATES = 3;
+/** xPts a defender or keeper must clear the best attacker by to be offered as captain. [untested] judgement call. */
+export const DEF_CAPTAIN_MARGIN = 2.0;
 const BIG_GAIN_RANKS = 20_000;
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
@@ -86,6 +90,7 @@ function toCandidate(p: FplTeamRecommendationPlayer): CaptainCandidate {
     suggested: Boolean(p.is_captain_suggested),
     benched: false,
     pos: p.pos,
+    lowCeiling: p.pos === "DEF" || p.pos === "GKP",
   };
 }
 
@@ -116,12 +121,16 @@ const best = <T,>(xs: T[], score: (x: T) => number | undefined): T | undefined =
 /** Everything the Captain Lab renders, from one recommendation + the user's goal and pick. */
 export function buildCaptainLab(rec: FplTeamRecommendation, goal: CaptainGoal, manualCaptainId: number | null, opts: CaptainLabOptions = {}): CaptainLab {
   const benchedIds = opts.benchedIds ?? new Set<number>();
-  // Captaincy is about ceiling: a defender's or keeper's haul is capped well below
-  // an attacker's, so they are never offered (user testing, 2026-11). Squads with
-  // too few attackers fall back to the whole pool.
+  // Captaincy is about ceiling: a defender's or keeper's points hang on a clean
+  // sheet, so his haul is capped well below an attacker's. He is offered only in
+  // the rare week he out-projects the best attacker by DEF_CAPTAIN_MARGIN (user
+  // testing, 2026-11). Squads with too few attackers fall back to the whole pool.
   const fullPool = [...(opts.pool ?? rec.starting_xi)].sort((a, b) => b.xpts - a.xpts);
-  const attackers = fullPool.filter((p) => p.pos === "MID" || p.pos === "FWD");
-  const candidates = (attackers.length >= CANDIDATES ? attackers : fullPool)
+  const isAttacker = (p: FplTeamRecommendationPlayer) => p.pos === "MID" || p.pos === "FWD";
+  const attackers = fullPool.filter(isAttacker);
+  const bestAttacker = attackers[0]?.xpts ?? -Infinity;
+  const allowed = attackers.length >= CANDIDATES ? fullPool.filter((p) => isAttacker(p) || p.xpts >= bestAttacker + DEF_CAPTAIN_MARGIN) : fullPool;
+  const candidates = allowed
     .slice(0, CANDIDATES)
     .map((p) => ({ ...toCandidate(p), benched: benchedIds.has(p.player_id) }));
   const currentId = opts.currentCaptainId ?? null;
