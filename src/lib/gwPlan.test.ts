@@ -225,6 +225,17 @@ describe("buildPlayerLookup", () => {
     expect(lookup[99].xpts).toBeCloseTo(5.5);
   });
 
+  it("gives a synthesised buy a fixture in the pitch grammar so his card keeps its chip", () => {
+    const move = (next_fixture?: string) =>
+      detail({ moves: [{ sell: { id: 11, name: "P11", team: "AAA", price: 6 }, buy: { id: 99, name: "Solanke", team: "BOU", price: 7, next_fixture }, this_gw_gain: 1.5, horizon_gain: 2.4 }] });
+    expect(buildPlayerLookup(SQUAD, rec(move("LEE (A)")))[99].next_fixtures).toBe("A-LEE");
+    expect(buildPlayerLookup(SQUAD, rec(move("LEE (A), CHE (H)")))[99].next_fixtures).toBe("A-LEE & H-CHE");
+    // A clubmate's label wins: it carries the difficulty.
+    const r = rec(move("LEE (A)"));
+    r.starting_xi = XI.map((p) => (p.player_id === 5 ? { ...p, team_short: "BOU", next_fixtures: "A-LEE(D3)" } : p));
+    expect(buildPlayerLookup(SQUAD, r)[99].next_fixtures).toBe("A-LEE(D3)");
+  });
+
   it("takes the buy's real record from squad_with_transfers_steps when present", () => {
     const r = rec(detail());
     r.squad_with_transfers_steps = [

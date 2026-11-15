@@ -297,10 +297,28 @@ export function buildPlayerLookup(squad: FplSquad | undefined, rec: FplTeamRecom
       is_vice_captain: false,
       multiplier: 1,
       xpts: (seller?.xpts ?? 0) + m.this_gw_gain,
-      next_fixtures: m.buy.next_fixture,
+      next_fixtures: fixtureForBuy(out, m.buy.team, m.buy.next_fixture),
     };
   }
   return out;
+}
+
+/**
+ * The pitch-grammar fixture (`H-BOU(D2)`) for a synthesised buy. A clubmate
+ * already in the lookup carries the real label, difficulty included; failing
+ * that, the move's `next_fixture` ("LEE (A)", DGWs comma-joined) is rewritten
+ * into the same grammar. Without this the card had no fixture chip and fell
+ * back to the club name, so it sat shorter than the rest of its row.
+ */
+function fixtureForBuy(lookup: PlayerLookup, team: string, nextFixture?: string): string | undefined {
+  const mate = Object.values(lookup).find((p) => p.team_short === team && p.next_fixtures);
+  if (mate) return mate.next_fixtures;
+  if (!nextFixture) return undefined;
+  const parts = nextFixture.split(",").map((part) => {
+    const m = part.trim().match(/^([A-Z]{2,4})\s*\(([HA])\)$/i);
+    return m ? `${m[2].toUpperCase()}-${m[1].toUpperCase()}` : part.trim();
+  });
+  return parts.filter(Boolean).join(" & ") || undefined;
 }
 
 // ---- projection -------------------------------------------------------------
