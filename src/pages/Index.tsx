@@ -563,7 +563,7 @@ const Index = () => {
   const planPick = plan && !pickIsStale(plan, planRec) ? plan.pick ?? null : null;
   const planMoves = useMemo(() => makeMoves(planRec, planPick), [planRec, planPick]);
   const playerLookup = useMemo(() => buildPlayerLookup(latestSquad ?? squadQuery.data, planRec), [latestSquad, squadQuery.data, planRec]);
-  const resolvedPlan = useMemo(() => (plan ? resolvePlan(plan, planMoves) : null), [plan, planMoves]);
+  const resolvedPlan = useMemo(() => (plan ? resolvePlan(plan, planMoves, playerLookup) : null), [plan, planMoves, playerLookup]);
   // Derived, never stored: "make" applies the verdict's moves, nothing else does.
   // The backend's step squads follow ZN Pick's moves, so a picked runner-up uses none.
   const appliedTransferCount = plan?.transfer === "make" && !planPick ? planMoves.length : 0;

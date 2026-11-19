@@ -174,6 +174,10 @@ export interface FplTransferPlayer {
   price: number;
   /** Next fixture for the target GW, e.g. "BOU (H)"; absent on a blank GW. */
   next_fixture?: string;
+  /** Verdict moves only: the pitch-card label, e.g. "H-BOU(D2)"; absent on a blank GW. */
+  next_fixtures?: string;
+  /** Verdict moves only: this player's own xPts for the target GW. */
+  xpts?: number;
 }
 
 export interface FplTransferMove {
