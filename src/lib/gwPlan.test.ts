@@ -328,7 +328,7 @@ describe("transferChoicePatch", () => {
 
   it("starts a benched seller's buy over the weakest same-position starter, and rolling swaps them back", () => {
     const made = { ...seed, ...transferChoicePatch(seed, "make", benchMove, lookup) };
-    expect(made.promoted).toEqual({ seller: 13, starter: 2, buy: 98 });
+    expect(made.promoted).toEqual({ seller: 13, starter: 2, buy: 98, rule: 2 });
     expect(resolvePlan(made, benchMove).xi).toContain(98);
     expect(resolvePlan(made, benchMove).bench).toContain(2);
     const rolled = { ...made, ...transferChoicePatch(made, "roll", benchMove, lookup) };
@@ -340,7 +340,7 @@ describe("transferChoicePatch", () => {
   it("starts the buy even when he projects below every starter: a transfer is bought to play", () => {
     const weak = { ...lookup, 98: mkPlayer(98, "DEF", 2) };
     const made = { ...seed, ...transferChoicePatch(seed, "make", benchMove, weak) };
-    expect(made.promoted).toEqual({ seller: 13, starter: 2, buy: 98 });
+    expect(made.promoted).toEqual({ seller: 13, starter: 2, buy: 98, rule: 2 });
     expect(resolvePlan(made, benchMove).xi).toContain(98);
   });
 
@@ -411,7 +411,7 @@ describe("reconcilePromotion", () => {
 
   it("promotes a plan saved as make before promotions existed", () => {
     const patch = reconcilePromotion({ ...seed, transfer: "make" }, benchMove, lookup);
-    expect(patch?.promoted).toEqual({ seller: 13, starter: 2, buy: 98 });
+    expect(patch?.promoted).toEqual({ seller: 13, starter: 2, buy: 98, rule: 2 });
   });
   it("is a no-op once in step, and when not making", () => {
     const made = { ...seed, ...transferChoicePatch(seed, "make", benchMove, lookup) };
@@ -422,7 +422,7 @@ describe("reconcilePromotion", () => {
     const made = { ...seed, ...transferChoicePatch(seed, "make", benchMove, lookup) };
     const next = { ...made, ...reconcilePromotion(made, otherMove, lookup) };
     expect(next.xi).toContain(2); // the DEF benched for P98 is back
-    expect(next.promoted).toEqual({ seller: 15, starter: 11, buy: 97 });
+    expect(next.promoted).toEqual({ seller: 15, starter: 11, buy: 97, rule: 2 });
     expect(next.transfer).toBe("make");
   });
 });
@@ -454,7 +454,7 @@ describe("formation-aware promotion (GW11 owner squad)", () => {
 
   it("a bench FWD buy displaces the weakest legal outfield starter, not the other FWD", () => {
     const made = { ...plan, ...transferChoicePatch(plan, "make", move, lookup) };
-    expect(made.promoted).toEqual({ seller: BROBBEY, starter: SCHADE, buy: EVANILSON });
+    expect(made.promoted).toMatchObject({ seller: BROBBEY, starter: SCHADE, buy: EVANILSON });
     expect(made.xi).toContain(BARRY);
     expect(made.xi).toContain(BROBBEY);
     expect(made.bench).toContain(SCHADE);
@@ -492,7 +492,7 @@ describe("formation-aware promotion (GW11 owner squad)", () => {
   it("reconcilePromotion migrates an old same-position promotion", () => {
     const old: GwPlan = { ...swapPlayers(plan, BROBBEY, BARRY), transfer: "make", promoted: { seller: BROBBEY, starter: BARRY, buy: EVANILSON } };
     const patch = reconcilePromotion(old, move, lookup);
-    expect(patch?.promoted).toEqual({ seller: BROBBEY, starter: SCHADE, buy: EVANILSON });
+    expect(patch?.promoted).toMatchObject({ seller: BROBBEY, starter: SCHADE, buy: EVANILSON });
     expect(patch?.xi).toContain(BARRY);
     expect(patch?.bench).toContain(SCHADE);
   });
@@ -501,6 +501,37 @@ describe("formation-aware promotion (GW11 owner squad)", () => {
     const old: GwPlan = { ...swapPlayers(plan, BROBBEY, BARRY), transfer: "make", promoted: { seller: BROBBEY, starter: BARRY, buy: EVANILSON } };
     const edited = swapPlayers(old, BARRY, 7); // user brings Barry back on for Mbeumo
     expect(reconcilePromotion(edited, move, lookup)).toBeNull();
+  });
+
+  it("reconcilePromotion leaves a new-rule promotion alone after the user starts someone weaker", () => {
+    const made = { ...plan, transfer: "make" as const, ...transferChoicePatch(plan, "make", move, lookup) };
+    const edited = swapPlayers(made, 13, 6); // user starts Shaw (0 xPts) over Rogers
+    expect(reconcilePromotion(edited, move, lookup)).toBeNull();
+  });
+
+  it("the migration is one-shot: a migrated plan is never re-picked", () => {
+    const old: GwPlan = { ...swapPlayers(plan, BROBBEY, BARRY), transfer: "make", promoted: { seller: BROBBEY, starter: BARRY, buy: EVANILSON } };
+    const migrated = { ...old, ...reconcilePromotion(old, move, lookup) };
+    const shifted = { ...lookup, 7: P(7, "MID", 1.0) }; // Mbeumo's xPts drop on a rerun
+    expect(reconcilePromotion(migrated, move, shifted)).toBeNull();
+  });
+
+  it("no IN gain on a buy the user moved to the bench", () => {
+    const made = { ...plan, ...transferChoicePatch(plan, "make", move, lookup) };
+    const benched = swapPlayers(made, 13, BROBBEY); // Shaw on, Evanilson (seller slot) off
+    expect(resolvePlan(benched, move, lookup).incoming[EVANILSON]).toBe(4.1);
+  });
+
+  it("with two moves, a bench seller's buy never benches the other move's buy", () => {
+    // Sell starter Schade for a 7-pointer MID, and bench Brobbey for Evanilson.
+    const both = [
+      { sell: { id: SCHADE, name: "Schade", team: "BRE", price: 6 }, buy: { id: 80, name: "Saka", team: "ARS", price: 10 }, this_gw_gain: 4.3, horizon_gain: 6 },
+      move[0],
+    ];
+    const lk = { ...lookup, 80: P(80, "MID", 7) };
+    const made = { ...plan, ...transferChoicePatch(plan, "make", both, lk) };
+    expect(made.xi).toContain(SCHADE); // Schade's slot holds Saka
+    expect(made.promoted?.starter).toBe(7); // Mbeumo, the weakest shown starter
   });
 
   it("rolling after a FWD-for-MID promotion restores the original lineup", () => {

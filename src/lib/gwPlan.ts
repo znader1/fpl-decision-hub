@@ -43,7 +43,7 @@ export interface GwPlan {
   locked: boolean;
   /** Set when "make" started a benched seller's buy over the weakest legal
    *  starter (plan ids); "roll" / undecided swaps them back. Absent on older plans. */
-  promoted?: { seller: number; starter: number; buy?: number } | null;
+  promoted?: { seller: number; starter: number; buy?: number; rule?: 2 } | null;
   /** A runner-up ("Also considered") the user chose over ZN Pick's move; "make"
    *  applies it instead of the verdict's moves. Null / absent = ZN Pick's move. */
   pick?: { sell: number; buy: number } | null;
@@ -133,9 +133,16 @@ const XI_LIMITS: Record<Exclude<FplPosition, "GKP">, [number, number]> = { DEF: 
  * best starters stay on (user testing, GW11: Evanilson pushed out Barry, not
  * Schade). A GKP buy only replaces the GKP. Undefined when nothing fits.
  */
-export function promotionStarter(xi: number[], buyPos: FplPosition, cap: number, lookup: PlayerLookup): number | undefined {
+export function promotionStarter(
+  xi: number[],
+  buyPos: FplPosition,
+  cap: number,
+  lookup: PlayerLookup,
+  /** Plan id → id on screen (a sold starter shows as his buy); ranks by the shown player. */
+  shown: (id: number) => number = (id) => id,
+): number | undefined {
   const posOf = (id: number) => lookup[id]?.pos;
-  const xp = (id: number) => lookup[id]?.xpts ?? Infinity;
+  const xp = (id: number) => lookup[shown(id)]?.xpts ?? Infinity;
   const counts: Partial<Record<FplPosition, number>> = {};
   for (const id of xi) {
     const pos = posOf(id);
@@ -177,16 +184,18 @@ export function transferChoicePatch(
     promoted = null;
   }
   if (choice === "make" && !promoted) {
+    const swap = new Map(moves.map((m) => [m.sell.id, m.buy.id]));
+    const shown = (id: number) => swap.get(id) ?? id;
     for (const m of moves) {
       if (!bench.includes(m.sell.id) || bench[0] === m.sell.id) continue;
       // A transfer is bought to play (user testing, 2026-11): the buy starts
       // whatever this week's projection says, over the weakest same-position starter.
       const pos = lookup[m.buy.id]?.pos ?? (m.position as FplPosition | undefined) ?? lookup[m.sell.id]?.pos;
       if (!pos) continue;
-      const weakest = promotionStarter(xi, pos, plan.cap, lookup);
+      const weakest = promotionStarter(xi, pos, plan.cap, lookup, shown);
       if (weakest === undefined) continue;
       ({ xi, bench } = swapPlayers({ ...plan, xi, bench }, m.sell.id, weakest));
-      promoted = { seller: m.sell.id, starter: weakest, buy: m.buy.id };
+      promoted = { seller: m.sell.id, starter: weakest, buy: m.buy.id, rule: 2 };
       break;
     }
   }
@@ -202,17 +211,21 @@ export function reconcilePromotion(plan: GwPlan, moves: FplTransferVerdictMove[]
   if (plan.transfer !== "make" || moves.length === 0) return null;
   const pr = plan.promoted;
   if (pr && moves.some((m) => m.sell.id === pr.seller && (pr.buy === undefined || m.buy.id === pr.buy))) {
-    // Same move; a plan saved under the old same-position rule may have benched
-    // the wrong starter. Re-pick only while that promotion is still untouched.
+    // Same move. A promotion made under the old same-position rule (no `rule`
+    // tag) may have benched the wrong starter: re-pick it once, and only while
+    // the user hasn't touched that pair. Tagged promotions are never re-picked,
+    // so later lineup edits are the user's to keep.
+    if (pr.rule === 2) return null;
     if (!plan.xi.includes(pr.seller) || !plan.bench.includes(pr.starter)) return null;
     const move = moves.find((m) => m.sell.id === pr.seller)!;
     const pos = lookup[move.buy.id]?.pos ?? (move.position as FplPosition | undefined) ?? lookup[pr.seller]?.pos;
     if (!pos) return null;
     const undone = swapPlayers(plan, pr.starter, pr.seller);
-    const want = promotionStarter(undone.xi, pos, plan.cap, lookup);
+    const swap = new Map(moves.map((m) => [m.sell.id, m.buy.id]));
+    const want = promotionStarter(undone.xi, pos, plan.cap, lookup, (id) => swap.get(id) ?? id);
     if (want === undefined || want === pr.starter) return null;
     const { xi, bench } = swapPlayers(undone, pr.seller, want);
-    return { xi, bench, promoted: { ...pr, starter: want } };
+    return { xi, bench, promoted: { ...pr, starter: want, rule: 2 } };
   }
   // A promotion the user already undid by hand (seller back on the bench) is theirs to keep.
   const base = pr ? { ...plan, ...transferChoicePatch(plan, null, moves, lookup), transfer: plan.transfer } : plan;
@@ -299,7 +312,7 @@ export function resolvePlan(plan: GwPlan, moves: FplTransferVerdictMove[], looku
   const x = (id: number) => lookup?.[id]?.xpts;
   for (const m of moves) {
     const pr = plan.promoted;
-    const replaced = pr && pr.seller === m.sell.id && plan.bench.includes(pr.starter) ? pr.starter : plan.xi.includes(m.sell.id) ? m.sell.id : undefined;
+    const replaced = pr && pr.seller === m.sell.id && plan.xi.includes(pr.seller) && plan.bench.includes(pr.starter) ? pr.starter : plan.xi.includes(m.sell.id) ? m.sell.id : undefined;
     const buyX = x(m.buy.id);
     const outX = replaced !== undefined ? x(replaced) : undefined;
     incoming[m.buy.id] = typeof buyX === "number" && typeof outX === "number" ? buyX - outX : m.this_gw_gain;
