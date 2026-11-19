@@ -132,3 +132,18 @@ describe("incoming-transfer pill", () => {
     expect(screen.queryByText(/^IN /)).toBeNull();
   });
 });
+
+describe("fixture line height", () => {
+  it("keeps one fixed-height fixture slot whether or not a fixture exists", () => {
+    // A runner-up buy once had no fixture: the plain team line was shorter
+    // than the chip, so his card sat out of line with the rest of the row.
+    const { unmount } = renderCard({ fixture: { label: "H-FUL(D2)", opponent: "FUL", isHome: true, difficulty: 2 } });
+    const withChip = screen.getByTestId("fixture-slot");
+    expect(withChip.className).toMatch(/\bh-4\b/);
+    unmount();
+    renderCard();
+    const without = screen.getByTestId("fixture-slot");
+    expect(without.className).toMatch(/\bh-4\b/);
+    expect(without.textContent).toBe("MCI");
+  });
+});

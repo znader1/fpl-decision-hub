@@ -296,8 +296,10 @@ export function buildPlayerLookup(squad: FplSquad | undefined, rec: FplTeamRecom
       is_captain: false,
       is_vice_captain: false,
       multiplier: 1,
-      xpts: (seller?.xpts ?? 0) + m.this_gw_gain,
-      next_fixtures: m.buy.next_fixture,
+      // The backend's own projection when it sends one; older payloads only
+      // allow the estimate (seller's xPts plus the move's this-GW gain).
+      xpts: typeof m.buy.xpts === "number" ? m.buy.xpts : (seller?.xpts ?? 0) + m.this_gw_gain,
+      next_fixtures: m.buy.next_fixtures ?? m.buy.next_fixture,
     };
   }
   return out;

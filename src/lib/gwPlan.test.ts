@@ -232,6 +232,22 @@ describe("buildPlayerLookup", () => {
     ];
     expect(buildPlayerLookup(SQUAD, r)[99].xpts).toBe(6.2);
   });
+
+  it("runner-up buy uses its own xpts and pitch fixture when the backend sends them", () => {
+    const d = detail();
+    d.moves = [{ ...d.moves[0], buy: { ...d.moves[0].buy, xpts: 5.88, next_fixtures: "H-NFO(D3)", next_fixture: "NFO (H)" } }];
+    const lookup = buildPlayerLookup(SQUAD, rec(d));
+    expect(lookup[99].xpts).toBe(5.88);
+    expect(lookup[99].next_fixtures).toBe("H-NFO(D3)");
+  });
+
+  it("falls back to seller + this_gw_gain and the copy label without the new fields", () => {
+    const d = detail();
+    d.moves = [{ ...d.moves[0], buy: { ...d.moves[0].buy, next_fixture: "NFO (H)" } }];
+    const lookup = buildPlayerLookup(SQUAD, rec(d));
+    expect(lookup[99].xpts).toBeCloseTo(5.5);
+    expect(lookup[99].next_fixtures).toBe("NFO (H)");
+  });
 });
 
 describe("projectPlan", () => {

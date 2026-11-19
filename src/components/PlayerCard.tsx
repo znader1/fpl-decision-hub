@@ -139,7 +139,7 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
               />
             )}
             {player.inGain !== undefined && (
-              <div className="absolute -top-3.5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-accent px-1.5 py-px text-[10px] font-bold text-white shadow-sm">
+              <div className="absolute -top-1.5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-accent px-1.5 py-px text-[10px] font-bold text-white shadow-sm">
                 {typeof player.inGain === "number" ? `IN ${player.inGain < 0 ? "−" : "+"}${Math.abs(player.inGain).toFixed(1)}` : "IN"}
               </div>
             )}
@@ -169,17 +169,22 @@ export const PlayerCard = ({ player }: PlayerCardProps) => {
                 abbreviation — takes its own line. Putting the team on the points
                 row made "BRE 1 · 3.01" wider than the 58px phone card, so a
                 five-midfielder row's labels ran into each other. */}
-            {fixture && fixtureShort ? (
-              <FixtureChip
-                label={fixture.label}
-                opponent={fixture.opponent}
-                isHome={fixture.isHome}
-                difficulty={fixtureDifficulty}
-                extraCount={fixture.extraCount}
-              />
-            ) : (
-              <p className="text-[9px] leading-tight text-muted-foreground">{player.team}</p>
-            )}
+            {/* One fixed height for chip or fallback, so a card without a
+                fixture never comes out shorter than its row-mates. */}
+            <div data-testid="fixture-slot" className="flex h-4 items-center justify-center">
+              {fixture && fixtureShort ? (
+                <FixtureChip
+                  label={fixture.label}
+                  opponent={fixture.opponent}
+                  isHome={fixture.isHome}
+                  difficulty={fixtureDifficulty}
+                  extraCount={fixture.extraCount}
+                  className="leading-none"
+                />
+              ) : (
+                <span className="text-[9px] leading-none text-muted-foreground">{player.team}</span>
+              )}
+            </div>
             <div className="flex justify-center gap-1 whitespace-nowrap text-[10px] mt-0.5">
               {hasActualPoints ? (
                 <>
