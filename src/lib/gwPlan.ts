@@ -41,7 +41,7 @@ export interface GwPlan {
   reviewed: Partial<Record<PlanDecisionKey, true>>;
   /** "Saved". Any material edit clears it. */
   locked: boolean;
-  /** Set when "make" started a benched seller's buy over the weakest same-position
+  /** Set when "make" started a benched seller's buy over the weakest legal
    *  starter (plan ids); "roll" / undecided swaps them back. Absent on older plans. */
   promoted?: { seller: number; starter: number; buy?: number } | null;
   /** A runner-up ("Also considered") the user chose over ZN Pick's move; "make"
@@ -123,11 +123,44 @@ export function moveBench(plan: GwPlan, index: number, dir: -1 | 1): GwPlan {
 
 // ---- transfers --------------------------------------------------------------
 
+/** FPL's XI limits per outfield position (1 GKP is fixed). */
+const XI_LIMITS: Record<Exclude<FplPosition, "GKP">, [number, number]> = { DEF: [3, 5], MID: [2, 5], FWD: [1, 3] };
+
+/**
+ * The starter a promoted buy replaces: the weakest (this-GW xPts) non-captain
+ * starter whose removal, with a `buyPos` player added, leaves a legal XI. Any
+ * outfield position qualifies — a FWD buy can push out a MID — so the user's
+ * best starters stay on (user testing, GW11: Evanilson pushed out Barry, not
+ * Schade). A GKP buy only replaces the GKP. Undefined when nothing fits.
+ */
+export function promotionStarter(xi: number[], buyPos: FplPosition, cap: number, lookup: PlayerLookup): number | undefined {
+  const posOf = (id: number) => lookup[id]?.pos;
+  const xp = (id: number) => lookup[id]?.xpts ?? Infinity;
+  const counts: Partial<Record<FplPosition, number>> = {};
+  for (const id of xi) {
+    const pos = posOf(id);
+    if (pos) counts[pos] = (counts[pos] ?? 0) + 1;
+  }
+  const legal = (out: FplPosition) => {
+    if (buyPos === "GKP" || out === "GKP") return buyPos === out;
+    const after = { ...counts };
+    after[out] = (after[out] ?? 0) - 1;
+    after[buyPos] = (after[buyPos] ?? 0) + 1;
+    return (Object.entries(XI_LIMITS) as [FplPosition, [number, number]][]).every(([pos, [lo, hi]]) => {
+      const n = after[pos] ?? 0;
+      return n >= lo && n <= hi;
+    });
+  };
+  return xi
+    .filter((id) => id !== cap && posOf(id) !== undefined && legal(posOf(id)!))
+    .sort((a, b) => xp(a) - xp(b))[0];
+}
+
 /**
  * The plan patch for a transfer decision. A buy is meant to play, so "make"
- * starts a benched seller's buy over the weakest same-position non-captain
- * starter (a like-for-like swap keeps the formation legal); leaving "make"
- * swaps that pair back if the user hasn't moved them since.
+ * starts a benched seller's buy over `promotionStarter` (weakest legal
+ * non-captain starter, any outfield position); leaving "make" swaps that
+ * pair back if the user hasn't moved them since.
  */
 export function transferChoicePatch(
   plan: GwPlan,
@@ -150,8 +183,7 @@ export function transferChoicePatch(
       // whatever this week's projection says, over the weakest same-position starter.
       const pos = lookup[m.buy.id]?.pos ?? (m.position as FplPosition | undefined) ?? lookup[m.sell.id]?.pos;
       if (!pos) continue;
-      const xp = (id: number) => lookup[id]?.xpts ?? Infinity;
-      const weakest = xi.filter((id) => id !== plan.cap && lookup[id]?.pos === pos).sort((a, b) => xp(a) - xp(b))[0];
+      const weakest = promotionStarter(xi, pos, plan.cap, lookup);
       if (weakest === undefined) continue;
       ({ xi, bench } = swapPlayers({ ...plan, xi, bench }, m.sell.id, weakest));
       promoted = { seller: m.sell.id, starter: weakest, buy: m.buy.id };
@@ -169,7 +201,19 @@ export function transferChoicePatch(
 export function reconcilePromotion(plan: GwPlan, moves: FplTransferVerdictMove[], lookup: PlayerLookup): Partial<GwPlan> | null {
   if (plan.transfer !== "make" || moves.length === 0) return null;
   const pr = plan.promoted;
-  if (pr && moves.some((m) => m.sell.id === pr.seller && (pr.buy === undefined || m.buy.id === pr.buy))) return null;
+  if (pr && moves.some((m) => m.sell.id === pr.seller && (pr.buy === undefined || m.buy.id === pr.buy))) {
+    // Same move; a plan saved under the old same-position rule may have benched
+    // the wrong starter. Re-pick only while that promotion is still untouched.
+    if (!plan.xi.includes(pr.seller) || !plan.bench.includes(pr.starter)) return null;
+    const move = moves.find((m) => m.sell.id === pr.seller)!;
+    const pos = lookup[move.buy.id]?.pos ?? (move.position as FplPosition | undefined) ?? lookup[pr.seller]?.pos;
+    if (!pos) return null;
+    const undone = swapPlayers(plan, pr.starter, pr.seller);
+    const want = promotionStarter(undone.xi, pos, plan.cap, lookup);
+    if (want === undefined || want === pr.starter) return null;
+    const { xi, bench } = swapPlayers(undone, pr.seller, want);
+    return { xi, bench, promoted: { ...pr, starter: want } };
+  }
   // A promotion the user already undid by hand (seller back on the bench) is theirs to keep.
   const base = pr ? { ...plan, ...transferChoicePatch(plan, null, moves, lookup), transfer: plan.transfer } : plan;
   const next = transferChoicePatch(base, "make", moves, lookup);
@@ -242,14 +286,24 @@ export interface ResolvedPlan {
 }
 
 /** The plan with its transfer decision applied: sell → buy everywhere. */
-export function resolvePlan(plan: GwPlan, moves: FplTransferVerdictMove[]): ResolvedPlan {
+export function resolvePlan(plan: GwPlan, moves: FplTransferVerdictMove[], lookup?: PlayerLookup): ResolvedPlan {
   if (plan.transfer !== "make" || moves.length === 0) {
     return { xi: plan.xi, bench: plan.bench, cap: plan.cap, vice: plan.vice, incoming: {} };
   }
   const swap = new Map(moves.map((m) => [m.sell.id, m.buy.id]));
   const sub = (id: number) => swap.get(id) ?? id;
   const incoming: Record<number, number> = {};
-  for (const m of moves) incoming[m.buy.id] = m.this_gw_gain;
+  // The pill shows what the pitch gained: buy minus whoever he actually
+  // replaced in the XI (the promoted starter, else the seller). Without a
+  // lookup, or with a buy still on the bench, the engine's estimate stands.
+  const x = (id: number) => lookup?.[id]?.xpts;
+  for (const m of moves) {
+    const pr = plan.promoted;
+    const replaced = pr && pr.seller === m.sell.id && plan.bench.includes(pr.starter) ? pr.starter : plan.xi.includes(m.sell.id) ? m.sell.id : undefined;
+    const buyX = x(m.buy.id);
+    const outX = replaced !== undefined ? x(replaced) : undefined;
+    incoming[m.buy.id] = typeof buyX === "number" && typeof outX === "number" ? buyX - outX : m.this_gw_gain;
+  }
   return { xi: plan.xi.map(sub), bench: plan.bench.map(sub), cap: sub(plan.cap), vice: sub(plan.vice), incoming };
 }
 
