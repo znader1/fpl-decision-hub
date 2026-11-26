@@ -68,6 +68,9 @@ describe("hand-off storage", () => {
     expect(store.get("fpl_chip_strategy")).toBe("wildcard");
     expect(store.get("fpl_horizon_gws")).toBe("7");
     expect(store.get("fpl_chip_play_event_id")).toBe("8");
+    // "Use this squad" asks the plan to play it, once.
+    expect(mod.takeHandoffRequest()).toBe(true);
+    expect(mod.takeHandoffRequest()).toBe(false);
   });
 
   it("reads safe defaults when nothing is stored", async () => {

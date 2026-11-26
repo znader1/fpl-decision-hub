@@ -128,8 +128,23 @@ export function storeHandoff(h: { preset: WildcardPreset; pinnedIds: number[]; e
     localStorage.setItem("fpl_chip_strategy", "wildcard");
     localStorage.setItem("fpl_horizon_gws", String(h.horizonGws));
     if (h.playEventId) localStorage.setItem("fpl_chip_play_event_id", String(h.playEventId));
+    localStorage.setItem(WILDCARD_HANDOFF_PENDING_KEY, "1");
   } catch {
     /* no storage */
+  }
+}
+
+/** Set by "Use this squad"; the plan reads it once to play the wildcard with that draft. */
+export const WILDCARD_HANDOFF_PENDING_KEY = "fpl_wildcard_handoff_pending";
+
+/** True once per "Use this squad" click: clears the flag as it reads it. */
+export function takeHandoffRequest(): boolean {
+  try {
+    const pending = localStorage.getItem(WILDCARD_HANDOFF_PENDING_KEY) === "1";
+    localStorage.removeItem(WILDCARD_HANDOFF_PENDING_KEY);
+    return pending;
+  } catch {
+    return false;
   }
 }
 

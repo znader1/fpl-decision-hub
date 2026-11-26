@@ -11,6 +11,7 @@ import { PlannerRail } from "@/components/PlannerRail";
 import { QueryErrorCard } from "@/components/QueryErrorCard";
 import { useProfile } from "@/hooks/useProfile";
 import { getInitialEntryId } from "@/lib/entryId";
+import { parseStoredPlan, planStorageKey, wildcardSquadView } from "@/lib/gwPlan";
 import {
   buildPlannerRows,
   chipWindowsInRange,
@@ -218,20 +219,35 @@ const Fixtures = () => {
     return Array.from({ length: GRID_GWS }, (_, i) => gw + i).filter((g) => g <= 38);
   }, [tickerQuery.data, gw]);
 
+  // A plan saved with a wildcard draft (Squad page): plan that squad's fixtures,
+  // with a switch back to the real one. Read from this browser's copy of the plan.
+  const wildcardSquad = useMemo(() => {
+    if (!hasEntry || gw === null) return null;
+    try {
+      return wildcardSquadView(parseStoredPlan(localStorage.getItem(planStorageKey(entryId, gw)))?.plan, entryId, gw);
+    } catch {
+      return null;
+    }
+  }, [hasEntry, entryId, gw]);
+  const [showWildcard, setShowWildcard] = useState(true);
+  const onWildcard = Boolean(wildcardSquad && showWildcard);
+  const plannerSquad = onWildcard ? wildcardSquad : squadQuery.data;
+
   const rows = useMemo(
     () =>
-      squadQuery.data
-        ? buildPlannerRows({ squad: squadQuery.data, ticker: tickerQuery.data, gws, horizon, recommendation: recQuery.data })
+      plannerSquad
+        ? buildPlannerRows({ squad: plannerSquad, ticker: tickerQuery.data, gws, horizon, recommendation: recQuery.data })
         : [],
-    [squadQuery.data, tickerQuery.data, gws, horizon, recQuery.data],
+    [plannerSquad, tickerQuery.data, gws, horizon, recQuery.data],
   );
   const tags = useMemo(() => columnTags({ gws, rows, calendar: chipPlanQuery.data?.calendar }), [gws, rows, chipPlanQuery.data]);
   const chips = useMemo(() => chipWindowsInRange(chipPlanQuery.data, gws, rows), [chipPlanQuery.data, gws, rows]);
   const links = useMemo(() => {
     const byId: Record<number, number> = {};
     for (const r of rows) if (r.total !== null) byId[r.playerId] = r.total;
-    return weakestLinks(recQuery.data, byId);
-  }, [recQuery.data, rows]);
+    // The weakest links come from ZN Pick's run on the real squad: not this draft.
+    return onWildcard ? [] : weakestLinks(recQuery.data, byId);
+  }, [recQuery.data, rows, onWildcard]);
 
   const toggle = (
     <ToggleGroup
@@ -268,8 +284,19 @@ const Fixtures = () => {
               Fixture Planner
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Your 15 over the next {GRID_GWS} gameweeks — xPts per fixture, chip weeks and the weakest links to fix.
+              {onWildcard
+                ? `Your saved wildcard squad over the next ${GRID_GWS} gameweeks.`
+                : `Your 15 over the next ${GRID_GWS} gameweeks — xPts per fixture, chip weeks and the weakest links to fix.`}
             </p>
+            {wildcardSquad && (
+              <button
+                type="button"
+                onClick={() => setShowWildcard((v) => !v)}
+                className="mt-1 text-xs font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                {showWildcard ? "Show my current squad" : "Show my wildcard squad"}
+              </button>
+            )}
           </div>
           <div className="lg:hidden">{toggle}</div>
         </div>
