@@ -62,7 +62,7 @@ describe("resolveGwGateState", () => {
   });
 });
 
-import { isLatestSquad, shouldAutoRecommend } from "./gwGate";
+import { isLatestSquad } from "./gwGate";
 
 describe("isLatestSquad (the squad the GW plan may seed from)", () => {
   const base = { squadEventId: 28, deadlineGw: 29, placeholder: false };
@@ -87,20 +87,5 @@ describe("isLatestSquad after a Free Hit", () => {
   it("still rejects an old squad with no Free Hit behind it", () => {
     expect(isLatestSquad(base)).toBe(false);
     expect(isLatestSquad({ ...base, freeHitRevertedFrom: null })).toBe(false);
-  });
-});
-
-describe("shouldAutoRecommend (entering a flow step without ZN Pick's answer)", () => {
-  const ok = { step: "transfers" as const, hasPlanRec: false, pending: false, canRecommend: true, entryId: 7, deadlineGw: 29, firedKey: null };
-  it("fires once per entry + deadline GW, never on the squad step or while pending", () => {
-    expect(shouldAutoRecommend(ok)).toBe("7:29");
-    expect(shouldAutoRecommend({ ...ok, firedKey: "7:29" })).toBeNull();
-    expect(shouldAutoRecommend({ ...ok, firedKey: "7:28" })).toBe("7:29");
-    expect(shouldAutoRecommend({ ...ok, step: "squad" })).toBeNull();
-    expect(shouldAutoRecommend({ ...ok, pending: true })).toBeNull();
-    expect(shouldAutoRecommend({ ...ok, hasPlanRec: true })).toBeNull();
-    expect(shouldAutoRecommend({ ...ok, deadlineGw: undefined })).toBeNull();
-    expect(shouldAutoRecommend({ ...ok, entryId: 0 })).toBeNull();
-    expect(shouldAutoRecommend({ ...ok, canRecommend: false })).toBeNull();
   });
 });

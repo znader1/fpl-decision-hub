@@ -56,24 +56,3 @@ export const isLatestSquad = (args: {
   const currentAsOf = typeof freeHitRevertedFrom === "number" ? Math.max(squadEventId, freeHitRevertedFrom) : squadEventId;
   return currentAsOf >= deadlineGw - 1;
 };
-
-/**
- * Entering a flow step needs ZN Pick's answer for the deadline GW. Returns the
- * key to fire for (`entry:gw`), or null. The caller remembers the last key it
- * fired so one plan never triggers more than one automatic run — whatever the
- * engine answers.
- */
-export const shouldAutoRecommend = (args: {
-  step: string;
-  hasPlanRec: boolean;
-  pending: boolean;
-  canRecommend: boolean;
-  entryId: number;
-  deadlineGw: number | undefined;
-  firedKey: string | null;
-}): string | null => {
-  const { step, hasPlanRec, pending, canRecommend, entryId, deadlineGw, firedKey } = args;
-  if (step === "squad" || hasPlanRec || pending || !canRecommend || entryId <= 0 || typeof deadlineGw !== "number") return null;
-  const key = `${entryId}:${deadlineGw}`;
-  return firedKey === key ? null : key;
-};

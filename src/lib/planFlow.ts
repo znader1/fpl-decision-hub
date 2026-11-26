@@ -377,13 +377,20 @@ export function chipOptions(args: {
   const wcWhy = `Rebuilds all 15 for free. ${
     wcOutlook?.guidance ?? (chipPlan ? "No wildcard week stands out yet." : "The chip plan hasn't answered yet.")
   }`;
+  // Not ZN Pick's call: say so up front and show the bar, so a positive window
+  // gain doesn't read as "play it" (user testing, 2026-11).
+  const wcHold = nudge !== "wildcard";
+  const wcBar = typeof wcOutlook?.bar === "number" ? wcOutlook.bar : null;
   const wildcard: ChipOption = {
     chip: "wildcard",
     title: CHIP_LABELS.wildcard,
-    zn: nudge === "wildcard",
+    zn: !wcHold,
     gain: wcGain,
-    ...(wcGain !== null && { gainNote: "over the wildcard window" }),
-    why: wcWhy,
+    ...(wcGain !== null && {
+      gainNote: wcHold && wcBar !== null ? `over the wildcard window · needs ${wcBar.toFixed(0)} pts to play` : "over the wildcard window",
+    }),
+    // The engine's guidance usually opens with "Hold"/"Keep" already; don't say it twice.
+    why: wcHold && wcGain !== null && !/^(Hold|Keep)\b/.test(wcOutlook?.guidance ?? "") ? `Hold. ${wcWhy}` : wcWhy,
     used: used("wildcard"),
     ...(pickPending && { disabled: true }),
   };
@@ -405,12 +412,11 @@ export function chipOptions(args: {
   ];
   // A played chip has no gain to show.
   const options = raw.map((o) => (o.used ? { ...o, gain: null, gainNote: undefined } : o));
-  // ZN Pick first, then a chip whose best week is this one (the decision is now),
-  // then the rest as listed; chips already played go last.
-  // Among chips whose best week is now, the wildcard leads: it is the one that
-  // reshapes the squad, so it is the call to see first.
-  const rank = (o: ChipOption) =>
-    o.used ? 4 : o.zn ? 0 : o.chip !== "none" && bestWeek(chipPlan, o.chip as ChipName)?.gw === gw ? (o.chip === "wildcard" ? 1 : 2) : 3;
+  // ZN Pick first, then the rest as listed; chips already played go last. A chip
+  // whose best week is this one but which ZN Pick doesn't play is not moved up:
+  // second place read as a recommendation (user testing, 2026-11). The Save card
+  // names it instead (saveWhy).
+  const rank = (o: ChipOption) => (o.used ? 2 : o.zn ? 0 : 1);
   return options.map((o, i) => ({ o, i })).sort((a, b) => rank(a.o) - rank(b.o) || a.i - b.i).map(({ o }) => o);
 }
 

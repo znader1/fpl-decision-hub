@@ -64,7 +64,7 @@ import { ChipNudgeCard } from "@/components/ChipNudgeCard";
 import { OptimizeSquadDialog } from "@/components/OptimizeSquadDialog";
 import { Navbar } from "@/components/layout/Navbar";
 import { QueryErrorCard } from "@/components/QueryErrorCard";
-import { isLatestSquad, resolveGwGateState, shouldAutoRecommend } from "@/lib/gwGate";
+import { isLatestSquad, resolveGwGateState } from "@/lib/gwGate";
 import { Button } from "@/components/ui/button";
 import { Zap } from "lucide-react";
 import { parseEntryIdInput, getInitialEntryId } from "@/lib/entryId";
@@ -319,7 +319,6 @@ const Index = () => {
     };
   };
 
-  const autoRecommendFired = useRef<string | null>(null);
   // True while the pitch can show the user's GW plan. A ZN Pick run then keeps
   // the pitch on the plan instead of flipping to the engine's own lineup, which
   // disagreed with the plan rail (user testing, 2026-11); the toggle still shows it.
@@ -336,7 +335,6 @@ const Index = () => {
   });
   const resetRecommendation = () => {
     recommendationMutation.reset();
-    autoRecommendFired.current = null;
   };
 
   useEffect(() => {
@@ -371,7 +369,6 @@ const Index = () => {
 
     setPitchMode("squad");
     recommendationMutation.reset();
-    autoRecommendFired.current = null;
     setDidApplyNextGwDefault(true);
   }, [
     didApplyNextGwDefault,
@@ -614,15 +611,17 @@ const Index = () => {
   const goStep = (s: PlanStep) => {
     setSwapSelection(null);
     setBenchMessage(null);
-    // Entering the flow ends a wildcard preview: the strategy switch reruns ZN Pick
-    // for the deadline GW, so the steps' own auto-run stands down for this key.
-    // A run still in flight would make the strategy effect drop the switch; then
-    // the auto-run picks it up once that run settles (its draft doesn't fit the plan).
+    // Entering the flow ends a wildcard preview. Its draft doesn't fit the plan,
+    // so drop it and switch strategy without running: the steps wait for the user
+    // to ask (a horizon button or Run ZN Pick), never run on entry (user testing, 2026-11).
+    // With no answer held, the strategy effect has nothing to rerun.
     if (s !== "squad" && stepStrategy !== chipStrategy) {
-      if (typeof deadlineGw === "number" && !recommendationMutation.isPending) {
-        autoRecommendFired.current = `${entryId}:${deadlineGw}`;
+      resetRecommendation();
+      if (typeof deadlineGw === "number") {
+        setSelectedGW(deadlineGw);
+        setSquadGW(deadlineGw);
       }
-      switchStrategyForDeadline(stepStrategy);
+      setChipStrategy(stepStrategy);
     }
     navigate(s === "squad" ? "/app" : `/app/plan/${s}`);
   };
@@ -919,13 +918,6 @@ const Index = () => {
   };
 
 
-  // Entering a step needs ZN Pick's answer for the deadline GW; run it once per
-  // entry + deadline GW if the user hasn't, asking for that GW explicitly (the
-  // Recommend button's planGw follows the GW on screen, which may be another).
-  // The squad itself is never refetched — handoff §1.
-  // Cleared by resetRecommendation(): a reset after the auto-run (GW or entry
-  // change, the default-GW effect) dropped the answer and left the step empty
-  // with no way to ask again, since the latch still held the key.
   useEffect(() => {
     if (!pendingHorizonRerun) return;
     setPendingHorizonRerun(false);
@@ -933,23 +925,6 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingHorizonRerun, horizonGws]);
 
-  const autoRecommendKey = shouldAutoRecommend({
-    step,
-    hasPlanRec: Boolean(planRec),
-    pending: recommendationMutation.isPending,
-    canRecommend,
-    entryId,
-    deadlineGw,
-    firedKey: autoRecommendFired.current,
-  });
-  useEffect(() => {
-    if (!autoRecommendKey || typeof deadlineGw !== "number") return;
-    autoRecommendFired.current = autoRecommendKey;
-    setSelectedGW(deadlineGw);
-    setSquadGW(deadlineGw);
-    runRecommendation(deadlineGw, stepStrategy);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRecommendKey]);
 
   const parameterProps = {
     entryId,

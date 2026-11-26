@@ -31,7 +31,9 @@ export function TransfersStep({ options, value, pick = null, onPick, loading = f
     <div role="group" aria-label="Judge moves over" className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
       <span className="mr-1">Judge moves over</span>
       {HORIZON_CHOICES.map((h) => {
-        const active = h === horizonGws;
+        // Before the first run nothing is highlighted: the click is the choice
+        // and starts ZN Pick (user testing, 2026-11).
+        const active = Boolean(options) && h === horizonGws;
         return (
           <button
             key={h}
@@ -54,7 +56,13 @@ export function TransfersStep({ options, value, pick = null, onPick, loading = f
     return (
       <div className="flex flex-col gap-3.5">
         {horizonControl}
-        <RunPickCard idle="Run ZN Pick to see your moves." working="ZN Pick is working out your moves…" loading={loading} error={error} onRun={onRun} />
+        <RunPickCard
+          idle={horizonControl ? "Pick how many gameweeks to judge moves over to run ZN Pick." : "Run ZN Pick to see your moves."}
+          working="ZN Pick is working out your moves…"
+          loading={loading}
+          error={error}
+          onRun={horizonControl && !error ? undefined : onRun}
+        />
       </div>
     );
   }
