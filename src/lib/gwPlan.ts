@@ -471,6 +471,13 @@ export function buildTodo(plan: GwPlan, base: GwPlan, moves: FplTransferVerdictM
     const cost = hitCost > 0 ? `−${hitCost} hit` : "free";
     for (const m of moves) todo.push(`Transfer out ${m.sell.name}, bring in ${m.buy.name} (${cost}).`);
   }
+  if (plan.chip === "wildcard" && plan.wildcardSquad?.length) {
+    const now = new Set([...plan.xi, ...plan.bench]);
+    const had = new Set([...base.xi, ...base.bench]);
+    const out = [...base.xi, ...base.bench].filter((id) => !now.has(id));
+    const inn = [...plan.xi, ...plan.bench].filter((id) => !had.has(id));
+    if (out.length > 0) todo.push(`Wildcard: transfer out ${out.map(name).join(", ")}; bring in ${inn.map(name).join(", ")} (free).`);
+  }
   const r = resolvePlan(plan, moves);
   if (plan.cap !== base.cap || plan.vice !== base.vice) todo.push(`Set ${name(r.cap)} as captain and ${name(r.vice)} as vice.`);
   if (lineupChanged(plan, base)) todo.push(`Set your bench to ${r.bench.slice(1).map(name).join(", ")}.`);

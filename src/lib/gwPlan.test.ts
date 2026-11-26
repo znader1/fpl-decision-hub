@@ -28,6 +28,7 @@ import {
   wildcardSquadView,
   type GwPlan,
 } from "./gwPlan";
+import { planToTeam } from "./planTeam";
 import type {
   FplPosition,
   FplSquad,
@@ -583,5 +584,18 @@ describe("wildcard draft as the plan's squad", () => {
     expect(view.captain_player_id).toBe(105);
     expect(wildcardSquadView({ ...saved, chip: null }, 1, 29)).toBeNull();
     expect(wildcardSquadView(base, 1, 29)).toBeNull();
+  });
+  it("after a reload with no recommendation, the pitch and the to-do list show the draft", () => {
+    const plan = { ...base, ...adoptWildcardDraft(DRAFT)!, chip: "wildcard" as const };
+    const saved = parseStoredPlan(JSON.stringify({ plan, base }))!.plan;
+    const lookup = buildPlayerLookup(SQUAD, undefined, saved.wildcardSquad);
+    const team = planToTeam(SQUAD, resolvePlan(saved, [], lookup), lookup);
+    expect(team.starting_xi.map((p) => p.player_id)).toEqual(saved.xi);
+    expect(team.starting_xi.find((p) => p.is_captain)?.player_id).toBe(105);
+    const todo = buildTodo(saved, base, [], lookup);
+    expect(todo[0]).toBe(
+      "Wildcard: transfer out P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P14, P13, P15; bring in W1, W2, W3, W4, W5, W6, W7, W8, W9, W10, W11, W12, W14, W13, W15 (free).",
+    );
+    expect(todo).toContain("Activate Wildcard.");
   });
 });

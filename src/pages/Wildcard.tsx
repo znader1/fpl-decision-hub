@@ -14,7 +14,7 @@ import { WildcardPresetTabs } from "@/components/WildcardPresetTabs";
 import { useProfile } from "@/hooks/useProfile";
 import { getInitialEntryId } from "@/lib/entryId";
 import { fetchWildcardDrafts, type WildcardPreset } from "@/lib/fplAssistantApi";
-import { storeHandoff } from "@/lib/wildcardDrafts";
+import { presetToSquad, storeHandoff } from "@/lib/wildcardDrafts";
 
 const HORIZONS = [3, 4, 5, 6, 7, 8];
 
@@ -86,6 +86,10 @@ export default function Wildcard() {
       excludedIds,
       horizonGws: horizon,
       playEventId: query.data?.event_id ?? null,
+      squad: (() => {
+        const p = query.data?.presets.find((x) => x.name === name);
+        return p && query.data ? presetToSquad(p, entryId, query.data.event_id) : null;
+      })(),
     });
     navigate("/app/plan/squad");
   };

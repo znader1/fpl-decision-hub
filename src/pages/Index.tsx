@@ -921,7 +921,7 @@ const Index = () => {
     if (pick.chipStrategy !== null) switchStrategyForDeadline(pick.chipStrategy);
     // Already on the wildcard strategy (a preview or a hand-off): no strategy
     // change to rerun on, so ask for the draft directly.
-    else if (chip === "wildcard" && plan?.chip !== "wildcard") runWildcardDraft();
+    else if (chip === "wildcard" && !plan?.wildcardSquad) runWildcardDraft();
     // Triple Captain goes on its own player: playing it hands him the armband.
     const tcCap = chip === "triple_captain" ? chipOpts.find((o) => o.chip === "triple_captain")?.capId : undefined;
     if (tcCap !== undefined) {
@@ -938,10 +938,13 @@ const Index = () => {
   // that draft once (the click is the request, so this is not a step auto-run).
   useEffect(() => {
     if (!planLoaded || typeof deadlineGw !== "number") return;
-    if (!takeHandoffRequest()) return;
-    setPlan({ chip: "wildcard" });
+    const handoff = takeHandoffRequest();
+    if (!handoff) return;
     setChipStrategy("wildcard");
-    runWildcardDraft();
+    // The exact 15 the page showed; rebuild only when it wasn't handed over.
+    const adopted = handoff.squad ? adoptWildcardDraft(handoff.squad) : null;
+    setPlan({ chip: "wildcard", ...(adopted ?? {}) });
+    if (!adopted) runWildcardDraft();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planLoaded, deadlineGw]);
 
@@ -949,7 +952,8 @@ const Index = () => {
   // plan, so a reload still shows it); a new draft replaces it, lineup edits on
   // the same 15 don't. Leaving the wildcard puts the real squad back.
   useEffect(() => {
-    if (!plan || plan.chip !== "wildcard" || !planRec) return;
+    // A saved plan is the user's: only an unsaved one takes a newer draft.
+    if (!plan || plan.chip !== "wildcard" || !planRec || plan.locked) return;
     const cs = planRec.chip_strategy;
     if (!cs?.is_active || cs.selected !== "wildcard" || !isNewWildcardDraft(plan, planRec)) return;
     const patch = adoptWildcardDraft(planRec);
