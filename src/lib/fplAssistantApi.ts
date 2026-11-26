@@ -1522,6 +1522,17 @@ export type ChipOutlookRow = {
   reasons: string[];
   distribution?: ChipDistribution;
   guidance?: string; // plain-language "why hold / why play" sentence with a season prior (older backends omit it)
+  timing?: WildcardTiming; // wildcard only, once its expiry is inside the model horizon
+};
+
+/** Wildcard scored from each week through expiry; `bar` is then the gain this week must reach. */
+export type WildcardTiming = {
+  end_gw: number;
+  now_gw: number;
+  now_gain: number;
+  next_best_gw: number | null;
+  next_best_gain: number;
+  margin: number;
 };
 
 export type EuropeanCompetition = "ucl" | "uel" | "uecl";
