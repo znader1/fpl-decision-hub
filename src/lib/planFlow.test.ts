@@ -288,6 +288,24 @@ describe("chipOptions — wildcard", () => {
     expect(o).toMatchObject({ zn: true, gainNote: "over the wildcard window" });
     expect(o?.why).not.toMatch(/^Hold/);
   });
+  describe("timed through expiry", () => {
+    const timing = { end_gw: 19, now_gw: 12, now_gain: 17.4, next_best_gw: 13, next_best_gain: 10.2, margin: 3 };
+    const row = { ...wcOutlook, event_id: 12, ev_gain: 17.4, bar: 13.2, status: "play" as const, timing, guidance: "Play it now: +17.4 pts through GW19." };
+    it("plays now: this week's gain and the next best week", () => {
+      const o = wc({ outlook: [row], nudge: { chip: "wildcard", event_id: 12, ev_gain: 17.4 } }, 12);
+      expect(o).toMatchObject({ zn: true, gain: 17.4, gainNote: "through GW19 · next best GW13 +10.2" });
+    });
+    it("holds for a later week: still shows this week's gain and names the planned week", () => {
+      const later = { ...row, event_id: 16, ev_gain: 6.3, bar: 9.3, timing: { ...timing, now_gain: 0.9, next_best_gw: 16, next_best_gain: 6.3 }, guidance: "Hold this week. GW16 is the best wildcard week." };
+      const o = wc({ outlook: [later] }, 12);
+      expect(o).toMatchObject({ zn: false, gain: 0.9, gainNote: "through GW19 · best week GW16" });
+      expect(o?.why).toBe("Rebuilds all 15 for free. Hold this week. GW16 is the best wildcard week.");
+    });
+    it("holds this week with nothing better later: shows what it needs now", () => {
+      const small = { ...row, ev_gain: 2, bar: 3, status: "hold" as const, timing: { ...timing, now_gain: 2, next_best_gw: null, next_best_gain: 0 }, guidance: "Hold this week." };
+      expect(wc({ outlook: [small] }, 12)?.gainNote).toBe("through GW19 · needs 3 pts to play now");
+    });
+  });
   it("is the ZN Pick when the nudge names it", () => {
     expect(wc({ nudge: { chip: "wildcard", event_id: 29, ev_gain: 130 } })?.zn).toBe(true);
   });

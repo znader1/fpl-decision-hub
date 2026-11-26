@@ -372,8 +372,11 @@ export function chipOptions(args: {
 
   // The wildcard's EV is its uplift over the whole wildcard window (net of the
   // transfer plan), not this week's points — gainNote says so on the card.
-  const wcGain = thisWeek(chipPlan, "wildcard", gw);
   const wcOutlook = chipPlan?.outlook?.find((x) => x.chip === "wildcard");
+  // Near expiry the engine scores every week through expiry and compares them
+  // (timing): this week's gain is always known, even when a later week is the plan.
+  const wcTiming = wcOutlook?.timing && wcOutlook.timing.now_gw === gw ? wcOutlook.timing : undefined;
+  const wcGain = wcTiming ? (wcTiming.now_gain > 0 ? wcTiming.now_gain : null) : thisWeek(chipPlan, "wildcard", gw);
   const wcWhy = `Rebuilds all 15 for free. ${
     wcOutlook?.guidance ?? (chipPlan ? "No wildcard week stands out yet." : "The chip plan hasn't answered yet.")
   }`;
@@ -381,14 +384,20 @@ export function chipOptions(args: {
   // gain doesn't read as "play it" (user testing, 2026-11).
   const wcHold = nudge !== "wildcard";
   const wcBar = typeof wcOutlook?.bar === "number" ? wcOutlook.bar : null;
+  const wcNote = (): string => {
+    if (!wcTiming) return wcHold && wcBar !== null ? `over the wildcard window · needs ${wcBar.toFixed(0)} pts to play` : "over the wildcard window";
+    const through = `through GW${wcTiming.end_gw}`;
+    if (!wcHold) return wcTiming.next_best_gw !== null ? `${through} · next best GW${wcTiming.next_best_gw} +${wcTiming.next_best_gain.toFixed(1)}` : through;
+    const planned = wcOutlook?.event_id;
+    if (typeof planned === "number" && planned !== gw) return `${through} · best week GW${planned}`;
+    return wcBar !== null ? `${through} · needs ${wcBar.toFixed(0)} pts to play now` : through;
+  };
   const wildcard: ChipOption = {
     chip: "wildcard",
     title: CHIP_LABELS.wildcard,
     zn: !wcHold,
     gain: wcGain,
-    ...(wcGain !== null && {
-      gainNote: wcHold && wcBar !== null ? `over the wildcard window · needs ${wcBar.toFixed(0)} pts to play` : "over the wildcard window",
-    }),
+    ...(wcGain !== null && { gainNote: wcNote() }),
     // The engine's guidance usually opens with "Hold"/"Keep" already; don't say it twice.
     why: wcHold && wcGain !== null && !/^(Hold|Keep)\b/.test(wcOutlook?.guidance ?? "") ? `Hold. ${wcWhy}` : wcWhy,
     used: used("wildcard"),
