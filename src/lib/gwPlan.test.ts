@@ -22,8 +22,13 @@ import {
   reconcilePromotion,
   suggestedBench,
   transferChoicePatch,
+  adoptWildcardDraft,
+  dropWildcardDraft,
+  isNewWildcardDraft,
+  wildcardSquadView,
   type GwPlan,
 } from "./gwPlan";
+import { planToTeam } from "./planTeam";
 import type {
   FplPosition,
   FplSquad,
@@ -539,5 +544,58 @@ describe("formation-aware promotion (GW11 owner squad)", () => {
     const rolled = { ...made, ...transferChoicePatch(made, "roll", move, lookup) };
     expect(rolled.xi).toEqual(plan.xi);
     expect(rolled.bench).toEqual(plan.bench);
+  });
+});
+
+
+describe("wildcard draft as the plan's squad", () => {
+  // Draft: ids 101-115 laid out like SQUAD (captain 105, vice 106).
+  const shift = <T extends FplTeamRecommendationPlayer>(p: T): T => ({ ...p, player_id: p.player_id + 100, web_name: `W${p.player_id}` });
+  const DRAFT: FplSquad = { entry_id: 1, event_id: 29, starting_xi: XI.map(shift), bench: BENCH.map(shift), captain_player_id: 105, vice_player_id: 106 };
+  const base = seedPlan(SQUAD);
+
+  it("adopts the draft's lineup and keeps its records", () => {
+    const patch = adoptWildcardDraft(DRAFT)!;
+    expect(patch.xi).toEqual(XI.map((p) => p.player_id + 100));
+    expect(patch.bench).toEqual([112, 114, 113, 115]); // keeper first, then bench_order
+    expect(patch).toMatchObject({ cap: 105, vice: 106, transfer: null, pick: null });
+    expect(patch.wildcardSquad?.map((p) => p.player_id).sort((a, b) => a - b)).toEqual(Array.from({ length: 15 }, (_, i) => 101 + i));
+  });
+  it("refuses a partial draft", () => {
+    expect(adoptWildcardDraft({ ...DRAFT, bench: DRAFT.bench.slice(0, 3) })).toBeNull();
+  });
+  it("a new draft is new; a lineup edit on the same 15 is not", () => {
+    const plan = { ...base, ...adoptWildcardDraft(DRAFT)!, chip: "wildcard" as const };
+    expect(isNewWildcardDraft(base, DRAFT)).toBe(true);
+    expect(isNewWildcardDraft(swapPlayers(plan, 114, 105), DRAFT)).toBe(false);
+  });
+  it("dropping the wildcard puts the real squad back", () => {
+    const plan = { ...base, ...adoptWildcardDraft(DRAFT)!, chip: "wildcard" as const };
+    const back = applyPatch(plan, dropWildcardDraft(base));
+    expect(back).toMatchObject({ xi: base.xi, bench: base.bench, cap: base.cap, vice: base.vice, wildcardSquad: null });
+  });
+  it("a saved plan shows the draft after a reload: lookup and squad view", () => {
+    const plan = { ...base, ...adoptWildcardDraft(DRAFT)!, chip: "wildcard" as const };
+    const saved = parseStoredPlan(JSON.stringify({ plan, base }))!.plan;
+    expect(buildPlayerLookup(SQUAD, undefined, saved.wildcardSquad)[105]?.web_name).toBe("W5");
+    const view = wildcardSquadView(saved, 1, 29)!;
+    expect(view.starting_xi.map((p) => p.player_id)).toEqual(saved.xi);
+    expect(view.bench.map((p) => p.bench_order)).toEqual([1, 2, 3, 4]);
+    expect(view.captain_player_id).toBe(105);
+    expect(wildcardSquadView({ ...saved, chip: null }, 1, 29)).toBeNull();
+    expect(wildcardSquadView(base, 1, 29)).toBeNull();
+  });
+  it("after a reload with no recommendation, the pitch and the to-do list show the draft", () => {
+    const plan = { ...base, ...adoptWildcardDraft(DRAFT)!, chip: "wildcard" as const };
+    const saved = parseStoredPlan(JSON.stringify({ plan, base }))!.plan;
+    const lookup = buildPlayerLookup(SQUAD, undefined, saved.wildcardSquad);
+    const team = planToTeam(SQUAD, resolvePlan(saved, [], lookup), lookup);
+    expect(team.starting_xi.map((p) => p.player_id)).toEqual(saved.xi);
+    expect(team.starting_xi.find((p) => p.is_captain)?.player_id).toBe(105);
+    const todo = buildTodo(saved, base, [], lookup);
+    expect(todo[0]).toBe(
+      "Wildcard: transfer out P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P14, P13, P15; bring in W1, W2, W3, W4, W5, W6, W7, W8, W9, W10, W11, W12, W14, W13, W15 (free).",
+    );
+    expect(todo).toContain("Activate Wildcard.");
   });
 });

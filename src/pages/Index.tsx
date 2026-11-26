@@ -6,7 +6,10 @@ import { CommandRail } from "@/components/CommandRail";
 import { deriveWeekDecisions } from "@/lib/weekDecisions";
 import { GwPlanValueProvider, useGwPlanStore } from "@/contexts/GwPlanContext";
 import {
+  adoptWildcardDraft,
   buildPlayerLookup,
+  dropWildcardDraft,
+  isNewWildcardDraft,
   buildTodo,
   countChanges,
   isPlanStep,
@@ -43,7 +46,7 @@ import {
   transferOptions,
 } from "@/lib/planFlow";
 import { buildCaptainLab, type CaptainGoal } from "@/lib/captainLab";
-import { readHandoff, readStoredPreset } from "@/lib/wildcardDrafts";
+import { readHandoff, readStoredPreset, takeHandoffRequest } from "@/lib/wildcardDrafts";
 import { bankMFromEntryHistory } from "@/lib/entryBank";
 import { useCountdown } from "@/hooks/useCountdown";
 import { formatCountdown } from "@/lib/deadline";
@@ -559,7 +562,11 @@ const Index = () => {
   // A saved (locked) plan isn't rewritten by the stale-pick effect; read past a stale pick here too.
   const planPick = plan && !pickIsStale(plan, planRec) ? plan.pick ?? null : null;
   const planMoves = useMemo(() => makeMoves(planRec, planPick), [planRec, planPick]);
-  const playerLookup = useMemo(() => buildPlayerLookup(latestSquad ?? squadQuery.data, planRec), [latestSquad, squadQuery.data, planRec]);
+  const planWildcardSquad = plan?.wildcardSquad;
+  const playerLookup = useMemo(
+    () => buildPlayerLookup(latestSquad ?? squadQuery.data, planRec, planWildcardSquad),
+    [latestSquad, squadQuery.data, planRec, planWildcardSquad],
+  );
   const resolvedPlan = useMemo(() => (plan ? resolvePlan(plan, planMoves, playerLookup) : null), [plan, planMoves, playerLookup]);
   // Derived, never stored: "make" applies the verdict's moves, nothing else does.
   // The backend's step squads follow ZN Pick's moves, so a picked runner-up uses none.
@@ -903,9 +910,18 @@ const Index = () => {
     }
     setChipStrategy(next);
   };
+  const runWildcardDraft = () => {
+    if (typeof deadlineGw !== "number") return;
+    setSelectedGW(deadlineGw);
+    setSquadGW(deadlineGw);
+    recommendationMutation.mutate(buildRecommendationParams(deadlineGw, { chipStrategy: "wildcard" }));
+  };
   const handlePickChip = (chip: Exclude<PlanChip, null>) => {
     const pick = chipPick(chip, chipStrategy);
     if (pick.chipStrategy !== null) switchStrategyForDeadline(pick.chipStrategy);
+    // Already on the wildcard strategy (a preview or a hand-off): no strategy
+    // change to rerun on, so ask for the draft directly.
+    else if (chip === "wildcard" && !plan?.wildcardSquad) runWildcardDraft();
     // Triple Captain goes on its own player: playing it hands him the armband.
     const tcCap = chip === "triple_captain" ? chipOpts.find((o) => o.chip === "triple_captain")?.capId : undefined;
     if (tcCap !== undefined) {
@@ -917,6 +933,36 @@ const Index = () => {
     if (pick.goTo) goStep(pick.goTo);
   };
 
+
+  // "Use this squad" on the Wildcard page: the plan plays the wildcard and builds
+  // that draft once (the click is the request, so this is not a step auto-run).
+  useEffect(() => {
+    if (!planLoaded || typeof deadlineGw !== "number") return;
+    const handoff = takeHandoffRequest();
+    if (!handoff) return;
+    setChipStrategy("wildcard");
+    // The exact 15 the page showed; rebuild only when it wasn't handed over.
+    const adopted = handoff.squad ? adoptWildcardDraft(handoff.squad) : null;
+    setPlan({ chip: "wildcard", ...(adopted ?? {}) });
+    if (!adopted) runWildcardDraft();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planLoaded, deadlineGw]);
+
+  // A wildcard draft for the deadline becomes the plan's squad (saved with the
+  // plan, so a reload still shows it); a new draft replaces it, lineup edits on
+  // the same 15 don't. Leaving the wildcard puts the real squad back.
+  useEffect(() => {
+    // A saved plan is the user's: only an unsaved one takes a newer draft.
+    if (!plan || plan.chip !== "wildcard" || !planRec || plan.locked) return;
+    const cs = planRec.chip_strategy;
+    if (!cs?.is_active || cs.selected !== "wildcard" || !isNewWildcardDraft(plan, planRec)) return;
+    const patch = adoptWildcardDraft(planRec);
+    if (patch) setPlan(patch);
+  }, [plan, planRec, setPlan]);
+  useEffect(() => {
+    if (!plan || !basePlan || plan.chip === "wildcard" || !plan.wildcardSquad) return;
+    setPlan(dropWildcardDraft(basePlan));
+  }, [plan, basePlan, setPlan]);
 
   useEffect(() => {
     if (!pendingHorizonRerun) return;

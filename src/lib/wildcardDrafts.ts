@@ -1,5 +1,6 @@
 import type { DraftPitchPlayer } from "./draftPitch";
 import type {
+  FplSquad,
   FplTeamRecommendationPlayer,
   WildcardDraftPresetResult,
   WildcardPreset,
@@ -120,7 +121,15 @@ const readIdList = (key: string): number[] => {
 
 /** Everything the plan flow needs to rebuild the squad the user chose on
  *  the wildcard page: preset, pins, bans, horizon and the play GW. */
-export function storeHandoff(h: { preset: WildcardPreset; pinnedIds: number[]; excludedIds: number[]; horizonGws: number; playEventId: number | null }): void {
+export function storeHandoff(h: {
+  preset: WildcardPreset;
+  pinnedIds: number[];
+  excludedIds: number[];
+  horizonGws: number;
+  playEventId: number | null;
+  /** The exact draft on screen: the plan adopts these 15 rather than rebuilding. */
+  squad?: FplSquad | null;
+}): void {
   try {
     localStorage.setItem(WILDCARD_PRESET_STORAGE_KEY, h.preset);
     localStorage.setItem(WILDCARD_PINS_STORAGE_KEY, JSON.stringify(h.pinnedIds));
@@ -128,9 +137,65 @@ export function storeHandoff(h: { preset: WildcardPreset; pinnedIds: number[]; e
     localStorage.setItem("fpl_chip_strategy", "wildcard");
     localStorage.setItem("fpl_horizon_gws", String(h.horizonGws));
     if (h.playEventId) localStorage.setItem("fpl_chip_play_event_id", String(h.playEventId));
+    if (h.squad) localStorage.setItem(WILDCARD_HANDOFF_SQUAD_KEY, JSON.stringify(h.squad));
+    else localStorage.removeItem(WILDCARD_HANDOFF_SQUAD_KEY);
+    localStorage.setItem(WILDCARD_HANDOFF_PENDING_KEY, "1");
   } catch {
     /* no storage */
   }
+}
+
+/** Set by "Use this squad"; the plan reads it once to play the wildcard with that draft. */
+export const WILDCARD_HANDOFF_PENDING_KEY = "fpl_wildcard_handoff_pending";
+
+const WILDCARD_HANDOFF_SQUAD_KEY = "fpl_wildcard_handoff_squad";
+
+const isHandoffSquad = (v: unknown): v is FplSquad => {
+  const s = v as Partial<FplSquad> | null;
+  return Boolean(s && Array.isArray(s.starting_xi) && Array.isArray(s.bench) && s.starting_xi.length === 11 && s.bench.length === 4);
+};
+
+/** Once per "Use this squad" click (clears as it reads): null when there is no
+ *  pending hand-off, else the draft that was on screen (null if not stored). */
+export function takeHandoffRequest(): { squad: FplSquad | null } | null {
+  try {
+    const pending = localStorage.getItem(WILDCARD_HANDOFF_PENDING_KEY) === "1";
+    const raw = localStorage.getItem(WILDCARD_HANDOFF_SQUAD_KEY);
+    localStorage.removeItem(WILDCARD_HANDOFF_PENDING_KEY);
+    localStorage.removeItem(WILDCARD_HANDOFF_SQUAD_KEY);
+    if (!pending) return null;
+    let squad: unknown = null;
+    try {
+      squad = raw ? JSON.parse(raw) : null;
+    } catch {
+      squad = null;
+    }
+    return { squad: isHandoffSquad(squad) ? squad : null };
+  } catch {
+    return null;
+  }
+}
+
+/** A preset from /wildcard/drafts as a squad payload: its XI in order, the
+ *  rest on the bench keeper first. Null unless it is a full, consistent 15. */
+export function presetToSquad(preset: WildcardDraftPreset, entryId: number, eventId: number): FplSquad | null {
+  if (!preset.ok || preset.squad.length !== 15) return null;
+  const byId = new Map(preset.squad.map((p) => [p.player_id, p]));
+  const xi = preset.xi_ids.map((id) => byId.get(id));
+  if (xi.length !== 11 || xi.some((p) => !p)) return null;
+  const inXi = new Set(preset.xi_ids);
+  const rest = preset.squad.filter((p) => !inXi.has(p.player_id));
+  const bench = [...rest.filter((p) => p.pos === "GKP"), ...rest.filter((p) => p.pos !== "GKP")];
+  const cap = preset.captain_id ?? null;
+  const vice = preset.vice_id ?? null;
+  return {
+    entry_id: entryId,
+    event_id: eventId,
+    ...(cap !== null && { captain_player_id: cap }),
+    ...(vice !== null && { vice_player_id: vice }),
+    starting_xi: (xi as FplTeamRecommendationPlayer[]).map((p) => ({ ...p, is_captain: p.player_id === cap, is_vice_captain: p.player_id === vice })),
+    bench: bench.map((p, i) => ({ ...p, bench_order: i + 1, is_captain: false, is_vice_captain: false })),
+  };
 }
 
 export function readHandoff(): WildcardHandoff {

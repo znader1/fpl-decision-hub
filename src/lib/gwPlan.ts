@@ -47,6 +47,10 @@ export interface GwPlan {
   /** A runner-up ("Also considered") the user chose over ZN Pick's move; "make"
    *  applies it instead of the verdict's moves. Null / absent = ZN Pick's move. */
   pick?: { sell: number; buy: number } | null;
+  /** While the plan plays Wildcard: the draft's 15 records, so the saved plan can
+   *  show the draft (names, fixtures, xPts) after a reload without rerunning ZN
+   *  Pick. xi/bench/cap/vice hold the draft's lineup; `base` keeps the real squad. */
+  wildcardSquad?: FplTeamRecommendationPlayer[] | null;
 }
 
 export type PlanPatch = Partial<GwPlan> | ((plan: GwPlan) => Partial<GwPlan>);
@@ -324,6 +328,46 @@ export function resolvePlan(plan: GwPlan, moves: FplTransferVerdictMove[], looku
  *  he replaced, so a later "roll" leaves the lineup edits intact. */
 export const toPlanId = (id: number, moves: FplTransferVerdictMove[]) => moves.find((m) => m.buy.id === id)?.sell.id ?? id;
 
+// ---- wildcard draft -----------------------------------------------------------
+
+const idSet = (ids: number[]) => [...ids].sort((a, b) => a - b).join(",");
+
+/** The patch that makes a wildcard draft (a recommendation run with the wildcard
+ *  strategy) the plan's squad. Null when it isn't a full 15. */
+export function adoptWildcardDraft(rec: FplSquad): Partial<GwPlan> | null {
+  if ((rec.starting_xi?.length ?? 0) !== 11 || (rec.bench?.length ?? 0) !== 4) return null;
+  const { xi, bench, cap, vice } = seedPlan(rec);
+  return { xi, bench, cap, vice, transfer: null, promoted: null, pick: null, wildcardSquad: [...rec.starting_xi, ...rec.bench] };
+}
+
+/** The draft holds other players than the plan (a new draft, not a lineup edit). */
+export function isNewWildcardDraft(plan: GwPlan, rec: FplSquad): boolean {
+  const recIds = [...(rec.starting_xi ?? []), ...(rec.bench ?? [])].map((p) => p.player_id);
+  return idSet(recIds) !== idSet([...plan.xi, ...plan.bench]);
+}
+
+/** Back to the real squad once the plan no longer plays Wildcard. */
+export function dropWildcardDraft(base: GwPlan): Partial<GwPlan> {
+  return { xi: base.xi, bench: base.bench, cap: base.cap, vice: base.vice, promoted: null, wildcardSquad: null };
+}
+
+/** The saved wildcard squad as a squad payload (Fixtures planner), or null. */
+export function wildcardSquadView(plan: GwPlan | null | undefined, entryId: number, eventId: number): FplSquad | null {
+  if (!plan || plan.chip !== "wildcard" || !plan.wildcardSquad?.length) return null;
+  const byId = new Map(plan.wildcardSquad.map((p) => [p.player_id, p]));
+  const xi = plan.xi.map((id) => byId.get(id));
+  const bench = plan.bench.map((id) => byId.get(id));
+  if (xi.some((p) => !p) || bench.some((p) => !p)) return null;
+  return {
+    entry_id: entryId,
+    event_id: eventId,
+    captain_player_id: plan.cap,
+    vice_player_id: plan.vice,
+    starting_xi: xi.map((p) => ({ ...(p as FplTeamRecommendationPlayer), is_captain: p!.player_id === plan.cap, is_vice_captain: p!.player_id === plan.vice })),
+    bench: bench.map((p, i) => ({ ...(p as FplTeamRecommendationPlayer), bench_order: i + 1, is_captain: false, is_vice_captain: false })),
+  };
+}
+
 // ---- player records ---------------------------------------------------------
 
 export type PlayerLookup = Record<number, FplTeamRecommendationPlayer>;
@@ -335,13 +379,19 @@ export type PlayerLookup = Record<number, FplTeamRecommendationPlayer>;
  * from the move itself for a buy no step squad carries — its xPts is the
  * seller's plus the move's this-GW gain, an estimate.
  */
-export function buildPlayerLookup(squad: FplSquad | undefined, rec: FplTeamRecommendation | undefined): PlayerLookup {
+export function buildPlayerLookup(
+  squad: FplSquad | undefined,
+  rec: FplTeamRecommendation | undefined,
+  wildcardSquad?: FplTeamRecommendationPlayer[] | null,
+): PlayerLookup {
   const out: PlayerLookup = {};
-  const add = (players: FplTeamRecommendationPlayer[] | undefined) => {
+  const add = (players: FplTeamRecommendationPlayer[] | undefined | null) => {
     for (const p of players ?? []) out[p.player_id] = p;
   };
   add(squad?.starting_xi);
   add(squad?.bench);
+  // A saved wildcard draft: its records stand in until a fresh run replaces them.
+  add(wildcardSquad);
   add(rec?.starting_xi);
   add(rec?.bench);
   for (const step of rec?.squad_with_transfers_steps ?? []) {
@@ -420,6 +470,13 @@ export function buildTodo(plan: GwPlan, base: GwPlan, moves: FplTransferVerdictM
   if (plan.transfer === "make" && moves.length > 0) {
     const cost = hitCost > 0 ? `−${hitCost} hit` : "free";
     for (const m of moves) todo.push(`Transfer out ${m.sell.name}, bring in ${m.buy.name} (${cost}).`);
+  }
+  if (plan.chip === "wildcard" && plan.wildcardSquad?.length) {
+    const now = new Set([...plan.xi, ...plan.bench]);
+    const had = new Set([...base.xi, ...base.bench]);
+    const out = [...base.xi, ...base.bench].filter((id) => !now.has(id));
+    const inn = [...plan.xi, ...plan.bench].filter((id) => !had.has(id));
+    if (out.length > 0) todo.push(`Wildcard: transfer out ${out.map(name).join(", ")}; bring in ${inn.map(name).join(", ")} (free).`);
   }
   const r = resolvePlan(plan, moves);
   if (plan.cap !== base.cap || plan.vice !== base.vice) todo.push(`Set ${name(r.cap)} as captain and ${name(r.vice)} as vice.`);

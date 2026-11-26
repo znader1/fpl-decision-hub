@@ -68,6 +68,33 @@ describe("hand-off storage", () => {
     expect(store.get("fpl_chip_strategy")).toBe("wildcard");
     expect(store.get("fpl_horizon_gws")).toBe("7");
     expect(store.get("fpl_chip_play_event_id")).toBe("8");
+    // "Use this squad" asks the plan to play it, once (no squad handed over here).
+    expect(mod.takeHandoffRequest()).toEqual({ squad: null });
+    expect(mod.takeHandoffRequest()).toBeNull();
+  });
+
+  it("hands over the exact draft on screen as a squad, once", async () => {
+    const mod = await import("@/lib/wildcardDrafts");
+    const store = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    };
+    const pos = ["GKP", "GKP", "DEF", "DEF", "DEF", "DEF", "DEF", "MID", "MID", "MID", "MID", "MID", "FWD", "FWD", "FWD"] as const;
+    const squad = pos.map((p, i) => ({ player_id: i + 1, web_name: `P${i + 1}`, pos: p, team_short: "AAA", team_name: "A", is_captain: false, is_vice_captain: false, multiplier: 1, xpts: 2 }));
+    // XI: GK 1, DEF 3-6, MID 8-11, FWD 13; bench GK 2 first, then 7, 12, 14... (15 benched too → 4 left)
+    const xi_ids = [1, 3, 4, 5, 6, 8, 9, 10, 11, 13, 14];
+    const preset = { name: "balanced" as const, label: "Balanced", ok: true, squad, xi_ids, captain_id: 13, vice_id: 8, notes: [], pins_conflict: [] };
+    const view = mod.presetToSquad(preset, 1, 12)!;
+    expect(view.starting_xi.map((p) => p.player_id)).toEqual(xi_ids);
+    expect(view.bench.map((p) => p.player_id)).toEqual([2, 7, 12, 15]);
+    expect(view.captain_player_id).toBe(13);
+    expect(mod.presetToSquad({ ...preset, ok: false }, 1, 12)).toBeNull();
+    expect(mod.presetToSquad({ ...preset, xi_ids: xi_ids.slice(0, 10) }, 1, 12)).toBeNull();
+    mod.storeHandoff({ preset: "balanced", pinnedIds: [], excludedIds: [], horizonGws: 5, playEventId: 12, squad: view });
+    expect(mod.takeHandoffRequest()?.squad?.starting_xi.map((p) => p.player_id)).toEqual(xi_ids);
+    expect(mod.takeHandoffRequest()).toBeNull();
   });
 
   it("reads safe defaults when nothing is stored", async () => {
