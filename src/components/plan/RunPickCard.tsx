@@ -8,12 +8,14 @@ interface RunPickCardProps {
   working: string;
   loading: boolean;
   error: string | undefined;
-  onRun: () => void;
+  /** Omitted when the step has its own run controls (Transfers' horizon
+   *  buttons); the card then shows only a "Try again" after an error. */
+  onRun?: () => void;
 }
 
-/** A step without ZN Pick's answer: never a dead end. Auto-run fires once on
- *  entering a step; if that run failed (Fly cold start) or its result was
- *  dropped, this card is the way to ask again. */
+/** A step without ZN Pick's answer: never a dead end. Steps don't run on
+ *  entry (user testing, 2026-11); this card, or the step's own controls, is
+ *  how the user asks, and asks again after a failed run (Fly cold start). */
 export function RunPickCard({ idle, working, loading, error, onRun }: RunPickCardProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
@@ -31,10 +33,12 @@ export function RunPickCard({ idle, working, loading, error, onRun }: RunPickCar
           ) : (
             <span>{idle}</span>
           )}
-          <Button type="button" size="sm" onClick={onRun}>
-            <Zap className="h-3.5 w-3.5" />
-            {error ? "Try again" : "Run ZN Pick"}
-          </Button>
+          {onRun && (
+            <Button type="button" size="sm" onClick={onRun}>
+              <Zap className="h-3.5 w-3.5" />
+              {error ? "Try again" : "Run ZN Pick"}
+            </Button>
+          )}
         </>
       )}
     </div>

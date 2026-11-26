@@ -250,8 +250,9 @@ describe("chipOptions — the user-testing week (wildcard and TC both peak now, 
   });
   const opts = chipOptions({ resolved: resolvePlan(seed, []), lookup, chipPlan: now, gw: 29 });
 
-  it("orders Save (ZN Pick), Wildcard, Triple Captain, then the played chips", () => {
-    expect(opts.map((o) => o.chip)).toEqual(["none", "wildcard", "triple_captain", "bench_boost", "free_hit"]);
+  it("orders Save (ZN Pick) first, then the unplayed chips as listed, then the played chips", () => {
+    // A chip whose best week is now but that ZN Pick doesn't play is not moved up.
+    expect(opts.map((o) => o.chip)).toEqual(["none", "triple_captain", "wildcard", "bench_boost", "free_hit"]);
   });
   it("no card reads as 'play it now' beside a Save pick", () => {
     const tc = opts.find((o) => o.chip === "triple_captain")!;
@@ -274,7 +275,18 @@ describe("chipOptions — wildcard", () => {
     expect(wc()?.why).toBe("Rebuilds all 15 for free. Hold for now. GW31 is the best week so far (+18.4 pts).");
   });
   it("takes the multi-GW uplift as its gain on its best week, labelled as such", () => {
-    expect(wc({}, 31)).toMatchObject({ gain: 18.4, gainNote: "over the wildcard window" });
+    expect(wc({}, 31)).toMatchObject({ gain: 18.4, gainNote: "over the wildcard window · needs 120 pts to play" });
+  });
+  it("says Hold once when ZN Pick doesn't play it", () => {
+    // Guidance already says "Hold for now": no second Hold in front.
+    expect(wc({}, 31)?.why).toBe(`Rebuilds all 15 for free. ${wcOutlook.guidance}`);
+    const bare = wc({ outlook: [{ ...wcOutlook, guidance: "GW31 is the best week so far." }] }, 31);
+    expect(bare?.why).toBe("Hold. Rebuilds all 15 for free. GW31 is the best week so far.");
+  });
+  it("drops the bar and the Hold when ZN Pick plays it", () => {
+    const o = wc({ nudge: { chip: "wildcard", event_id: 31, ev_gain: 130 } }, 31);
+    expect(o).toMatchObject({ zn: true, gainNote: "over the wildcard window" });
+    expect(o?.why).not.toMatch(/^Hold/);
   });
   it("is the ZN Pick when the nudge names it", () => {
     expect(wc({ nudge: { chip: "wildcard", event_id: 29, ev_gain: 130 } })?.zn).toBe(true);

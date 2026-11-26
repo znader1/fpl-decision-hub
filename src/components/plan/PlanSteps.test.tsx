@@ -339,6 +339,27 @@ describe("TransfersStep without options", () => {
   });
 });
 
+describe("TransfersStep before the first run (waits for a horizon click)", () => {
+  const base = { options: null, value: null, onPick: () => {}, horizonGws: 3 };
+  it("presses no horizon and shows no Run button: the horizon click is the run", () => {
+    const onHorizonChange = vi.fn();
+    const onRun = vi.fn();
+    render(<TransfersStep {...base} onRun={onRun} onHorizonChange={onHorizonChange} />);
+    for (const b of screen.getAllByRole("button", { name: /^\d GW$/ })) expect(b.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByRole("button", { name: "Run ZN Pick" })).toBeNull();
+    expect(screen.getByText(/Pick how many gameweeks/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "2 GW" }));
+    expect(onHorizonChange).toHaveBeenCalledWith(2);
+    expect(onRun).not.toHaveBeenCalled();
+  });
+  it("offers Try again after a failed run", () => {
+    const onRun = vi.fn();
+    render(<TransfersStep {...base} onRun={onRun} onHorizonChange={() => {}} error="Backend asleep" />);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRun).toHaveBeenCalled();
+  });
+});
+
 describe("TransfersStep horizon control", () => {
   it("offers 1 / 2 / 3 / 5 GW horizons, marks the current one and reports a change", () => {
     const onHorizonChange = vi.fn();
